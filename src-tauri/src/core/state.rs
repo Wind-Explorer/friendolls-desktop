@@ -1,7 +1,13 @@
 // in app-core/src/state.rs
-use crate::{core::models::app_config::AppConfig, lock_w};
+use crate::{
+    core::models::app_config::{AppConfig, AuthConfig},
+    lock_w,
+};
 use reqwest::Client;
-use std::sync::{Arc, LazyLock, RwLock};
+use std::{
+    env,
+    sync::{Arc, LazyLock, RwLock},
+};
 
 #[derive(Default)]
 pub struct AppState {
@@ -10,7 +16,6 @@ pub struct AppState {
 }
 
 // Global application state
-// FDOLL = Multiplayer Todo App
 // Read / write this state via the `lock_r!` / `lock_w!` macros from `fdoll-core::utilities`
 pub static FDOLL: LazyLock<Arc<RwLock<AppState>>> =
     LazyLock::new(|| Arc::new(RwLock::new(AppState::default())));
@@ -18,9 +23,18 @@ pub static FDOLL: LazyLock<Arc<RwLock<AppState>>> =
 pub fn init_fdoll_state() {
     {
         let mut guard = lock_w!(FDOLL);
+        dotenvy::dotenv().ok();
         guard.app_config = Some(AppConfig {
-            api_base_url: Some("http://sandbox:3000".to_string()),
+            api_base_url: Some(env::var("API_BASE_URL").expect("API_BASE_URL must be set")),
+            auth: AuthConfig {
+                audience: env::var("JWT_AUDIENCE").expect("JWT_AUDIENCE must be set"),
+                auth_url: env::var("AUTH_URL").expect("AUTH_URL must be set"),
+                redirect_uri: env::var("REDIRECT_URI").expect("REDIRECT_URI must be set"),
+            },
         });
-        guard.http_client = reqwest::Client::new();
+        guard.http_client = reqwest::ClientBuilder::new()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .expect("Client should build");
     }
 }

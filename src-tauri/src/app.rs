@@ -41,4 +41,5 @@ pub async fn initialize_session() {
     webview_window.open_devtools();
 
     println!("Scene window initialized.");
+    crate::core::services::auth::get_auth_code();
 }
