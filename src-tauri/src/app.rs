@@ -37,5 +37,8 @@ pub async fn initialize_session() {
     overlay_fullscreen(&window).unwrap();
     window.set_ignore_cursor_events(true).unwrap();
 
+    #[cfg(debug_assertions)]
+    webview_window.open_devtools();
+
     println!("Scene window initialized.");
 }

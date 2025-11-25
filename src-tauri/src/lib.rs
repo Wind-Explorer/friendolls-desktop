@@ -1,4 +1,4 @@
-use crate::services::cursor::stream_cursor_position;
+use crate::services::cursor::channel_cursor_positions;
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
 
@@ -37,7 +37,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_positioner::init())
-        .invoke_handler(tauri::generate_handler![stream_cursor_position])
+        .invoke_handler(tauri::generate_handler![channel_cursor_positions])
         .setup(|app| {
             APP_HANDLE
                 .set(app.handle().to_owned())
