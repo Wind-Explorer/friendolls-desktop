@@ -10,16 +10,11 @@
     "frontendDist": "../build"
   },
   "app": {
-    "windows": [
-      {
-        "title": "friendolls-desktop",
-        "width": 800,
-        "height": 600
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
