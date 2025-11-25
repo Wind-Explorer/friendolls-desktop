@@ -4,3 +4,6 @@
 // See: https://v2.tauri.app/start/frontend/sveltekit/ for more info
 export const ssr = false;
 import "../app.css";
+import { initCursorPositionStream } from "../channels/cursor";
+
+initCursorPositionStream();
