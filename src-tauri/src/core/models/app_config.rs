@@ -7,6 +7,7 @@ pub struct AuthConfig {
     pub audience: String,
     pub auth_url: String,
     pub redirect_uri: String,
+    pub redirect_host: String,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]

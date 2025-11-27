@@ -1,4 +1,6 @@
 use crate::services::cursor::channel_cursor_positions;
+use tauri::async_runtime;
+use tracing_subscriber;
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
 
@@ -14,8 +16,16 @@ pub fn get_app_handle<'a>() -> &'a tauri::AppHandle<tauri::Wry> {
 }
 
 fn setup_fdoll() -> Result<(), tauri::Error> {
+    // Initialize tracing subscriber for logging
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_thread_ids(false)
+        .with_file(true)
+        .with_line_number(true)
+        .init();
+
     core::state::init_fdoll_state();
-    tokio::spawn(async move { app::start_fdoll().await });
+    async_runtime::spawn(async move { app::start_fdoll().await });
     Ok(())
 }
 
