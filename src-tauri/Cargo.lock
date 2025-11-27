@@ -1058,6 +1058,7 @@ dependencies = [
  "base64 0.22.1",
  "device_query",
  "dotenvy",
+ "flate2",
  "keyring",
  "once_cell",
  "rand 0.9.2",

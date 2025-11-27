@@ -1,10 +1,12 @@
 use crate::{core::state::FDOLL, lock_r, lock_w, APP_HANDLE};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use flate2::{write::GzEncoder, read::GzDecoder, Compression};
 use keyring::Entry;
 use rand::{distr::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::thread;
+use std::io::{Read, Write};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri_plugin_opener::OpenerExt;
 use thiserror::Error;
@@ -163,65 +165,130 @@ pub async fn get_access_token() -> Option<String> {
 
 /// Save auth_pass to secure storage (keyring) and update app state.
 pub fn save_auth_pass(auth_pass: &AuthPass) -> Result<(), OAuthError> {
-    let entry = Entry::new("friendolls", "auth_pass")?;
     let json = serde_json::to_string(auth_pass)?;
-    entry.set_password(&json)?;
-    info!("Auth pass saved to keyring successfully");
+    info!("Original JSON length: {}", json.len());
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
+    encoder.write_all(json.as_bytes()).map_err(|e| OAuthError::SerializationError(serde_json::Error::io(e)))?;
+    let compressed = encoder.finish().map_err(|e| OAuthError::SerializationError(serde_json::Error::io(e)))?;
+    info!("Compressed length: {}", compressed.len());
+    let encoded = URL_SAFE_NO_PAD.encode(&compressed);
+    info!("Encoded length: {}", encoded.len());
+    
+    // Windows keyring has a 2560-byte UTF-16 limit, which means 1280 chars max
+    // Split into chunks of 1200 chars to be safe
+    const CHUNK_SIZE: usize = 1200;
+    let chunks: Vec<&str> = encoded.as_bytes()
+        .chunks(CHUNK_SIZE)
+        .map(|chunk| std::str::from_utf8(chunk).unwrap())
+        .collect();
+    
+    info!("Splitting auth pass into {} chunks", chunks.len());
+    
+    // Save chunk count
+    let count_entry = Entry::new("friendolls", "auth_pass_count")?;
+    count_entry.set_password(&chunks.len().to_string())?;
+    
+    // Save each chunk
+    for (i, chunk) in chunks.iter().enumerate() {
+        let entry = Entry::new("friendolls", &format!("auth_pass_{}", i))?;
+        entry.set_password(chunk)?;
+    }
+    
+    info!("Auth pass saved to keyring successfully in {} chunks", chunks.len());
     Ok(())
 }
 
 /// Load auth_pass from secure storage (keyring).
 pub fn load_auth_pass() -> Result<Option<AuthPass>, OAuthError> {
     info!("Reading credentials from keyring");
-    let entry = match Entry::new("friendolls", "auth_pass") {
-        Ok(value) => value,
-        Err(e) => {
-            error!("Failed to open keyring entry");
-            panic!()
-        }
-    };
-    info!("Opened credentials from keyring");
-    match entry.get_password() {
-        Ok(json) => {
-            info!("Got credentials from keyring");
-            let auth_pass: AuthPass = match serde_json::from_str(&json) {
-                Ok(v) => {
-                    info!("Deserialized auth pass from keyring");
-                    v
-                }
-                Err(e) => {
-                    error!("Failed to decode auth pass from keyring");
-                    return Ok(None);
-                }
-            };
-            info!("Auth pass loaded from keyring");
-            Ok(Some(auth_pass))
-        }
+    
+    // Get chunk count
+    let count_entry = Entry::new("friendolls", "auth_pass_count")?;
+    let chunk_count = match count_entry.get_password() {
+        Ok(count_str) => match count_str.parse::<usize>() {
+            Ok(count) => count,
+            Err(_) => {
+                error!("Invalid chunk count in keyring");
+                return Ok(None);
+            }
+        },
         Err(keyring::Error::NoEntry) => {
             info!("No auth pass found in keyring");
-            Ok(None)
+            return Ok(None);
         }
         Err(e) => {
-            error!("Failed to load from keyring");
-            Err(OAuthError::KeyringError(e))
+            error!("Failed to load chunk count from keyring");
+            return Err(OAuthError::KeyringError(e));
+        }
+    };
+    
+    info!("Loading {} auth pass chunks from keyring", chunk_count);
+    
+    // Reassemble chunks
+    let mut encoded = String::new();
+    for i in 0..chunk_count {
+        let entry = Entry::new("friendolls", &format!("auth_pass_{}", i))?;
+        match entry.get_password() {
+            Ok(chunk) => encoded.push_str(&chunk),
+            Err(e) => {
+                error!("Failed to load chunk {} from keyring", i);
+                return Err(OAuthError::KeyringError(e));
+            }
         }
     }
+    
+    info!("Reassembled encoded length: {}", encoded.len());
+    
+    let compressed = match URL_SAFE_NO_PAD.decode(&encoded) {
+        Ok(c) => c,
+        Err(e) => {
+            error!("Failed to base64 decode auth pass from keyring: {}", e);
+            return Ok(None);
+        }
+    };
+    
+    let mut decoder = GzDecoder::new(&compressed[..]);
+    let mut json = String::new();
+    if let Err(e) = decoder.read_to_string(&mut json) {
+        error!("Failed to decompress auth pass from keyring: {}", e);
+        return Ok(None);
+    }
+    
+    let auth_pass: AuthPass = match serde_json::from_str(&json) {
+        Ok(v) => {
+            info!("Deserialized auth pass from keyring");
+            v
+        }
+        Err(_e) => {
+            error!("Failed to decode auth pass from keyring");
+            return Ok(None);
+        }
+    };
+    
+    info!("Auth pass loaded from keyring");
+    Ok(Some(auth_pass))
 }
 
 /// Clear auth_pass from secure storage and app state.
 pub fn clear_auth_pass() -> Result<(), OAuthError> {
-    let entry = Entry::new("friendolls", "auth_pass")?;
-    match entry.delete_credential() {
-        Ok(_) => {
-            info!("Auth pass cleared from keyring successfully");
-            Ok(())
-        }
-        Err(keyring::Error::NoEntry) => {
-            info!("Auth pass already cleared from keyring");
-            Ok(())
-        }
-        Err(e) => Err(OAuthError::KeyringError(e)),
+    // Try to get chunk count
+    let count_entry = Entry::new("friendolls", "auth_pass_count")?;
+    let chunk_count = match count_entry.get_password() {
+        Ok(count_str) => count_str.parse::<usize>().unwrap_or(0),
+        Err(_) => 0,
+    };
+    
+    // Delete all chunks
+    for i in 0..chunk_count {
+        let entry = Entry::new("friendolls", &format!("auth_pass_{}", i))?;
+        let _ = entry.delete_credential();
     }
+    
+    // Delete chunk count
+    let _ = count_entry.delete_credential();
+    
+    info!("Auth pass cleared from keyring successfully");
+    Ok(())
 }
 
 /// Logout the current user by clearing tokens from storage and state.
