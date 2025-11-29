@@ -1,4 +1,4 @@
-use crate::services::cursor::channel_cursor_positions;
+use crate::services::cursor::start_cursor_tracking;
 use tauri::async_runtime;
 use tracing_subscriber;
 
@@ -48,7 +48,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![channel_cursor_positions])
+        .invoke_handler(tauri::generate_handler![start_cursor_tracking])
         .setup(|app| {
             APP_HANDLE
                 .set(app.handle().to_owned())

@@ -371,9 +371,15 @@ pub async fn exchange_code_for_auth_pass(
 ) -> Result<AuthPass, OAuthError> {
     let (app_config, http_client) = {
         let guard = lock_r!(FDOLL);
+        let clients = guard.clients.as_ref();
+        if clients.is_none() {
+            error!("Clients not initialized yet!");
+            return Err(OAuthError::InvalidConfig);
+        }
+        info!("HTTP client retrieved successfully for token exchange");
         (
-            guard.app_config.clone().ok_or(OAuthError::InvalidConfig)?,
-            guard.http_client.clone(),
+            guard.app_config.clone(),
+            clients.unwrap().http_client.clone(),
         )
     };
 
@@ -389,13 +395,35 @@ pub async fn exchange_code_for_auth_pass(
         .finish();
 
     info!("Exchanging authorization code for tokens");
+    info!("Token endpoint URL: {}", url);
+    info!("Request body length: {} bytes", body.len());
 
     let exchange_request = http_client
-        .post(url)
+        .post(url.clone())
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body);
 
-    let exchange_request_response = exchange_request.send().await?;
+    info!("Sending token exchange request...");
+    let exchange_request_response = match exchange_request.send().await {
+        Ok(resp) => {
+            info!("Received response with status: {}", resp.status());
+            resp
+        }
+        Err(e) => {
+            error!("Failed to send token exchange request: {}", e);
+            error!("Error details: {:?}", e);
+            if e.is_timeout() {
+                error!("Request timed out");
+            }
+            if e.is_connect() {
+                error!("Connection error - check network and DNS");
+            }
+            if e.is_request() {
+                error!("Request error - check request format");
+            }
+            return Err(OAuthError::NetworkError(e));
+        }
+    };
 
     if !exchange_request_response.status().is_success() {
         let status = exchange_request_response.status();
@@ -446,16 +474,14 @@ pub fn init_auth_code_retrieval<F>(on_success: F)
 where
     F: FnOnce() + Send + 'static,
 {
-    let app_config = match lock_r!(FDOLL).app_config.clone() {
-        Some(config) => config,
-        None => {
-            error!("Cannot initialize auth: app config not available");
-            return;
-        }
-    };
+    info!("init_auth_code_retrieval called");
+    let app_config = lock_r!(FDOLL).app_config.clone();
 
     let opener = match APP_HANDLE.get() {
-        Some(handle) => handle.opener(),
+        Some(handle) => {
+            info!("APP_HANDLE retrieved successfully");
+            handle.opener()
+        }
         None => {
             error!("Cannot initialize auth: app handle not available");
             return;
@@ -480,7 +506,10 @@ where
     }
 
     let mut url = match url::Url::parse(&format!("{}/auth", &app_config.auth.auth_url)) {
-        Ok(url) => url,
+        Ok(url) => {
+            info!("Parsed auth URL successfully");
+            url
+        }
         Err(e) => {
             error!("Invalid auth URL configuration: {}", e);
             return;
@@ -501,8 +530,10 @@ where
     // Bind the server FIRST to ensure port is open
     // We bind synchronously using std::net::TcpListener then convert to tokio::net::TcpListener
     // to ensure the port is bound before we open the browser.
+    info!("Attempting to bind to: {}", app_config.auth.redirect_host);
     let std_listener = match std::net::TcpListener::bind(&app_config.auth.redirect_host) {
         Ok(s) => {
+            info!("Successfully bound to {}", app_config.auth.redirect_host);
             s.set_nonblocking(true).unwrap();
             s
         }
@@ -514,7 +545,7 @@ where
 
     info!(
         "Listening on {} for /callback",
-        &app_config.auth.redirect_host
+        app_config.auth.redirect_host
     );
 
     tauri::async_runtime::spawn(async move {
@@ -571,8 +602,11 @@ where
         }
     });
 
+    info!("Opening auth URL: {}", url);
     if let Err(e) = opener.open_url(url, None::<&str>) {
         error!("Failed to open auth portal: {}", e);
+    } else {
+        info!("Successfully called open_url for auth portal");
     }
 }
 
@@ -592,8 +626,13 @@ pub async fn refresh_token(refresh_token: &str) -> Result<AuthPass, OAuthError> 
     let (app_config, http_client) = {
         let guard = lock_r!(FDOLL);
         (
-            guard.app_config.clone().ok_or(OAuthError::InvalidConfig)?,
-            guard.http_client.clone(),
+            guard.app_config.clone(),
+            guard
+                .clients
+                .as_ref()
+                .expect("clients present")
+                .http_client
+                .clone(),
         )
     };
 

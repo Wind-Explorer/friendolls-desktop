@@ -3,7 +3,7 @@ use tauri_plugin_positioner::WindowExt;
 use tracing::{error, info};
 
 use crate::{
-    core::services::auth::get_tokens,
+    core::services::{auth::get_tokens, preferences::create_preferences_window},
     get_app_handle,
     services::overlay::{overlay_fullscreen, SCENE_WINDOW_LABEL},
 };
@@ -16,7 +16,8 @@ pub async fn init_session() {
     match get_tokens().await {
         Some(_) => {
             info!("User session restored");
-            create_scene().await;
+            create_scene();
+            create_preferences_window();
         }
         None => {
             info!("No active session, user needs to authenticate");
@@ -24,14 +25,15 @@ pub async fn init_session() {
                 info!("Authentication successful, creating scene...");
                 tauri::async_runtime::spawn(async {
                     info!("Creating scene after auth success...");
-                    create_scene().await;
+                    create_scene();
+                    create_preferences_window();
                 });
             });
         }
     }
 }
 
-pub async fn create_scene() {
+pub fn create_scene() {
     info!("Starting scene creation...");
     let webview_window = match tauri::WebviewWindowBuilder::new(
         get_app_handle(),

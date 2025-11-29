@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { cursorPositionOnScreen } from "../../channels/cursor";
+  import {
+    cursorPositionOnScreen,
+  } from "../../events/cursor";
 </script>
 
 <div class="w-svw h-svh p-4 relative">
@@ -9,13 +11,12 @@
     <div class="flex flex-col text-center">
       <p class="text-xl">Friendolls</p>
       <p class="text-sm opacity-50">Scene Screen</p>
-      <div class="mt-4">
-        <span class="font-mono">
-          Cursor: ({$cursorPositionOnScreen.raw.x}, {$cursorPositionOnScreen.raw
-            .y})
+      <div class="mt-4 flex flex-col gap-1">
+        <span class="font-mono text-sm">
+          Raw: ({$cursorPositionOnScreen.raw.x}, {$cursorPositionOnScreen.raw.y})
         </span>
-        <span class="font-mono">
-          Cursor: ({$cursorPositionOnScreen.mapped.x}, {$cursorPositionOnScreen
+        <span class="font-mono text-sm">
+          Mapped: ({$cursorPositionOnScreen.mapped.x}, {$cursorPositionOnScreen
             .mapped.y})
         </span>
       </div>
