@@ -1,11 +1,11 @@
 use rust_socketio::{ClientBuilder, Payload, RawClient};
 use serde_json::json;
 use tauri::async_runtime;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{
     core::{models::app_config::AppConfig, state::FDOLL},
-    lock_r,
+    lock_r, lock_w,
     services::cursor::CursorPosition,
 };
 
@@ -45,19 +45,54 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
     }
 }
 
-pub fn build_ws_client(app_config: &AppConfig) -> rust_socketio::client::Client {
-    let client = match ClientBuilder::new(
-        app_config
-            .api_base_url
-            .as_ref()
-            .expect("Missing API base URL"),
-    )
-    .namespace("/")
-    .on("pong", on_pong)
-    .connect()
-    {
-        Ok(c) => c,
-        Err(_) => todo!("TODO error handling"),
+pub async fn init_ws_client() {
+    let app_config = {
+        let guard = lock_r!(FDOLL);
+        guard.app_config.clone()
     };
-    client
+
+    let ws_client = build_ws_client(&app_config).await;
+
+    let mut guard = lock_w!(FDOLL);
+    if let Some(clients) = guard.clients.as_mut() {
+        clients.ws_client = Some(ws_client);
+    }
+    info!("WebSocket client initialized after authentication");
+}
+
+pub async fn build_ws_client(app_config: &AppConfig) -> rust_socketio::client::Client {
+    let token = crate::core::services::auth::get_access_token()
+        .await
+        .expect("No access token available for WebSocket connection");
+
+    info!("Building WebSocket client with authentication");
+
+    let api_base_url = app_config
+        .api_base_url
+        .clone()
+        .expect("Missing API base URL");
+
+    let client = async_runtime::spawn_blocking(move || {
+        ClientBuilder::new(api_base_url)
+            .namespace("/")
+            .on("pong", on_pong)
+            .auth(json!({ "token": token }))
+            .connect()
+    })
+    .await
+    .expect("Failed to spawn blocking task");
+
+    match client {
+        Ok(c) => {
+            info!("WebSocket client connected successfully");
+            c
+        }
+        Err(e) => {
+            error!("Failed to connect WebSocket: {:?}", e);
+            panic!(
+                "TODO: better error handling for WebSocket connection - {}",
+                e
+            );
+        }
+    }
 }

@@ -586,6 +586,7 @@ where
                             error!("Failed to save auth pass: {}", e);
                         } else {
                             info!("Authentication successful!");
+                            crate::core::services::ws::init_ws_client().await;
                             on_success();
                         }
                     }

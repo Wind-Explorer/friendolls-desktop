@@ -2,10 +2,7 @@
 use crate::{
     core::{
         models::app_config::{AppConfig, AuthConfig},
-        services::{
-            auth::{load_auth_pass, AuthPass},
-            ws::build_ws_client,
-        },
+        services::auth::{load_auth_pass, AuthPass},
     },
     lock_w,
 };
@@ -78,24 +75,15 @@ pub fn init_fdoll_state() {
         });
         info!("Initialized HTTP client");
 
-        // Clone app_config for async task
-        let app_config = guard.app_config.clone();
+        let has_auth = guard.auth_pass.is_some();
 
-        // Drop the write lock before spawning async task
         drop(guard);
 
-        // Initialize WebSocket client in a blocking task to avoid runtime conflicts
-        async_runtime::spawn(async move {
-            let ws_client = async_runtime::spawn_blocking(move || build_ws_client(&app_config))
-                .await
-                .expect("Failed to initialize WebSocket client");
-
-            let mut guard = lock_w!(FDOLL);
-            if let Some(clients) = guard.clients.as_mut() {
-                clients.ws_client = Some(ws_client);
-            }
-            info!("Initialized FDOLL state with WebSocket client");
-        });
+        if has_auth {
+            async_runtime::spawn(async move {
+                crate::core::services::ws::init_ws_client().await;
+            });
+        }
 
         info!("Initialized FDOLL state (WebSocket client initializing asynchronously)");
     }
