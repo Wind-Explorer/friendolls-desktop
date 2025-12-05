@@ -6,18 +6,21 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::Emitter;
 use tracing::{error, info, warn};
+use ts_rs::TS;
 
 use crate::get_app_handle;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct CursorPosition {
     pub x: i32,
     pub y: i32,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct CursorPositions {
     pub raw: CursorPosition,
     pub mapped: CursorPosition,

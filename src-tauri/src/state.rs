@@ -1,14 +1,20 @@
 // in app-core/src/state.rs
 use crate::{
     lock_w,
-    models::app_config::{AppConfig, AuthConfig},
+    models::{
+        app_config::{AppConfig, AuthConfig},
+        app_data::AppData,
+    },
+    remotes::user::UserRemote,
     services::auth::{load_auth_pass, AuthPass},
+    APP_HANDLE,
 };
+use serde_json::json;
 use std::{
     env,
     sync::{Arc, LazyLock, RwLock},
 };
-use tauri::async_runtime;
+use tauri::{async_runtime, Emitter};
 use tracing::{info, warn};
 
 #[derive(Default, Clone)]
@@ -29,6 +35,9 @@ pub struct AppState {
     pub clients: Option<Clients>,
     pub auth_pass: Option<AuthPass>,
     pub oauth_flow: OAuthFlowTracker,
+
+    // exposed to the frontend
+    pub app_data: AppData,
 }
 
 // Global application state
@@ -81,8 +90,34 @@ pub fn init_fdoll_state() {
             async_runtime::spawn(async move {
                 crate::services::ws::init_ws_client().await;
             });
+
+            // TODO: seems like even under `has_auth` token may not be present when init app data
+            async_runtime::spawn(async move {
+                info!("Initializing user data");
+                init_app_data().await;
+            });
         }
 
-        info!("Initialized FDOLL state (WebSocket client initializing asynchronously)");
+        info!("Initialized FDOLL state (WebSocket client & user data initializing asynchronously)");
+    }
+}
+
+/// To be called in init state or need to refresh data.
+/// Populate user data in app state from the server.
+pub async fn init_app_data() {
+    let user_remote = UserRemote::new();
+    let user = user_remote
+        .get_user(None)
+        .await
+        .expect("TODO: handle user profile fetch failure");
+    {
+        let mut guard = lock_w!(FDOLL);
+        guard.app_data.user = Some(user);
+        APP_HANDLE
+            .get()
+            // TODO: magic constants
+            .expect("App handle not initialized")
+            .emit("app-data-refreshed", json!(guard.app_data))
+            .expect("TODO: handle event emit fail");
     }
 }

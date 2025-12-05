@@ -1,4 +1,4 @@
-use crate::services::cursor::start_cursor_tracking;
+use crate::{models::app_data::AppData, services::cursor::start_cursor_tracking, state::FDOLL};
 use tauri::async_runtime;
 use tracing_subscriber;
 
@@ -6,6 +6,7 @@ static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync
 
 mod app;
 mod models;
+mod remotes;
 mod services;
 mod state;
 mod utilities;
@@ -44,13 +45,22 @@ fn register_app_events(event: tauri::RunEvent) {
     }
 }
 
+#[tauri::command]
+fn get_app_data() -> Result<AppData, String> {
+    let guard = lock_r!(FDOLL);
+    return Ok(guard.app_data.clone());
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![start_cursor_tracking])
+        .invoke_handler(tauri::generate_handler![
+            start_cursor_tracking,
+            get_app_data
+        ])
         .setup(|app| {
             APP_HANDLE
                 .set(app.handle().to_owned())

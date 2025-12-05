@@ -1,9 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import {
-    cursorPositionOnScreen,
-  } from "../../events/cursor";
-
+  import { cursorPositionOnScreen } from "../../events/cursor";
 </script>
 
 <div class="p-4">
@@ -17,12 +14,22 @@
       <h3 class="font-semibold mb-2">Cursor Position (Multi-Window Test)</h3>
       <div class="flex flex-col gap-1">
         <span class="font-mono text-sm">
-          Raw: ({$cursorPositionOnScreen.raw.x}, {$cursorPositionOnScreen.raw.y})
+          Raw: ({$cursorPositionOnScreen.raw.x}, {$cursorPositionOnScreen.raw
+            .y})
         </span>
         <span class="font-mono text-sm">
-          Mapped: ({$cursorPositionOnScreen.mapped.x}, {$cursorPositionOnScreen.mapped.y})
+          Mapped: ({$cursorPositionOnScreen.mapped.x}, {$cursorPositionOnScreen
+            .mapped.y})
         </span>
       </div>
     </div>
+    <button
+      class="btn"
+      onclick={() => {
+        invoke("get_app_data").then((data) => {
+          console.log("data", data);
+        });
+      }}>Fetch app data</button
+    >
   </div>
 </div>

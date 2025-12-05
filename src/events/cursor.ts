@@ -1,11 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
-
-export type CursorPositions = {
-  raw: { x: number; y: number };
-  mapped: { x: number; y: number };
-};
+import type { CursorPositions } from "../types/bindings/CursorPositions";
 
 export let cursorPositionOnScreen = writable<CursorPositions>({
   raw: { x: 0, y: 0 },

@@ -1,7 +1,13 @@
-# Tauri + SvelteKit + TypeScript
+# Friendolls (Desktop)
 
-This template should help get you started developing with Tauri, SvelteKit and TypeScript in Vite.
+Run the following command in project root on first run & after changes to models on Rust side to generate TypeScript type bindings from Rust models
 
-## Recommended IDE Setup
+```sh
+# unix
+TS_RS_EXPORT_DIR="../src/types/bindings" cargo test export_bindings --manifest-path=./src-tauri/Cargo.toml
+```
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+```sh
+# powershell
+$Env:TS_RS_EXPORT_DIR = "../src/types/bindings"; cargo test export_bindings --manifest-path=./src-tauri/Cargo.toml
+```
