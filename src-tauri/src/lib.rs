@@ -5,8 +5,10 @@ use tracing_subscriber;
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
 
 mod app;
-mod core;
+mod models;
 mod services;
+mod state;
+mod utilities;
 
 /// Tauri app handle
 pub fn get_app_handle<'a>() -> &'a tauri::AppHandle<tauri::Wry> {
@@ -24,7 +26,7 @@ fn setup_fdoll() -> Result<(), tauri::Error> {
         .with_line_number(true)
         .init();
 
-    core::state::init_fdoll_state();
+    state::init_fdoll_state();
     async_runtime::spawn(async move { app::start_fdoll().await });
     Ok(())
 }

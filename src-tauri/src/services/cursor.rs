@@ -139,7 +139,7 @@ async fn init_cursor_tracking() -> Result<(), String> {
         // Report to server (existing functionality)
         let mapped_for_ws = mapped.clone();
         tauri::async_runtime::spawn(async move {
-            crate::core::services::ws::report_cursor_data(mapped_for_ws).await;
+            crate::services::ws::report_cursor_data(mapped_for_ws).await;
         });
 
         // Broadcast to ALL windows using events

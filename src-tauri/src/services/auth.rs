@@ -1,4 +1,4 @@
-use crate::{core::state::FDOLL, lock_r, lock_w, APP_HANDLE};
+use crate::{lock_r, lock_w, state::FDOLL, APP_HANDLE};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use keyring::Entry;
@@ -18,7 +18,7 @@ use url::form_urlencoded;
 static REFRESH_LOCK: once_cell::sync::Lazy<Mutex<()>> =
     once_cell::sync::Lazy::new(|| Mutex::new(()));
 
-static AUTH_SUCCESS_HTML: &str = include_str!("../../assets/auth-success.html");
+static AUTH_SUCCESS_HTML: &str = include_str!("../assets/auth-success.html");
 const SERVICE_NAME: &str = "friendolls";
 
 /// Errors that can occur during OAuth authentication flow.
@@ -586,7 +586,7 @@ where
                             error!("Failed to save auth pass: {}", e);
                         } else {
                             info!("Authentication successful!");
-                            crate::core::services::ws::init_ws_client().await;
+                            crate::services::ws::init_ws_client().await;
                             on_success();
                         }
                     }

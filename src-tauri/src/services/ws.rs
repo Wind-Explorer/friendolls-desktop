@@ -4,9 +4,9 @@ use tauri::async_runtime;
 use tracing::{error, info};
 
 use crate::{
-    core::{models::app_config::AppConfig, state::FDOLL},
     lock_r, lock_w,
     services::cursor::CursorPosition,
+    {models::app_config::AppConfig, state::FDOLL},
 };
 
 // Define a callback for handling incoming messages (e.g., 'pong')
@@ -61,7 +61,7 @@ pub async fn init_ws_client() {
 }
 
 pub async fn build_ws_client(app_config: &AppConfig) -> rust_socketio::client::Client {
-    let token = crate::core::services::auth::get_access_token()
+    let token = crate::services::auth::get_access_token()
         .await
         .expect("No access token available for WebSocket connection");
 

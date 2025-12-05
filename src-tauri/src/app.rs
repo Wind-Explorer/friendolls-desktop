@@ -3,9 +3,9 @@ use tauri_plugin_positioner::WindowExt;
 use tracing::{error, info};
 
 use crate::{
-    core::services::{auth::get_tokens, preferences::create_preferences_window},
     get_app_handle,
     services::overlay::{overlay_fullscreen, SCENE_WINDOW_LABEL},
+    services::{auth::get_tokens, preferences::create_preferences_window},
 };
 
 pub async fn start_fdoll() {
@@ -21,7 +21,7 @@ pub async fn init_session() {
         }
         None => {
             info!("No active session, user needs to authenticate");
-            crate::core::services::auth::init_auth_code_retrieval(|| {
+            crate::services::auth::init_auth_code_retrieval(|| {
                 info!("Authentication successful, creating scene...");
                 tauri::async_runtime::spawn(async {
                     info!("Creating scene after auth success...");

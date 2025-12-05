@@ -1,10 +1,8 @@
 // in app-core/src/state.rs
 use crate::{
-    core::{
-        models::app_config::{AppConfig, AuthConfig},
-        services::auth::{load_auth_pass, AuthPass},
-    },
     lock_w,
+    models::app_config::{AppConfig, AuthConfig},
+    services::auth::{load_auth_pass, AuthPass},
 };
 use std::{
     env,
@@ -81,7 +79,7 @@ pub fn init_fdoll_state() {
 
         if has_auth {
             async_runtime::spawn(async move {
-                crate::core::services::ws::init_ws_client().await;
+                crate::services::ws::init_ws_client().await;
             });
         }
 
