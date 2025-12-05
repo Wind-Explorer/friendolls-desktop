@@ -4,20 +4,29 @@ use tracing::{error, info};
 
 use crate::{
     get_app_handle,
-    services::overlay::{overlay_fullscreen, SCENE_WINDOW_LABEL},
-    services::{auth::get_tokens, preferences::create_preferences_window},
+    services::{
+        auth::get_tokens,
+        overlay::{overlay_fullscreen, SCENE_WINDOW_LABEL},
+        preferences::create_preferences_window,
+    },
+    state::init_app_data,
 };
 
 pub async fn start_fdoll() {
-    init_session().await;
+    bootstrap().await;
 }
 
-pub async fn init_session() {
+async fn construct_app() {
+    init_app_data().await;
+    create_scene();
+    create_preferences_window();
+}
+
+pub async fn bootstrap() {
     match get_tokens().await {
         Some(_) => {
             info!("User session restored");
-            create_scene();
-            create_preferences_window();
+            construct_app().await;
         }
         None => {
             info!("No active session, user needs to authenticate");
@@ -25,8 +34,7 @@ pub async fn init_session() {
                 info!("Authentication successful, creating scene...");
                 tauri::async_runtime::spawn(async {
                     info!("Creating scene after auth success...");
-                    create_scene();
-                    create_preferences_window();
+                    construct_app().await;
                 });
             });
         }

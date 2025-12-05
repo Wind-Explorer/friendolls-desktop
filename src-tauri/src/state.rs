@@ -90,12 +90,6 @@ pub fn init_fdoll_state() {
             async_runtime::spawn(async move {
                 crate::services::ws::init_ws_client().await;
             });
-
-            // TODO: seems like even under `has_auth` token may not be present when init app data
-            async_runtime::spawn(async move {
-                info!("Initializing user data");
-                init_app_data().await;
-            });
         }
 
         info!("Initialized FDOLL state (WebSocket client & user data initializing asynchronously)");

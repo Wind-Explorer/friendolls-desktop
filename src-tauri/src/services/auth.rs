@@ -1,3 +1,4 @@
+use crate::state::init_app_data;
 use crate::{lock_r, lock_w, state::FDOLL, APP_HANDLE};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
