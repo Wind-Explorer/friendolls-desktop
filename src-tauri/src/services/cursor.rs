@@ -104,8 +104,9 @@ async fn init_cursor_tracking() -> Result<(), String> {
     };
 
     let monitor_dimensions = primary_monitor.size();
+    let monitor_scale_factor = primary_monitor.scale_factor();
     let logical_monitor_dimensions: tauri::LogicalSize<i32> =
-        monitor_dimensions.to_logical(primary_monitor.scale_factor());
+        monitor_dimensions.to_logical(monitor_scale_factor);
 
     info!(
         "Monitor dimensions: {}x{}",
@@ -124,10 +125,24 @@ async fn init_cursor_tracking() -> Result<(), String> {
     let app_handle_clone = app_handle.clone();
 
     let _guard = device_state.on_mouse_move(move |position: &(i32, i32)| {
+
+        // `device_query` crate appears to behave
+        // differently on Windows vs other paltforms.
+        //
+        // It doesn't take into account the monitor scale
+        // factor on Windows, so we handle it manually.
+        #[cfg(target_os = "windows")]
+        let raw = CursorPosition {
+            x: (position.0 as f64 / monitor_scale_factor) as i32,
+            y: (position.1 as f64 / monitor_scale_factor) as i32,
+        };
+
+        #[cfg(not(target_os = "windows"))]
         let raw = CursorPosition {
             x: position.0,
             y: position.1,
         };
+
         let mapped = map_to_grid(
             &raw,
             600,
