@@ -1,20 +1,19 @@
 use tracing::info;
 
 use crate::{
-    services::{
-        auth::get_tokens, preferences::create_preferences_window, scene::create_scene_window,
-    },
+    services::{auth::get_tokens, scene::open_scene_window},
     state::init_app_data,
+    system_tray::init_system_tray,
 };
 
 pub async fn start_fdoll() {
+    init_system_tray();
     bootstrap().await;
 }
 
 async fn construct_app() {
     init_app_data().await;
-    create_scene_window();
-    create_preferences_window();
+    open_scene_window();
 }
 
 pub async fn bootstrap() {

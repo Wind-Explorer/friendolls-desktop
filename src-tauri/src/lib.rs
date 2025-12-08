@@ -9,6 +9,7 @@ mod models;
 mod remotes;
 mod services;
 mod state;
+mod system_tray;
 mod utilities;
 
 /// Tauri app handle
@@ -51,6 +52,13 @@ fn get_app_data() -> Result<AppData, String> {
     return Ok(guard.app_data.clone());
 }
 
+#[tauri::command]
+fn quit_app() -> Result<(), String> {
+    let app_handle = get_app_handle();
+    app_handle.exit(0);
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -59,7 +67,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             start_cursor_tracking,
-            get_app_data
+            get_app_data,
+            quit_app
         ])
         .setup(|app| {
             APP_HANDLE

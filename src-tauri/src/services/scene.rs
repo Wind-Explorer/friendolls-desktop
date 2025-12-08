@@ -22,10 +22,18 @@ pub fn overlay_fullscreen(window: &tauri::Window) -> Result<(), tauri::Error> {
     Ok(())
 }
 
-pub fn create_scene_window() {
+pub fn open_scene_window() {
+    let app_handle = get_app_handle();
+    let existing_webview_window = app_handle.get_window(SCENE_WINDOW_LABEL);
+
+    if let Some(window) = existing_webview_window {
+        window.show().unwrap();
+        return;
+    }
+
     info!("Starting scene creation...");
     let webview_window = match tauri::WebviewWindowBuilder::new(
-        get_app_handle(),
+        app_handle,
         SCENE_WINDOW_LABEL,
         tauri::WebviewUrl::App("/scene".into()),
     )

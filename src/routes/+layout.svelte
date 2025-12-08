@@ -2,14 +2,16 @@
   import { browser } from "$app/environment";
   import { onMount, onDestroy } from "svelte";
   import { initCursorTracking, stopCursorTracking } from "../events/cursor";
+  import { initAppDataListener } from "../events/app-data";
 
   let { children } = $props();
   if (browser) {
     onMount(async () => {
       try {
         await initCursorTracking();
+        await initAppDataListener();
       } catch (err) {
-        console.error("[Scene] Failed to initialize cursor tracking:", err);
+        console.error("[Scene] Failed to initialize event listeners:", err);
       }
     });
 
