@@ -9,6 +9,13 @@ use crate::{
     {models::app_config::AppConfig, state::FDOLL},
 };
 
+#[allow(non_camel_case_types)] // pretend to be a const like in js
+pub struct WS_EVENT;
+
+impl WS_EVENT {
+    pub const CURSOR_REPORT_POSITION: &str = "cursor-report-position";
+}
+
 // Define a callback for handling incoming messages (e.g., 'pong')
 fn on_pong(payload: Payload, _socket: RawClient) {
     match payload {
@@ -33,7 +40,7 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
 
     match async_runtime::spawn_blocking(move || {
         client.emit(
-            "cursor-report-position",
+            WS_EVENT::CURSOR_REPORT_POSITION,
             Payload::Text(vec![json!({ "position": cursor_position })]),
         )
     })
