@@ -1,13 +1,12 @@
 // in app-core/src/state.rs
 use crate::{
-    lock_w,
+    get_app_handle, lock_w,
     models::{
         app_config::{AppConfig, AuthConfig},
         app_data::AppData,
     },
     remotes::user::UserRemote,
     services::auth::{load_auth_pass, AuthPass},
-    APP_HANDLE,
 };
 use serde_json::json;
 use std::{
@@ -107,10 +106,7 @@ pub async fn init_app_data() {
     {
         let mut guard = lock_w!(FDOLL);
         guard.app_data.user = Some(user);
-        APP_HANDLE
-            .get()
-            // TODO: magic constants
-            .expect("App handle not initialized")
+        get_app_handle()
             .emit("app-data-refreshed", json!(guard.app_data))
             .expect("TODO: handle event emit fail");
     }
