@@ -1,5 +1,5 @@
-use crate::state::init_app_data;
-use crate::{lock_r, lock_w, state::FDOLL, APP_HANDLE};
+use crate::get_app_handle;
+use crate::{lock_r, lock_w, state::FDOLL};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use keyring::Entry;
@@ -60,6 +60,9 @@ pub enum OAuthError {
 
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("Failed to open auth portal: {0}")]
+    OpenPortalFailed(tauri_plugin_opener::Error),
 }
 
 /// Parameters received from the OAuth callback.
@@ -471,23 +474,14 @@ pub async fn exchange_code_for_auth_pass(
 /// init_auth_code_retrieval();
 /// // User will be prompted to login in their browser
 /// ```
-pub fn init_auth_code_retrieval<F>(on_success: F)
+pub fn init_auth_code_retrieval<F>(on_success: F) -> Result<(), OAuthError>
 where
     F: FnOnce() + Send + 'static,
 {
     info!("init_auth_code_retrieval called");
     let app_config = lock_r!(FDOLL).app_config.clone();
 
-    let opener = match APP_HANDLE.get() {
-        Some(handle) => {
-            info!("APP_HANDLE retrieved successfully");
-            handle.opener()
-        }
-        None => {
-            error!("Cannot initialize auth: app handle not available");
-            return;
-        }
-    };
+    let app_handle = get_app_handle();
 
     let code_verifier = generate_code_verifier(64);
     let code_challenge = generate_code_challenge(&code_verifier);
@@ -513,7 +507,7 @@ where
         }
         Err(e) => {
             error!("Invalid auth URL configuration: {}", e);
-            return;
+            return Err(OAuthError::InvalidConfig);
         }
     };
 
@@ -540,7 +534,7 @@ where
         }
         Err(e) => {
             error!("Failed to bind callback server: {}", e);
-            return;
+            return Err(OAuthError::ServerBindError(e.to_string()));
         }
     };
 
@@ -589,6 +583,7 @@ where
                             info!("Authentication successful!");
                             crate::services::ws::init_ws_client().await;
                             on_success();
+                            return;
                         }
                     }
                     Err(e) => {
@@ -605,10 +600,12 @@ where
     });
 
     info!("Opening auth URL: {}", url);
-    if let Err(e) = opener.open_url(url, None::<&str>) {
+    if let Err(e) = app_handle.opener().open_url(url, None::<&str>) {
         error!("Failed to open auth portal: {}", e);
+        return Err(OAuthError::OpenPortalFailed(e));
     } else {
         info!("Successfully called open_url for auth portal");
+        return Ok(());
     }
 }
 
