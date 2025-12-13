@@ -1,6 +1,7 @@
 <script>
   import { invoke } from "@tauri-apps/api/core";
   import { appData } from "../../../events/app-data";
+  import Power from "../../../assets/icons/power.svelte";
 </script>
 
 <div class="size-full flex flex-col justify-between">
@@ -11,11 +12,15 @@
     <div></div>
     <div>
       <button
-        class="btn btn-error btn-sm btn-soft"
+        class="btn btn-error btn-square btn-soft"
         onclick={async () => {
           await invoke("quit_app");
-        }}>Quit Friendolls</button
+        }}
       >
+        <div class="scale-50">
+          <Power />
+        </div>
+      </button>
     </div>
   </div>
 </div>

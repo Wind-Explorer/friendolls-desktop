@@ -1,12 +1,11 @@
 use rust_socketio::{ClientBuilder, Payload, RawClient};
 use serde_json::json;
-use tauri::async_runtime;
+use tauri::{async_runtime, Emitter};
 use tracing::{error, info};
 
 use crate::{
-    lock_r, lock_w,
-    services::cursor::CursorPosition,
-    {models::app_config::AppConfig, state::FDOLL},
+    get_app_handle, lock_r, lock_w, models::app_config::AppConfig,
+    services::cursor::CursorPosition, state::FDOLL,
 };
 
 #[allow(non_camel_case_types)] // pretend to be a const like in js
@@ -14,13 +13,54 @@ pub struct WS_EVENT;
 
 impl WS_EVENT {
     pub const CURSOR_REPORT_POSITION: &str = "cursor-report-position";
+    pub const FRIEND_REQUEST_RECEIVED: &str = "friend-request-received";
+    pub const FRIEND_REQUEST_ACCEPTED: &str = "friend-request-accepted";
+    pub const FRIEND_REQUEST_DENIED: &str = "friend-request-denied";
+    pub const UNFRIENDED: &str = "unfriended";
 }
 
-// Define a callback for handling incoming messages (e.g., 'pong')
-fn on_pong(payload: Payload, _socket: RawClient) {
+fn on_friend_request_received(payload: Payload, _socket: RawClient) {
     match payload {
-        Payload::Text(str) => println!("Received pong: {:?}", str),
-        Payload::Binary(bin) => println!("Received pong (binary): {:?}", bin),
+        Payload::Text(str) => {
+            println!("Received friend request: {:?}", str);
+            get_app_handle()
+                .emit(WS_EVENT::FRIEND_REQUEST_RECEIVED, str)
+                .unwrap();
+        }
+        _ => todo!(),
+    }
+}
+
+fn on_friend_request_accepted(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(str) => {
+            println!("Received friend request accepted: {:?}", str);
+            get_app_handle()
+                .emit(WS_EVENT::FRIEND_REQUEST_ACCEPTED, str)
+                .unwrap();
+        }
+        _ => todo!(),
+    }
+}
+
+fn on_friend_request_denied(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(str) => {
+            println!("Received friend request denied: {:?}", str);
+            get_app_handle()
+                .emit(WS_EVENT::FRIEND_REQUEST_DENIED, str)
+                .unwrap();
+        }
+        _ => todo!(),
+    }
+}
+
+fn on_unfriended(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(str) => {
+            println!("Received unfriended: {:?}", str);
+            get_app_handle().emit(WS_EVENT::UNFRIENDED, str).unwrap();
+        }
         _ => todo!(),
     }
 }
@@ -82,7 +122,16 @@ pub async fn build_ws_client(app_config: &AppConfig) -> rust_socketio::client::C
     let client = async_runtime::spawn_blocking(move || {
         ClientBuilder::new(api_base_url)
             .namespace("/")
-            .on("pong", on_pong)
+            .on(
+                WS_EVENT::FRIEND_REQUEST_RECEIVED,
+                on_friend_request_received,
+            )
+            .on(
+                WS_EVENT::FRIEND_REQUEST_ACCEPTED,
+                on_friend_request_accepted,
+            )
+            .on(WS_EVENT::FRIEND_REQUEST_DENIED, on_friend_request_denied)
+            .on(WS_EVENT::UNFRIENDED, on_unfriended)
             .auth(json!({ "token": token }))
             .connect()
     })

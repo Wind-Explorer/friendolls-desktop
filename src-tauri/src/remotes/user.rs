@@ -9,11 +9,22 @@ use crate::{lock_r, services::auth::with_auth, state::FDOLL};
 #[ts(export)]
 pub struct UserProfile {
     pub id: String,
+    pub keycloak_sub: String,
     pub name: String,
     pub email: String,
-    pub username: String,
+    pub username: Option<String>,
+    pub picture: Option<String>,
+    pub roles: Vec<String>,
     pub created_at: String,
-    pub last_login_at: String,
+    pub updated_at: String,
+    pub last_login_at: Option<String>,
+}
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct UpdateUserDto {
+    // Empty as per API schema
 }
 
 pub struct UserRemote {
@@ -47,5 +58,25 @@ impl UserRemote {
         Ok(user)
     }
 
-    // TODO: Add other endpoints as methods
+    pub async fn update_user(
+        &self,
+        user_id: Option<&str>,
+        update: UpdateUserDto,
+    ) -> Result<UserProfile, Error> {
+        let url = format!("{}/users/{}", self.base_url, user_id.unwrap_or("me"));
+        let resp = with_auth(self.client.put(url))
+            .await
+            .json(&update)
+            .send()
+            .await?;
+        let user = resp.json().await?;
+        Ok(user)
+    }
+
+    pub async fn delete_user(&self, user_id: Option<&str>) -> Result<(), Error> {
+        let url = format!("{}/users/{}", self.base_url, user_id.unwrap_or("me"));
+        let resp = with_auth(self.client.delete(url)).await.send().await?;
+        resp.error_for_status()?;
+        Ok(())
+    }
 }

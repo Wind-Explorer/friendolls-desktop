@@ -5,7 +5,7 @@ use crate::{
         app_config::{AppConfig, AuthConfig},
         app_data::AppData,
     },
-    remotes::user::UserRemote,
+    remotes::{friends::FriendRemote, user::UserRemote},
     services::auth::{load_auth_pass, AuthPass},
 };
 use serde_json::json;
@@ -99,13 +99,20 @@ pub fn init_fdoll_state() {
 /// Populate user data in app state from the server.
 pub async fn init_app_data() {
     let user_remote = UserRemote::new();
+    let friend_remote = FriendRemote::new();
     let user = user_remote
         .get_user(None)
         .await
         .expect("TODO: handle user profile fetch failure");
+    let friends = friend_remote
+        .get_friends()
+        .await
+        .expect("TODO: handle friends fetch failure");
+
     {
         let mut guard = lock_w!(FDOLL);
         guard.app_data.user = Some(user);
+        guard.app_data.friends = Some(friends);
         get_app_handle()
             .emit("app-data-refreshed", json!(guard.app_data))
             .expect("TODO: handle event emit fail");
