@@ -13,7 +13,7 @@ pub struct UserProfile {
     pub name: String,
     pub email: String,
     pub username: Option<String>,
-    pub picture: Option<String>,
+
     pub roles: Vec<String>,
     pub created_at: String,
     pub updated_at: String,

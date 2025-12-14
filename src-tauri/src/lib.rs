@@ -1,4 +1,12 @@
-use crate::{models::app_data::AppData, services::cursor::start_cursor_tracking, state::FDOLL};
+use crate::{
+    models::app_data::AppData,
+    remotes::friends::{
+        FriendRemote, FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto,
+        UserBasicDto,
+    },
+    services::cursor::start_cursor_tracking,
+    state::{init_app_data, FDOLL},
+};
 use tauri::async_runtime;
 use tracing_subscriber;
 
@@ -53,6 +61,87 @@ fn get_app_data() -> Result<AppData, String> {
 }
 
 #[tauri::command]
+async fn refresh_app_data() -> Result<AppData, String> {
+    init_app_data().await;
+    let guard = lock_r!(FDOLL);
+    Ok(guard.app_data.clone())
+}
+
+#[tauri::command]
+async fn list_friends() -> Result<Vec<FriendshipResponseDto>, String> {
+    FriendRemote::new()
+        .get_friends()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn search_users(username: Option<String>) -> Result<Vec<UserBasicDto>, String> {
+    tracing::info!(
+        "Tauri command search_users called with username: {:?}",
+        username
+    );
+    let remote = FriendRemote::new();
+    tracing::info!("FriendRemote instance created for search_users");
+    let result = remote.search_users(username.as_deref()).await;
+    tracing::info!("FriendRemote::search_users result: {:?}", result);
+    result.map_err(|e| {
+        tracing::error!("search_users command error: {}", e);
+        e.to_string()
+    })
+}
+
+#[tauri::command]
+async fn send_friend_request(
+    request: SendFriendRequestDto,
+) -> Result<FriendRequestResponseDto, String> {
+    FriendRemote::new()
+        .send_friend_request(request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn received_friend_requests() -> Result<Vec<FriendRequestResponseDto>, String> {
+    FriendRemote::new()
+        .get_received_requests()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn sent_friend_requests() -> Result<Vec<FriendRequestResponseDto>, String> {
+    FriendRemote::new()
+        .get_sent_requests()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn accept_friend_request(request_id: String) -> Result<FriendRequestResponseDto, String> {
+    FriendRemote::new()
+        .accept_friend_request(&request_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn deny_friend_request(request_id: String) -> Result<FriendRequestResponseDto, String> {
+    FriendRemote::new()
+        .deny_friend_request(&request_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn unfriend(friend_id: String) -> Result<(), String> {
+    FriendRemote::new()
+        .unfriend(&friend_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn quit_app() -> Result<(), String> {
     let app_handle = get_app_handle();
     app_handle.exit(0);
@@ -68,6 +157,15 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             start_cursor_tracking,
             get_app_data,
+            refresh_app_data,
+            list_friends,
+            search_users,
+            send_friend_request,
+            received_friend_requests,
+            sent_friend_requests,
+            accept_friend_request,
+            deny_friend_request,
+            unfriend,
             quit_app
         ])
         .setup(|app| {
