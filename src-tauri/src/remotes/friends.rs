@@ -11,6 +11,8 @@ pub enum RemoteError {
     Http(#[from] reqwest::Error),
     #[error("JSON parse error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("{0}")]
+    Api(String),
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
@@ -175,6 +177,18 @@ impl FriendRemote {
             "FriendRemote::send_friend_request - Received response with status: {}",
             resp.status()
         );
+
+        if resp.status() == reqwest::StatusCode::CONFLICT {
+            let text = resp.text().await.unwrap_or_default();
+            // try to parse the error message
+            let error_msg = serde_json::from_str::<serde_json::Value>(&text)
+                .ok()
+                .and_then(|v| v.get("message").and_then(|m| m.as_str().map(String::from)))
+                .unwrap_or_else(|| "Conflict error".to_string());
+
+            return Err(RemoteError::Api(error_msg));
+        }
+
         let resp = resp.error_for_status().map_err(|e| {
             tracing::error!("FriendRemote::send_friend_request - HTTP error: {}", e);
             e

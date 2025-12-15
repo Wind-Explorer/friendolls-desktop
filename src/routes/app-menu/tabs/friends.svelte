@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
+  import { listen } from "@tauri-apps/api/event";
   import { invoke } from "@tauri-apps/api/core";
   import { appData } from "../../../events/app-data";
   import type { FriendRequestResponseDto } from "../../../types/bindings/FriendRequestResponseDto.js";
@@ -42,9 +43,40 @@
     })),
   ];
 
-  onMount(() => {
+  let unlisteners: (() => void)[] = [];
+
+  onMount(async () => {
     refreshReceived();
     refreshSent();
+
+    unlisteners.push(
+      await listen("friend-request-received", () => {
+        refreshReceived();
+      }),
+    );
+
+    unlisteners.push(
+      await listen("friend-request-accepted", () => {
+        refreshSent();
+        invoke("refresh_app_data");
+      }),
+    );
+
+    unlisteners.push(
+      await listen("friend-request-denied", () => {
+        refreshSent();
+      }),
+    );
+
+    unlisteners.push(
+      await listen("unfriended", () => {
+        invoke("refresh_app_data");
+      }),
+    );
+  });
+
+  onDestroy(() => {
+    unlisteners.forEach((unlisten) => unlisten());
   });
 
   async function refreshReceived() {
@@ -153,7 +185,13 @@
       });
       await refreshSent();
     } catch (e) {
-      error = (e as Error)?.message ?? String(e);
+      const msg = (e as Error)?.message ?? String(e);
+      // If the server returns a conflict error (already friends or request exists), show "User not found"
+      if (msg.toLowerCase().includes("already")) {
+        error = "User not found";
+      } else {
+        error = msg;
+      }
     } finally {
       loading.action = false;
     }
