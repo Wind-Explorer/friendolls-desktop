@@ -17,6 +17,7 @@ impl WS_EVENT {
     pub const FRIEND_REQUEST_ACCEPTED: &str = "friend-request-accepted";
     pub const FRIEND_REQUEST_DENIED: &str = "friend-request-denied";
     pub const UNFRIENDED: &str = "unfriended";
+    pub const FRIEND_CURSOR_POSITION: &str = "friend-cursor-position";
 }
 
 fn on_friend_request_received(payload: Payload, _socket: RawClient) {
@@ -65,6 +66,17 @@ fn on_unfriended(payload: Payload, _socket: RawClient) {
     }
 }
 
+fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(str) => {
+            get_app_handle()
+                .emit(WS_EVENT::FRIEND_CURSOR_POSITION, str)
+                .unwrap();
+        }
+        _ => todo!(),
+    }
+}
+
 pub async fn report_cursor_data(cursor_position: CursorPosition) {
     let client = {
         let guard = lock_r!(FDOLL);
@@ -81,7 +93,7 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
     match async_runtime::spawn_blocking(move || {
         client.emit(
             WS_EVENT::CURSOR_REPORT_POSITION,
-            Payload::Text(vec![json!({ "position": cursor_position })]),
+            Payload::Text(vec![json!(cursor_position)]),
         )
     })
     .await
@@ -132,6 +144,7 @@ pub async fn build_ws_client(app_config: &AppConfig) -> rust_socketio::client::C
             )
             .on(WS_EVENT::FRIEND_REQUEST_DENIED, on_friend_request_denied)
             .on(WS_EVENT::UNFRIENDED, on_unfriended)
+            .on(WS_EVENT::FRIEND_CURSOR_POSITION, on_friend_cursor_position)
             .auth(json!({ "token": token }))
             .connect()
     })

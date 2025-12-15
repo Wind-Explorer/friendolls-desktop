@@ -1,5 +1,14 @@
 <script lang="ts">
-  import { cursorPositionOnScreen } from "../../events/cursor";
+  import {
+    cursorPositionOnScreen,
+    friendsCursorPositions,
+  } from "../../events/cursor";
+  import { appData } from "../../events/app-data";
+
+  function getFriendName(userId: string) {
+    const friend = $appData?.friends?.find((f) => f.friend.id === userId);
+    return friend ? friend.friend.name : userId.slice(0, 8) + "...";
+  }
 </script>
 
 <div class="w-svw h-svh p-4 relative">
@@ -19,6 +28,20 @@
             .mapped.y})
         </span>
       </div>
+
+      {#if Object.keys($friendsCursorPositions).length > 0}
+        <div class="mt-4 flex flex-col gap-2">
+          <p class="text-sm font-semibold opacity-75">Friends Online</p>
+          <div>
+            {#each Object.entries($friendsCursorPositions) as [userId, position]}
+              <div class="bg-base-200/50 p-2 rounded text-xs text-left">
+                <span class="font-bold">{getFriendName(userId)}</span>
+                <span class="font-mono ml-2">({position.x}, {position.y})</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
   </div>
 </div>
