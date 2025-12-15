@@ -33,6 +33,7 @@
 - **Styling**: TailwindCSS + DaisyUI
 - **Framework**: SvelteKit in SPA mode (SSR disabled for Tauri)
 - **Error handling**: Standard try/catch with console.error logging
+- **Responsibility**: Minimal logic & data handling, should play as stateless dumb client
 
 ### Rust
 
@@ -45,6 +46,7 @@
 - **State management**: Custom macros (`lock_r!`/`lock_w!`) for thread-safe access
 - **Security**: Use secure storage (keyring) for sensitive data, proper PKCE flow for OAuth
 - **Imports**: Group by standard library, then external crates, then local modules
+- **Responsibility**: Handles app state & data, business logic, controls UI via events.
 
 ## Note
 
