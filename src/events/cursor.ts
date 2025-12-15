@@ -14,13 +14,27 @@ export type FriendCursorPosition = {
   position: CursorPosition;
 };
 
+// Map of userId -> { position: CursorPosition, lastUpdated: number }
+// We store the timestamp to detect stale cursors
+type FriendCursorData = {
+  position: CursorPosition;
+  lastUpdated: number;
+};
+
+// The exported store will only expose the position part to consumers,
+// but internally we manage the full data.
+// Actually, it's easier if we just export the positions and manage state internally.
 export let friendsCursorPositions = writable<Record<string, CursorPosition>>(
   {},
 );
 
 let unlistenCursor: UnlistenFn | null = null;
 let unlistenFriendCursor: UnlistenFn | null = null;
+let unlistenFriendDisconnected: UnlistenFn | null = null;
 let isListening = false;
+
+// Internal state to track timestamps
+let friendCursorState: Record<string, FriendCursorData> = {};
 
 /**
  * Initialize cursor tracking for this window.
@@ -67,6 +81,12 @@ export async function initCursorTracking() {
         // Since we only send one argument { userId, position }, it's the first element
         const data = Array.isArray(payload) ? payload[0] : payload;
 
+        // Update internal state with timestamp
+        friendCursorState[data.userId] = {
+          position: data.position,
+          lastUpdated: Date.now(),
+        };
+
         friendsCursorPositions.update((current) => {
           return {
             ...current,
@@ -74,6 +94,36 @@ export async function initCursorTracking() {
           };
         });
       },
+    );
+
+    // Listen to friend disconnected events
+    unlistenFriendDisconnected = await listen<[{ userId: string }]>(
+      "friend-disconnected",
+      (event) => {
+        let payload = event.payload;
+        if (typeof payload === "string") {
+          try {
+            payload = JSON.parse(payload);
+          } catch (e) {
+            console.error("[Cursor] Failed to parse friend disconnected payload:", e);
+            return;
+          }
+        }
+
+        const data = Array.isArray(payload) ? payload[0] : payload;
+        
+        // Remove from internal state
+        if (friendCursorState[data.userId]) {
+            delete friendCursorState[data.userId];
+        }
+
+        // Update svelte store
+        friendsCursorPositions.update((current) => {
+          const next = { ...current };
+          delete next[data.userId];
+          return next;
+        });
+      }
     );
 
     isListening = true;
@@ -95,6 +145,10 @@ export function stopCursorTracking() {
   if (unlistenFriendCursor) {
     unlistenFriendCursor();
     unlistenFriendCursor = null;
+  }
+  if (unlistenFriendDisconnected) {
+    unlistenFriendDisconnected();
+    unlistenFriendDisconnected = null;
   }
   isListening = false;
 }

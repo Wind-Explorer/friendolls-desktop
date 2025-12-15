@@ -18,6 +18,7 @@ impl WS_EVENT {
     pub const FRIEND_REQUEST_DENIED: &str = "friend-request-denied";
     pub const UNFRIENDED: &str = "unfriended";
     pub const FRIEND_CURSOR_POSITION: &str = "friend-cursor-position";
+    pub const FRIEND_DISCONNECTED: &str = "friend-disconnected";
 }
 
 fn on_friend_request_received(payload: Payload, _socket: RawClient) {
@@ -28,7 +29,7 @@ fn on_friend_request_received(payload: Payload, _socket: RawClient) {
                 .emit(WS_EVENT::FRIEND_REQUEST_RECEIVED, str)
                 .unwrap();
         }
-        _ => todo!(),
+        _ => error!("Received unexpected payload format for friend request received"),
     }
 }
 
@@ -40,7 +41,7 @@ fn on_friend_request_accepted(payload: Payload, _socket: RawClient) {
                 .emit(WS_EVENT::FRIEND_REQUEST_ACCEPTED, str)
                 .unwrap();
         }
-        _ => todo!(),
+        _ => error!("Received unexpected payload format for friend request accepted"),
     }
 }
 
@@ -52,7 +53,7 @@ fn on_friend_request_denied(payload: Payload, _socket: RawClient) {
                 .emit(WS_EVENT::FRIEND_REQUEST_DENIED, str)
                 .unwrap();
         }
-        _ => todo!(),
+        _ => error!("Received unexpected payload format for friend request denied"),
     }
 }
 
@@ -62,7 +63,7 @@ fn on_unfriended(payload: Payload, _socket: RawClient) {
             println!("Received unfriended: {:?}", str);
             get_app_handle().emit(WS_EVENT::UNFRIENDED, str).unwrap();
         }
-        _ => todo!(),
+        _ => error!("Received unexpected payload format for unfriended"),
     }
 }
 
@@ -73,7 +74,19 @@ fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
                 .emit(WS_EVENT::FRIEND_CURSOR_POSITION, str)
                 .unwrap();
         }
-        _ => todo!(),
+        _ => error!("Received unexpected payload format for friend cursor position"),
+    }
+}
+
+fn on_friend_disconnected(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(str) => {
+            println!("Received friend disconnected: {:?}", str);
+            get_app_handle()
+                .emit(WS_EVENT::FRIEND_DISCONNECTED, str)
+                .unwrap();
+        }
+        _ => error!("Received unexpected payload format for friend disconnected"),
     }
 }
 
@@ -145,6 +158,7 @@ pub async fn build_ws_client(app_config: &AppConfig) -> rust_socketio::client::C
             .on(WS_EVENT::FRIEND_REQUEST_DENIED, on_friend_request_denied)
             .on(WS_EVENT::UNFRIENDED, on_unfriended)
             .on(WS_EVENT::FRIEND_CURSOR_POSITION, on_friend_cursor_position)
+            .on(WS_EVENT::FRIEND_DISCONNECTED, on_friend_disconnected)
             .auth(json!({ "token": token }))
             .connect()
     })
