@@ -50,4 +50,4 @@
 
 ## Note
 
-Do not run the app yourself. Detect errors via LSPs if available, `cd src-tauri && cargo check` & `pnpm check` else.
+Do not run the app yourself. Detect errors via LSPs if available, `cd src-tauri && cargo check` & `pnpm check` else. Don't perform git actions yourself either.
