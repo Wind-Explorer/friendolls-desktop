@@ -5,11 +5,27 @@ use tracing::{error, info};
 
 use crate::{
     get_app_handle, lock_r, lock_w, models::app_config::AppConfig,
-    services::cursor::CursorPosition, state::FDOLL,
+    services::cursor::{grid_to_absolute_position, CursorPosition, CursorPositions},
+    state::FDOLL,
 };
+use serde::{Deserialize, Serialize};
 
 #[allow(non_camel_case_types)] // pretend to be a const like in js
 pub struct WS_EVENT;
+
+#[derive(Debug, Deserialize)]
+struct IncomingFriendCursorPayload {
+    #[serde(rename = "userId")]
+    user_id: String,
+    position: CursorPosition,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OutgoingFriendCursorPayload {
+    user_id: String,
+    position: CursorPositions,
+}
 
 impl WS_EVENT {
     pub const CURSOR_REPORT_POSITION: &str = "cursor-report-position";
@@ -69,10 +85,38 @@ fn on_unfriended(payload: Payload, _socket: RawClient) {
 
 fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
     match payload {
-        Payload::Text(str) => {
-            get_app_handle()
-                .emit(WS_EVENT::FRIEND_CURSOR_POSITION, str)
-                .unwrap();
+        Payload::Text(values) => {
+            // values is Vec<serde_json::Value>
+            if let Some(first_value) = values.first() {
+                 let incoming_data: Result<IncomingFriendCursorPayload, _> = serde_json::from_value(first_value.clone());
+
+                 match incoming_data {
+                    Ok(friend_data) => {
+                         // We received grid coordinates (mapped)
+                        let mapped_pos = &friend_data.position;
+
+                        // Convert grid coordinates back to absolute screen coordinates (raw)
+                        let raw_pos = grid_to_absolute_position(mapped_pos);
+
+                        let outgoing_payload = OutgoingFriendCursorPayload {
+                            user_id: friend_data.user_id.clone(),
+                            position: CursorPositions {
+                                raw: raw_pos,
+                                mapped: mapped_pos.clone(),
+                            },
+                        };
+
+                        get_app_handle()
+                            .emit(WS_EVENT::FRIEND_CURSOR_POSITION, outgoing_payload)
+                            .unwrap();
+                    }
+                    Err(e) => {
+                        error!("Failed to parse friend cursor position data: {}", e);
+                    }
+                 }
+            } else {
+                error!("Received empty text payload for friend cursor position");
+            }
         }
         _ => error!("Received unexpected payload format for friend cursor position"),
     }

@@ -34,9 +34,18 @@
           <p class="text-sm font-semibold opacity-75">Friends Online</p>
           <div>
             {#each Object.entries($friendsCursorPositions) as [userId, position]}
-              <div class="bg-base-200/50 p-2 rounded text-xs text-left">
+              <div
+                class="bg-base-200/50 p-2 rounded text-xs text-left flex gap-2 flex-col"
+              >
                 <span class="font-bold">{getFriendName(userId)}</span>
-                <span class="font-mono ml-2">({position.x}, {position.y})</span>
+                <div class="flex flex-col font-mono">
+                  <span>
+                    Raw: ({position.raw.x}, {position.raw.y})
+                  </span>
+                  <span>
+                    Mapped: ({position.mapped.x}, {position.mapped.y})
+                  </span>
+                </div>
               </div>
             {/each}
           </div>

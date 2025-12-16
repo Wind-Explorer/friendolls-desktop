@@ -11,20 +11,20 @@ export let cursorPositionOnScreen = writable<CursorPositions>({
 
 export type FriendCursorPosition = {
   userId: string;
-  position: CursorPosition;
+  position: CursorPositions;
 };
 
-// Map of userId -> { position: CursorPosition, lastUpdated: number }
+// Map of userId -> { position: CursorPositions, lastUpdated: number }
 // We store the timestamp to detect stale cursors
 type FriendCursorData = {
-  position: CursorPosition;
+  position: CursorPositions;
   lastUpdated: number;
 };
 
 // The exported store will only expose the position part to consumers,
 // but internally we manage the full data.
 // Actually, it's easier if we just export the positions and manage state internally.
-export let friendsCursorPositions = writable<Record<string, CursorPosition>>(
+export let friendsCursorPositions = writable<Record<string, CursorPositions>>(
   {},
 );
 
@@ -59,27 +59,11 @@ export async function initCursorTracking() {
     );
 
     // Listen to friend cursor position events
-    unlistenFriendCursor = await listen<[FriendCursorPosition]>(
+    unlistenFriendCursor = await listen<FriendCursorPosition>(
       "friend-cursor-position",
       (event) => {
-        // payload might be a string JSON if it comes directly from rust_socketio Payload::Text
-        let payload = event.payload;
-
-        if (typeof payload === "string") {
-          try {
-            payload = JSON.parse(payload);
-          } catch (e) {
-            console.error(
-              "[Cursor] Failed to parse friend cursor position payload:",
-              e,
-            );
-            return;
-          }
-        }
-
-        // Rust socket.io client returns payload as an array of arguments
-        // Since we only send one argument { userId, position }, it's the first element
-        const data = Array.isArray(payload) ? payload[0] : payload;
+        // We now receive a clean object from Rust
+        const data = event.payload;
 
         // Update internal state with timestamp
         friendCursorState[data.userId] = {

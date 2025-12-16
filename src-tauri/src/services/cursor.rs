@@ -1,6 +1,6 @@
 use device_query::{DeviceEvents, DeviceEventsHandler};
 use once_cell::sync::OnceCell;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 use crate::{get_app_handle, lock_r, state::FDOLL};
 
-#[derive(Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct CursorPosition {
@@ -18,7 +18,7 @@ pub struct CursorPosition {
     pub y: i32,
 }
 
-#[derive(Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct CursorPositions {
