@@ -11,7 +11,7 @@
   }
 </script>
 
-<div class="w-svw h-svh p-4 relative">
+<div class="w-svw h-svh p-4 relative overflow-hidden">
   <div
     class="size-max mx-auto bg-base-100 border-base-200 border px-4 py-3 rounded-xl"
   >
@@ -52,5 +52,18 @@
         </div>
       {/if}
     </div>
+  </div>
+  <div class="absolute inset-0 size-full">
+    {#if Object.keys($friendsCursorPositions).length > 0}
+      {#each Object.entries($friendsCursorPositions) as [userId, position]}
+        <div
+          style:transform="translate({position.raw.x}px, {position.raw.y}px)"
+          class="transition-transform duration-500 flex flex-col gap-1"
+        >
+          <div class="size-4 rounded-full bg-indigo-500"></div>
+          <span class="text-[0.5rem]">{getFriendName(userId)}</span>
+        </div>
+      {/each}
+    {/if}
   </div>
 </div>
