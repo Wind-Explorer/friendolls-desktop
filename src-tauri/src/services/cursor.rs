@@ -89,14 +89,12 @@ async fn init_cursor_tracking() -> Result<(), String> {
     let send_count_clone = Arc::clone(&send_count);
     let app_handle_clone = app_handle.clone();
 
+    // Get scale factor from global state
     #[cfg(target_os = "windows")]
-    {
-        // Get scale factor from global state
-        let scale_factor = {
-            let guard = lock_r!(FDOLL);
-            guard.app_data.scene.display.monitor_scale_factor
-        };
-    }
+    let scale_factor = {
+        let guard = lock_r!(FDOLL);
+        guard.app_data.scene.display.monitor_scale_factor
+    };
 
     let _guard = device_state.on_mouse_move(move |position: &(i32, i32)| {
 
