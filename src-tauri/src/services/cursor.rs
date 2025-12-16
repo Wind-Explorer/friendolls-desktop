@@ -5,10 +5,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::Emitter;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use ts_rs::TS;
 
-use crate::get_app_handle;
+use crate::{get_app_handle, lock_r, state::FDOLL};
 
 #[derive(Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -28,15 +28,29 @@ pub struct CursorPositions {
 
 static CURSOR_TRACKER: OnceCell<()> = OnceCell::new();
 
-fn map_to_grid(
-    pos: &CursorPosition,
-    grid_size: i32,
-    screen_w: i32,
-    screen_h: i32,
-) -> CursorPosition {
+/// Convert absolute screen coordinates to grid coordinates
+pub fn absolute_position_to_grid(pos: &CursorPosition) -> CursorPosition {
+    let guard = lock_r!(FDOLL);
+    let grid_size = guard.app_data.scene.grid_size;
+    let screen_w = guard.app_data.scene.display.screen_width;
+    let screen_h = guard.app_data.scene.display.screen_height;
+
     CursorPosition {
         x: pos.x * grid_size / screen_w,
         y: pos.y * grid_size / screen_h,
+    }
+}
+
+/// Convert grid coordinates to absolute screen coordinates
+pub fn grid_to_absolute_position(grid: &CursorPosition) -> CursorPosition {
+    let guard = lock_r!(FDOLL);
+    let grid_size = guard.app_data.scene.grid_size;
+    let screen_w = guard.app_data.scene.display.screen_width;
+    let screen_h = guard.app_data.scene.display.screen_height;
+
+    CursorPosition {
+        x: (grid.x * screen_w + grid_size / 2) / grid_size,
+        y: (grid.y * screen_h + grid_size / 2) / grid_size,
     }
 }
 
@@ -64,55 +78,6 @@ async fn init_cursor_tracking() -> Result<(), String> {
     info!("Initializing cursor tracking...");
     let app_handle = get_app_handle();
 
-    // Get primary monitor with retries
-    let primary_monitor = {
-        let mut retry_count = 0;
-        let max_retries = 3;
-        loop {
-            match app_handle.primary_monitor() {
-                Ok(Some(monitor)) => {
-                    info!("Primary monitor acquired");
-                    break monitor;
-                }
-                Ok(None) => {
-                    retry_count += 1;
-                    if retry_count >= max_retries {
-                        return Err(format!(
-                            "No primary monitor found after {} retries",
-                            max_retries
-                        ));
-                    }
-                    warn!(
-                        "Primary monitor not available, retrying... ({}/{})",
-                        retry_count, max_retries
-                    );
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                }
-                Err(e) => {
-                    retry_count += 1;
-                    if retry_count >= max_retries {
-                        return Err(format!("Failed to get primary monitor: {}", e));
-                    }
-                    warn!(
-                        "Error getting primary monitor, retrying... ({}/{}): {}",
-                        retry_count, max_retries, e
-                    );
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                }
-            }
-        }
-    };
-
-    let monitor_dimensions = primary_monitor.size();
-    let monitor_scale_factor = primary_monitor.scale_factor();
-    let logical_monitor_dimensions: tauri::LogicalSize<i32> =
-        monitor_dimensions.to_logical(monitor_scale_factor);
-
-    info!(
-        "Monitor dimensions: {}x{}",
-        logical_monitor_dimensions.width, logical_monitor_dimensions.height
-    );
-
     // Try to initialize the device event handler
     let device_state = DeviceEventsHandler::new(Duration::from_millis(500))
         .ok_or("Failed to create device event handler (already running?)")?;
@@ -124,17 +89,26 @@ async fn init_cursor_tracking() -> Result<(), String> {
     let send_count_clone = Arc::clone(&send_count);
     let app_handle_clone = app_handle.clone();
 
+    #[cfg(target_os = "windows")]
+    {
+        // Get scale factor from global state
+        let scale_factor = {
+            let guard = lock_r!(FDOLL);
+            guard.app_data.scene.display.monitor_scale_factor
+        };
+    }
+
     let _guard = device_state.on_mouse_move(move |position: &(i32, i32)| {
 
         // `device_query` crate appears to behave
-        // differently on Windows vs other paltforms.
+        // differently on Windows vs other platforms.
         //
         // It doesn't take into account the monitor scale
         // factor on Windows, so we handle it manually.
         #[cfg(target_os = "windows")]
         let raw = CursorPosition {
-            x: (position.0 as f64 / monitor_scale_factor) as i32,
-            y: (position.1 as f64 / monitor_scale_factor) as i32,
+            x: (position.0 as f64 / scale_factor) as i32,
+            y: (position.1 as f64 / scale_factor) as i32,
         };
 
         #[cfg(not(target_os = "windows"))]
@@ -143,12 +117,7 @@ async fn init_cursor_tracking() -> Result<(), String> {
             y: position.1,
         };
 
-        let mapped = map_to_grid(
-            &raw,
-            600,
-            logical_monitor_dimensions.width,
-            logical_monitor_dimensions.height,
-        );
+        let mapped = absolute_position_to_grid(&raw);
         let positions = CursorPositions {
             raw,
             mapped: mapped.clone(),
@@ -166,7 +135,7 @@ async fn init_cursor_tracking() -> Result<(), String> {
                 let count = send_count_clone.fetch_add(1, Ordering::Relaxed) + 1;
                 if count % 100 == 0 {
                     info!("Broadcast {} cursor position updates to all windows. Latest: raw({}, {}), mapped({}, {})",
-                          count, positions.raw.x, positions.raw.y, positions.mapped.x, positions.mapped.y);
+                           count, positions.raw.x, positions.raw.y, positions.mapped.x, positions.mapped.y);
                 }
             }
             Err(e) => {
