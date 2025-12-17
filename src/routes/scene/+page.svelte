@@ -5,6 +5,8 @@
   } from "../../events/cursor";
   import { appData } from "../../events/app-data";
 
+  import DesktopPet from "./DesktopPet.svelte";
+
   function getFriendName(userId: string) {
     const friend = $appData?.friends?.find((f) => f.friend.id === userId);
     return friend ? friend.friend.name : userId.slice(0, 8) + "...";
@@ -56,13 +58,11 @@
   <div class="absolute inset-0 size-full">
     {#if Object.keys($friendsCursorPositions).length > 0}
       {#each Object.entries($friendsCursorPositions) as [userId, position]}
-        <div
-          style:transform="translate({position.raw.x}px, {position.raw.y}px)"
-          class="transition-transform duration-500 flex flex-col gap-1"
-        >
-          <div class="size-4 rounded-full bg-indigo-500"></div>
-          <span class="text-[0.5rem]">{getFriendName(userId)}</span>
-        </div>
+        <DesktopPet
+          targetX={position.raw.x}
+          targetY={position.raw.y}
+          name={getFriendName(userId)}
+        />
       {/each}
     {/if}
   </div>
