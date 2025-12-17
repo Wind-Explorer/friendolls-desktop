@@ -10,6 +10,8 @@
   let nekoPosY = 32;
   let frameCount = 0;
   let idleTime = 0;
+  let idleAnimation: string | null = null;
+  let idleAnimationFrame = 0;
   let currentSprite = { x: -3, y: -3 }; // idle sprite initially
 
   const nekoSpeed = 10;
@@ -86,6 +88,67 @@
     currentSprite = { x: sprite[0] * 32, y: sprite[1] * 32 };
   }
 
+  function resetIdleAnimation() {
+    idleAnimation = null;
+    idleAnimationFrame = 0;
+  }
+
+  function idle() {
+    idleTime += 1;
+
+    // every ~ 20 seconds (idleTime increments every frame, with ~10 frames/second, so ~200 frames)
+    if (
+      idleTime > 10 &&
+      Math.floor(Math.random() * 200) == 0 &&
+      idleAnimation == null
+    ) {
+      let availableIdleAnimations = ["sleeping", "scratchSelf"];
+      if (nekoPosX < 32) {
+        availableIdleAnimations.push("scratchWallW");
+      }
+      if (nekoPosY < 32) {
+        availableIdleAnimations.push("scratchWallN");
+      }
+      if (nekoPosX > window.innerWidth - 32) {
+        availableIdleAnimations.push("scratchWallE");
+      }
+      if (nekoPosY > window.innerHeight - 32) {
+        availableIdleAnimations.push("scratchWallS");
+      }
+      idleAnimation =
+        availableIdleAnimations[
+          Math.floor(Math.random() * availableIdleAnimations.length)
+        ];
+    }
+
+    switch (idleAnimation) {
+      case "sleeping":
+        if (idleAnimationFrame < 8) {
+          setSprite("tired", 0);
+          break;
+        }
+        setSprite("sleeping", Math.floor(idleAnimationFrame / 4));
+        if (idleAnimationFrame > 192) {
+          resetIdleAnimation();
+        }
+        break;
+      case "scratchWallN":
+      case "scratchWallS":
+      case "scratchWallE":
+      case "scratchWallW":
+      case "scratchSelf":
+        setSprite(idleAnimation, idleAnimationFrame);
+        if (idleAnimationFrame > 9) {
+          resetIdleAnimation();
+        }
+        break;
+      default:
+        setSprite("idle", 0);
+        return;
+    }
+    idleAnimationFrame += 1;
+  }
+
   function frame(timestamp: number) {
     if (!lastFrameTimestamp) {
       lastFrameTimestamp = timestamp;
@@ -108,8 +171,7 @@
 
     // If close enough, stop moving and idle
     if (distance < nekoSpeed || distance < 48) {
-      setSprite("idle", 0);
-      idleTime += 1;
+      idle();
       return;
     }
 
@@ -122,6 +184,8 @@
     }
 
     idleTime = 0;
+    idleAnimation = null;
+    idleAnimationFrame = 0;
 
     // Calculate direction
     let direction = "";
@@ -144,7 +208,7 @@
     // Initialize position to target so it doesn't fly in from 32,32 every time
     nekoPosX = targetX;
     nekoPosY = targetY;
-    
+
     animationFrameId = requestAnimationFrame(frame);
   });
 
@@ -165,8 +229,8 @@
   <div
     class="pixelated"
     style="
-      width: 32px; 
-      height: 32px; 
+      width: 32px;
+      height: 32px;
       background-image: url({onekoGif});
       background-position: {currentSprite.x}px {currentSprite.y}px;
     "
