@@ -1,4 +1,10 @@
-# AGENTS.md
+# Friendolls
+
+Passive social app connecting peers through mouse cursor interactions in the form of desktop pets.
+
+# friendolls-desktop
+
+Desktop client app for Friendolls.
 
 ## Build/Lint/Test Commands
 
@@ -20,7 +26,7 @@
 - **Lint**: `cargo clippy`
 - **Test**: `cargo test`
 - **Run single test**: `cargo test <test_name>`
-- **Generate TypeScript bindings**: `TS_RS_EXPORT_DIR="../src/types/bindings" cargo test export_bindings --manifest-path="./src-tauri/Cargo.toml"`
+- **Generate TypeScript bindings (from project root)**: `TS_RS_EXPORT_DIR="../src/types/bindings" cargo test export_bindings --manifest-path="./src-tauri/Cargo.toml"`
 
 ## Code Style Guidelines
 
