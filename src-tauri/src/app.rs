@@ -13,6 +13,7 @@ pub async fn start_fdoll() {
 
 async fn construct_app() {
     init_app_data().await;
+    crate::services::ws::init_ws_client().await;
     open_scene_window();
 }
 

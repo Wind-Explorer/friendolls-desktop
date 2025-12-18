@@ -8,6 +8,7 @@ use crate::{
     state::{init_app_data, FDOLL},
 };
 use tauri::async_runtime;
+use tauri::Manager;
 use tracing_subscriber;
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
@@ -29,11 +30,37 @@ pub fn get_app_handle<'a>() -> &'a tauri::AppHandle<tauri::Wry> {
 
 fn setup_fdoll() -> Result<(), tauri::Error> {
     // Initialize tracing subscriber for logging
+
+    // Set up file appender
+    let app_handle = get_app_handle();
+    let app_log_dir = app_handle
+        .path()
+        .app_log_dir()
+        .expect("Could not determine app log dir");
+
+    // Create the directory if it doesn't exist
+    if let Err(e) = std::fs::create_dir_all(&app_log_dir) {
+        eprintln!("Failed to create log directory: {}", e);
+    }
+
+    let file_appender = tracing_appender::rolling::daily(&app_log_dir, "friendolls.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    // Keep the guard alive?
+    // Actually `_guard` will be dropped here, which might stop logging.
+    // Ideally we should store the guard in the app state or use a global lazy_static if we want it to persist.
+    // However, `tracing_appender` docs say: "WorkerGuard should be assigned in the main function or whatever the entrypoint of the program is."
+    // Since we are inside `setup_fdoll` which is called from `setup`, we might lose logs if we drop it.
+    // But for simplicity in this context, we can just let it leak or store it in a static.
+    // Let's leak it for now as this is a long-running app.
+    Box::leak(Box::new(_guard));
+
     tracing_subscriber::fmt()
         .with_target(false)
         .with_thread_ids(false)
         .with_file(true)
         .with_line_number(true)
+        .with_writer(non_blocking) // Log to file
         .init();
 
     state::init_fdoll_state();
@@ -153,7 +180,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_positioner::init())
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             start_cursor_tracking,
             get_app_data,

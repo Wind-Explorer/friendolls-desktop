@@ -1,6 +1,6 @@
 // in app-core/src/state.rs
 use crate::{
-    get_app_handle, lock_w,
+    get_app_handle, lock_r, lock_w,
     models::{
         app_config::{AppConfig, AuthConfig},
         app_data::AppData,
@@ -53,8 +53,6 @@ pub fn init_fdoll_state() {
             auth: AuthConfig {
                 audience: env::var("JWT_AUDIENCE").expect("JWT_AUDIENCE must be set"),
                 auth_url: env::var("AUTH_URL").expect("AUTH_URL must be set"),
-                redirect_uri: env::var("REDIRECT_URI").expect("REDIRECT_URI must be set"),
-                redirect_host: env::var("REDIRECT_HOST").expect("REDIRECT_HOST must be set"),
             },
         };
         guard.auth_pass = match load_auth_pass() {
@@ -81,11 +79,9 @@ pub fn init_fdoll_state() {
         });
         info!("Initialized HTTP client");
 
-        let has_auth = guard.auth_pass.is_some();
-
         // Initialize screen dimensions
         let app_handle = get_app_handle();
-        
+
         // Get primary monitor with retries
         // Note: This duplicates logic from init_cursor_tracking, but we need it here for global state
         let primary_monitor = {
@@ -100,7 +96,10 @@ pub fn init_fdoll_state() {
                     Ok(None) => {
                         retry_count += 1;
                         if retry_count >= max_retries {
-                            warn!("No primary monitor found after {} retries during state init", max_retries);
+                            warn!(
+                                "No primary monitor found after {} retries during state init",
+                                max_retries
+                            );
                             break None;
                         }
                         warn!(
@@ -135,28 +134,20 @@ pub fn init_fdoll_state() {
             guard.app_data.scene.display.screen_height = logical_monitor_dimensions.height;
             guard.app_data.scene.display.monitor_scale_factor = monitor_scale_factor;
             guard.app_data.scene.grid_size = 600; // Hardcoded grid size
-            
+
             info!(
                 "Initialized global AppData with screen dimensions: {}x{}, scale: {}, grid: {}",
-                logical_monitor_dimensions.width, 
+                logical_monitor_dimensions.width,
                 logical_monitor_dimensions.height,
                 monitor_scale_factor,
                 guard.app_data.scene.grid_size
             );
         } else {
-             warn!("Could not initialize screen dimensions in global state - no monitor found");
+            warn!("Could not initialize screen dimensions in global state - no monitor found");
         }
-
-        drop(guard);
-
-        if has_auth {
-            async_runtime::spawn(async move {
-                crate::services::ws::init_ws_client().await;
-            });
-        }
-
-        info!("Initialized FDOLL state (WebSocket client & user data initializing asynchronously)");
     }
+    
+    info!("Initialized FDOLL state (WebSocket client & user data initializing asynchronously)");
 }
 
 /// To be called in init state or need to refresh data.
@@ -164,21 +155,52 @@ pub fn init_fdoll_state() {
 pub async fn init_app_data() {
     let user_remote = UserRemote::new();
     let friend_remote = FriendRemote::new();
-    let user = user_remote
-        .get_user(None)
-        .await
-        .expect("TODO: handle user profile fetch failure");
-    let friends = friend_remote
-        .get_friends()
-        .await
-        .expect("TODO: handle friends fetch failure");
 
+    // Fetch user profile
+    match user_remote.get_user(None).await {
+        Ok(user) => {
+            let mut guard = lock_w!(FDOLL);
+            guard.app_data.user = Some(user);
+        }
+        Err(e) => {
+            warn!("Failed to fetch user profile: {}", e);
+            use tauri_plugin_dialog::MessageDialogBuilder;
+            use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+
+            let handle = get_app_handle();
+            MessageDialogBuilder::new(
+                handle.dialog().clone(),
+                "Network Error",
+                "Failed to fetch user profile. You may be offline.",
+            )
+            .kind(MessageDialogKind::Error)
+            .show(|_| {});
+            // We continue execution to see if other parts (like friends) can be loaded or if we just stay in a partial state.
+            // Alternatively, return early here.
+        }
+    }
+
+    // Fetch friends list
+    match friend_remote.get_friends().await {
+        Ok(friends) => {
+            let mut guard = lock_w!(FDOLL);
+            guard.app_data.friends = Some(friends);
+        }
+        Err(e) => {
+            warn!("Failed to fetch friends list: {}", e);
+            // Optionally show another dialog or just log it.
+            // Showing too many dialogs on startup is annoying, so we might skip this one if user profile failed too.
+        }
+    }
+
+    // Emit event regardless of partial success, frontend should handle nulls/empty states
     {
-        let mut guard = lock_w!(FDOLL);
-        guard.app_data.user = Some(user);
-        guard.app_data.friends = Some(friends);
-        get_app_handle()
-            .emit("app-data-refreshed", json!(guard.app_data))
-            .expect("TODO: handle event emit fail");
+        let guard = lock_r!(FDOLL); // Use read lock to get data
+        let app_data_clone = guard.app_data.clone();
+        drop(guard); // Drop lock before emitting to prevent potential deadlocks
+
+        if let Err(e) = get_app_handle().emit("app-data-refreshed", json!(app_data_clone)) {
+            warn!("Failed to emit app-data-refreshed event: {}", e);
+        }
     }
 }

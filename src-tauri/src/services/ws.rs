@@ -4,8 +4,9 @@ use tauri::{async_runtime, Emitter};
 use tracing::{error, info};
 
 use crate::{
-    get_app_handle, lock_r, lock_w, models::app_config::AppConfig,
-    services::cursor::{grid_to_absolute_position, CursorPosition, CursorPositions},
+    get_app_handle, lock_r, lock_w,
+    models::app_config::AppConfig,
+    services::cursor::{normalized_to_absolute, CursorPosition, CursorPositions},
     state::FDOLL,
 };
 use serde::{Deserialize, Serialize};
@@ -41,9 +42,9 @@ fn on_friend_request_received(payload: Payload, _socket: RawClient) {
     match payload {
         Payload::Text(str) => {
             println!("Received friend request: {:?}", str);
-            get_app_handle()
-                .emit(WS_EVENT::FRIEND_REQUEST_RECEIVED, str)
-                .unwrap();
+            if let Err(e) = get_app_handle().emit(WS_EVENT::FRIEND_REQUEST_RECEIVED, str) {
+                error!("Failed to emit friend request received event: {:?}", e);
+            }
         }
         _ => error!("Received unexpected payload format for friend request received"),
     }
@@ -53,9 +54,9 @@ fn on_friend_request_accepted(payload: Payload, _socket: RawClient) {
     match payload {
         Payload::Text(str) => {
             println!("Received friend request accepted: {:?}", str);
-            get_app_handle()
-                .emit(WS_EVENT::FRIEND_REQUEST_ACCEPTED, str)
-                .unwrap();
+            if let Err(e) = get_app_handle().emit(WS_EVENT::FRIEND_REQUEST_ACCEPTED, str) {
+                error!("Failed to emit friend request accepted event: {:?}", e);
+            }
         }
         _ => error!("Received unexpected payload format for friend request accepted"),
     }
@@ -65,9 +66,9 @@ fn on_friend_request_denied(payload: Payload, _socket: RawClient) {
     match payload {
         Payload::Text(str) => {
             println!("Received friend request denied: {:?}", str);
-            get_app_handle()
-                .emit(WS_EVENT::FRIEND_REQUEST_DENIED, str)
-                .unwrap();
+            if let Err(e) = get_app_handle().emit(WS_EVENT::FRIEND_REQUEST_DENIED, str) {
+                error!("Failed to emit friend request denied event: {:?}", e);
+            }
         }
         _ => error!("Received unexpected payload format for friend request denied"),
     }
@@ -77,7 +78,9 @@ fn on_unfriended(payload: Payload, _socket: RawClient) {
     match payload {
         Payload::Text(str) => {
             println!("Received unfriended: {:?}", str);
-            get_app_handle().emit(WS_EVENT::UNFRIENDED, str).unwrap();
+            if let Err(e) = get_app_handle().emit(WS_EVENT::UNFRIENDED, str) {
+                error!("Failed to emit unfriended event: {:?}", e);
+            }
         }
         _ => error!("Received unexpected payload format for unfriended"),
     }
@@ -88,15 +91,16 @@ fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
         Payload::Text(values) => {
             // values is Vec<serde_json::Value>
             if let Some(first_value) = values.first() {
-                 let incoming_data: Result<IncomingFriendCursorPayload, _> = serde_json::from_value(first_value.clone());
+                let incoming_data: Result<IncomingFriendCursorPayload, _> =
+                    serde_json::from_value(first_value.clone());
 
-                 match incoming_data {
+                match incoming_data {
                     Ok(friend_data) => {
-                         // We received grid coordinates (mapped)
+                        // We received normalized coordinates (mapped)
                         let mapped_pos = &friend_data.position;
 
-                        // Convert grid coordinates back to absolute screen coordinates (raw)
-                        let raw_pos = grid_to_absolute_position(mapped_pos);
+                        // Convert normalized coordinates back to absolute screen coordinates (raw)
+                        let raw_pos = normalized_to_absolute(mapped_pos);
 
                         let outgoing_payload = OutgoingFriendCursorPayload {
                             user_id: friend_data.user_id.clone(),
@@ -106,14 +110,16 @@ fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
                             },
                         };
 
-                        get_app_handle()
+                        if let Err(e) = get_app_handle()
                             .emit(WS_EVENT::FRIEND_CURSOR_POSITION, outgoing_payload)
-                            .unwrap();
+                        {
+                            error!("Failed to emit friend cursor position event: {:?}", e);
+                        }
                     }
                     Err(e) => {
                         error!("Failed to parse friend cursor position data: {}", e);
                     }
-                 }
+                }
             } else {
                 error!("Received empty text payload for friend cursor position");
             }
@@ -126,38 +132,43 @@ fn on_friend_disconnected(payload: Payload, _socket: RawClient) {
     match payload {
         Payload::Text(str) => {
             println!("Received friend disconnected: {:?}", str);
-            get_app_handle()
-                .emit(WS_EVENT::FRIEND_DISCONNECTED, str)
-                .unwrap();
+            if let Err(e) = get_app_handle().emit(WS_EVENT::FRIEND_DISCONNECTED, str) {
+                error!("Failed to emit friend disconnected event: {:?}", e);
+            }
         }
         _ => error!("Received unexpected payload format for friend disconnected"),
     }
 }
 
 pub async fn report_cursor_data(cursor_position: CursorPosition) {
-    let client = {
+    // Only attempt to get clients if lock_r succeeds (it should, but safety first)
+    // and if clients are actually initialized.
+    let client_opt = {
         let guard = lock_r!(FDOLL);
         guard
             .clients
             .as_ref()
-            .expect("Clients are initialized")
-            .ws_client
-            .as_ref()
-            .expect("WebSocket client is initialized")
-            .clone()
+            .and_then(|c| c.ws_client.as_ref())
+            .cloned()
     };
 
-    match async_runtime::spawn_blocking(move || {
-        client.emit(
-            WS_EVENT::CURSOR_REPORT_POSITION,
-            Payload::Text(vec![json!(cursor_position)]),
-        )
-    })
-    .await
-    {
-        Ok(Ok(_)) => (),
-        Ok(Err(e)) => error!("Failed to emit ping: {}", e),
-        Err(e) => error!("Failed to execute blocking task: {}", e),
+    if let Some(client) = client_opt {
+        match async_runtime::spawn_blocking(move || {
+            client.emit(
+                WS_EVENT::CURSOR_REPORT_POSITION,
+                Payload::Text(vec![json!(cursor_position)]),
+            )
+        })
+        .await
+        {
+            Ok(Ok(_)) => (),
+            Ok(Err(e)) => error!("Failed to emit cursor report: {}", e),
+            Err(e) => error!("Failed to execute blocking task for cursor report: {}", e),
+        }
+    } else {
+        // Quietly fail if client is not ready (e.g. during startup/shutdown)
+        // or debug log it.
+        // debug!("WebSocket client not ready to report cursor data");
     }
 }
 
@@ -167,28 +178,39 @@ pub async fn init_ws_client() {
         guard.app_config.clone()
     };
 
-    let ws_client = build_ws_client(&app_config).await;
-
-    let mut guard = lock_w!(FDOLL);
-    if let Some(clients) = guard.clients.as_mut() {
-        clients.ws_client = Some(ws_client);
+    match build_ws_client(&app_config).await {
+        Ok(ws_client) => {
+            let mut guard = lock_w!(FDOLL);
+            if let Some(clients) = guard.clients.as_mut() {
+                clients.ws_client = Some(ws_client);
+            }
+            info!("WebSocket client initialized after authentication");
+        }
+        Err(e) => {
+            error!("Failed to initialize WebSocket client: {}", e);
+            // We should probably inform the user or retry here, but for now we just log it.
+        }
     }
-    info!("WebSocket client initialized after authentication");
 }
 
-pub async fn build_ws_client(app_config: &AppConfig) -> rust_socketio::client::Client {
-    let token = crate::services::auth::get_access_token()
-        .await
-        .expect("No access token available for WebSocket connection");
+pub async fn build_ws_client(
+    app_config: &AppConfig,
+) -> Result<rust_socketio::client::Client, String> {
+    let token_result = crate::services::auth::get_access_token().await;
+
+    let token = match token_result {
+        Some(t) => t,
+        None => return Err("No access token available for WebSocket connection".to_string()),
+    };
 
     info!("Building WebSocket client with authentication");
 
     let api_base_url = app_config
         .api_base_url
         .clone()
-        .expect("Missing API base URL");
+        .ok_or("Missing API base URL")?;
 
-    let client = async_runtime::spawn_blocking(move || {
+    let client_result = async_runtime::spawn_blocking(move || {
         ClientBuilder::new(api_base_url)
             .namespace("/")
             .on(
@@ -206,20 +228,24 @@ pub async fn build_ws_client(app_config: &AppConfig) -> rust_socketio::client::C
             .auth(json!({ "token": token }))
             .connect()
     })
-    .await
-    .expect("Failed to spawn blocking task");
+    .await;
 
-    match client {
-        Ok(c) => {
-            info!("WebSocket client connected successfully");
-            c
-        }
+    match client_result {
+        Ok(connect_result) => match connect_result {
+            Ok(c) => {
+                info!("WebSocket client connected successfully");
+                Ok(c)
+            }
+            Err(e) => {
+                let err_msg = format!("Failed to connect WebSocket: {:?}", e);
+                error!("{}", err_msg);
+                Err(err_msg)
+            }
+        },
         Err(e) => {
-            error!("Failed to connect WebSocket: {:?}", e);
-            panic!(
-                "TODO: better error handling for WebSocket connection - {}",
-                e
-            );
+            let err_msg = format!("Failed to spawn blocking task: {:?}", e);
+            error!("{}", err_msg);
+            Err(err_msg)
         }
     }
 }

@@ -7,11 +7,16 @@
 
   import DesktopPet from "./DesktopPet.svelte";
 
+  let innerWidth = 0;
+  let innerHeight = 0;
+
   function getFriendName(userId: string) {
     const friend = $appData?.friends?.find((f) => f.friend.id === userId);
     return friend ? friend.friend.name : userId.slice(0, 8) + "...";
   }
 </script>
+
+<svelte:window bind:innerWidth bind:innerHeight />
 
 <div class="w-svw h-svh p-4 relative overflow-hidden">
   <div
@@ -26,8 +31,9 @@
             .y})
         </span>
         <span class="font-mono text-sm">
-          Mapped: ({$cursorPositionOnScreen.mapped.x}, {$cursorPositionOnScreen
-            .mapped.y})
+          Mapped: ({$cursorPositionOnScreen.mapped.x.toFixed(3)}, {$cursorPositionOnScreen.mapped.y.toFixed(
+            3,
+          )})
         </span>
       </div>
 
@@ -45,7 +51,9 @@
                     Raw: ({position.raw.x}, {position.raw.y})
                   </span>
                   <span>
-                    Mapped: ({position.mapped.x}, {position.mapped.y})
+                    Mapped: ({position.mapped.x.toFixed(3)}, {position.mapped.y.toFixed(
+                      3,
+                    )})
                   </span>
                 </div>
               </div>
@@ -59,8 +67,8 @@
     {#if Object.keys($friendsCursorPositions).length > 0}
       {#each Object.entries($friendsCursorPositions) as [userId, position]}
         <DesktopPet
-          targetX={position.raw.x}
-          targetY={position.raw.y}
+          targetX={position.mapped.x * innerWidth}
+          targetY={position.mapped.y * innerHeight}
           name={getFriendName(userId)}
         />
       {/each}
