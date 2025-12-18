@@ -13,7 +13,7 @@ use std::{
     env,
     sync::{Arc, LazyLock, RwLock},
 };
-use tauri::{async_runtime, Emitter};
+use tauri::Emitter;
 use tracing::{info, warn};
 
 #[derive(Default, Clone)]
@@ -34,6 +34,7 @@ pub struct AppState {
     pub clients: Option<Clients>,
     pub auth_pass: Option<AuthPass>,
     pub oauth_flow: OAuthFlowTracker,
+    pub tracing_guard: Option<tracing_appender::non_blocking::WorkerGuard>,
 
     // exposed to the frontend
     pub app_data: AppData,
@@ -44,10 +45,11 @@ pub struct AppState {
 pub static FDOLL: LazyLock<Arc<RwLock<AppState>>> =
     LazyLock::new(|| Arc::new(RwLock::new(AppState::default())));
 
-pub fn init_fdoll_state() {
+pub fn init_fdoll_state(tracing_guard: Option<tracing_appender::non_blocking::WorkerGuard>) {
     {
         let mut guard = lock_w!(FDOLL);
         dotenvy::dotenv().ok();
+        guard.tracing_guard = tracing_guard;
         guard.app_config = AppConfig {
             api_base_url: Some(env::var("API_BASE_URL").expect("API_BASE_URL must be set")),
             auth: AuthConfig {
@@ -146,7 +148,7 @@ pub fn init_fdoll_state() {
             warn!("Could not initialize screen dimensions in global state - no monitor found");
         }
     }
-    
+
     info!("Initialized FDOLL state (WebSocket client & user data initializing asynchronously)");
 }
 

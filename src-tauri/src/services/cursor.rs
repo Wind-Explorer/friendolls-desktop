@@ -116,8 +116,6 @@ async fn init_cursor_tracking() -> Result<(), String> {
 
     // The producer closure moves `tx` into it.
     // device_query runs this closure on its own thread.
-    // Explicitly clone tx to ensure clear capture semantics
-    let tx_clone = tx.clone();
     let _guard = device_state.on_mouse_move(move |position: &(i32, i32)| {
         // `device_query` crate appears to behave
         // differently on Windows vs other platforms.
@@ -144,7 +142,7 @@ async fn init_cursor_tracking() -> Result<(), String> {
         };
 
         // Send to consumer channel (non-blocking)
-        if let Err(e) = tx_clone.try_send(positions) {
+        if let Err(e) = tx.try_send(positions) {
             debug!("Failed to send cursor position to channel: {:?}", e);
         }
     });

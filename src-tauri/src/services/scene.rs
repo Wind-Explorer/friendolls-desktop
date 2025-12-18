@@ -3,6 +3,7 @@ use tauri::Manager;
 use tauri_plugin_positioner::WindowExt;
 use tracing::{error, info};
 pub static SCENE_WINDOW_LABEL: &str = "scene";
+pub static SPLASH_WINDOW_LABEL: &str = "splash";
 
 pub fn overlay_fullscreen(window: &tauri::Window) -> Result<(), tauri::Error> {
     // Get the primary monitor
@@ -20,6 +21,65 @@ pub fn overlay_fullscreen(window: &tauri::Window) -> Result<(), tauri::Error> {
         height: work_area.size.height,
     })?;
     Ok(())
+}
+
+pub fn open_splash_window() {
+    let app_handle = get_app_handle();
+    let existing_webview_window = app_handle.get_window(SPLASH_WINDOW_LABEL);
+
+    if let Some(window) = existing_webview_window {
+        window.show().unwrap();
+        return;
+    }
+
+    info!("Starting splash window creation...");
+    let webview_window = match tauri::WebviewWindowBuilder::new(
+        app_handle,
+        SPLASH_WINDOW_LABEL,
+        tauri::WebviewUrl::App("/splash".into()),
+    )
+    .title("Friendolls Splash")
+    .inner_size(600.0, 300.0)
+    .resizable(false)
+    .decorations(false)
+    .transparent(true)
+    .shadow(false)
+    .visible(false) // Show it after centering
+    .skip_taskbar(true)
+    .always_on_top(true)
+    .build()
+    {
+        Ok(window) => {
+            info!("Splash window builder succeeded");
+            window
+        }
+        Err(e) => {
+            error!("Failed to build splash window: {}", e);
+            return;
+        }
+    };
+
+    if let Err(e) = webview_window.move_window(tauri_plugin_positioner::Position::Center) {
+        error!("Failed to move splash window to center: {}", e);
+        // Continue anyway
+    }
+
+    if let Err(e) = webview_window.show() {
+        error!("Failed to show splash window: {}", e);
+    }
+
+    info!("Splash window initialized successfully.");
+}
+
+pub fn close_splash_window() {
+    let app_handle = get_app_handle();
+    if let Some(window) = app_handle.get_window(SPLASH_WINDOW_LABEL) {
+        if let Err(e) = window.close() {
+            error!("Failed to close splash window: {}", e);
+        } else {
+            info!("Splash window closed");
+        }
+    }
 }
 
 pub fn open_scene_window() {

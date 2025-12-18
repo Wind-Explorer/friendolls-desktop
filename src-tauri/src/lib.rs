@@ -46,15 +46,6 @@ fn setup_fdoll() -> Result<(), tauri::Error> {
     let file_appender = tracing_appender::rolling::daily(&app_log_dir, "friendolls.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
-    // Keep the guard alive?
-    // Actually `_guard` will be dropped here, which might stop logging.
-    // Ideally we should store the guard in the app state or use a global lazy_static if we want it to persist.
-    // However, `tracing_appender` docs say: "WorkerGuard should be assigned in the main function or whatever the entrypoint of the program is."
-    // Since we are inside `setup_fdoll` which is called from `setup`, we might lose logs if we drop it.
-    // But for simplicity in this context, we can just let it leak or store it in a static.
-    // Let's leak it for now as this is a long-running app.
-    Box::leak(Box::new(_guard));
-
     tracing_subscriber::fmt()
         .with_target(false)
         .with_thread_ids(false)
@@ -63,7 +54,7 @@ fn setup_fdoll() -> Result<(), tauri::Error> {
         .with_writer(non_blocking) // Log to file
         .init();
 
-    state::init_fdoll_state();
+    state::init_fdoll_state(Some(_guard));
     async_runtime::spawn(async move { app::start_fdoll().await });
     Ok(())
 }

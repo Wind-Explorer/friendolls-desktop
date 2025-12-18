@@ -1,7 +1,12 @@
+use std::time::Duration;
+use tokio::time::{sleep, Instant};
 use tracing::info;
 
 use crate::{
-    services::{auth::get_tokens, scene::open_scene_window},
+    services::{
+        auth::get_tokens,
+        scene::{close_splash_window, open_scene_window, open_splash_window},
+    },
     state::init_app_data,
     system_tray::init_system_tray,
 };
@@ -12,8 +17,32 @@ pub async fn start_fdoll() {
 }
 
 async fn construct_app() {
-    init_app_data().await;
-    crate::services::ws::init_ws_client().await;
+    open_splash_window();
+
+    // Record start time for minimum splash duration
+    let start = Instant::now();
+
+    // Spawn initialization tasks in parallel
+    // We want to wait for them to finish, but they run concurrently
+    let init_data = tauri::async_runtime::spawn(async {
+        init_app_data().await;
+    });
+
+    let init_ws = tauri::async_runtime::spawn(async {
+        crate::services::ws::init_ws_client().await;
+    });
+
+    // Wait for both to complete
+    let _ = tokio::join!(init_data, init_ws);
+
+    // Ensure splash stays visible for at least 3 seconds
+    let elapsed = start.elapsed();
+    if elapsed < Duration::from_secs(3) {
+        sleep(Duration::from_secs(3) - elapsed).await;
+    }
+
+    // Close splash and open main scene
+    close_splash_window();
     open_scene_window();
 }
 
