@@ -4,6 +4,7 @@ use crate::{
         FriendRemote, FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto,
         UserBasicDto,
     },
+    remotes::dolls::{DollsRemote, CreateDollDto, UpdateDollDto, DollDto},
     services::cursor::start_cursor_tracking,
     state::{init_app_data, FDOLL},
 };
@@ -160,6 +161,38 @@ async fn unfriend(friend_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn get_dolls() -> Result<Vec<DollDto>, String> {
+    DollsRemote::new()
+        .get_dolls()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn create_doll(dto: CreateDollDto) -> Result<DollDto, String> {
+    DollsRemote::new()
+        .create_doll(dto)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_doll(id: String, dto: UpdateDollDto) -> Result<DollDto, String> {
+    DollsRemote::new()
+        .update_doll(&id, dto)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_doll(id: String) -> Result<(), String> {
+    DollsRemote::new()
+        .delete_doll(&id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn quit_app() -> Result<(), String> {
     let app_handle = get_app_handle();
     app_handle.exit(0);
@@ -184,6 +217,10 @@ pub fn run() {
             accept_friend_request,
             deny_friend_request,
             unfriend,
+            get_dolls,
+            create_doll,
+            update_doll,
+            delete_doll,
             quit_app
         ])
         .setup(|app| {
