@@ -82,7 +82,7 @@ impl DollsRemote {
     }
 
     pub async fn get_dolls(&self) -> Result<Vec<DollDto>, RemoteError> {
-        let url = format!("{}/dolls", self.base_url);
+        let url = format!("{}/dolls/me", self.base_url);
         tracing::info!("DollsRemote::get_dolls - Sending GET request to URL: {}", url);
         let resp = with_auth(self.client.get(url)).await.send().await?;
         

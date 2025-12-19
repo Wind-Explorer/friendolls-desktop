@@ -36,6 +36,9 @@ impl WS_EVENT {
     pub const UNFRIENDED: &str = "unfriended";
     pub const FRIEND_CURSOR_POSITION: &str = "friend-cursor-position";
     pub const FRIEND_DISCONNECTED: &str = "friend-disconnected";
+    pub const FRIEND_DOLL_CREATED: &str = "friend-doll-created";
+    pub const FRIEND_DOLL_UPDATED: &str = "friend-doll-updated";
+    pub const FRIEND_DOLL_DELETED: &str = "friend-doll-deleted";
 }
 
 fn on_friend_request_received(payload: Payload, _socket: RawClient) {
@@ -140,6 +143,47 @@ fn on_friend_disconnected(payload: Payload, _socket: RawClient) {
     }
 }
 
+fn on_friend_doll_created(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            // Log raw JSON for now, as requested
+            if let Some(first_value) = values.first() {
+                info!("Received friend-doll-created event: {:?}", first_value);
+                // Future: Trigger re-fetch or emit to frontend
+            } else {
+                 info!("Received friend-doll-created event with empty payload");
+            }
+        }
+         _ => error!("Received unexpected payload format for friend-doll-created"),
+    }
+}
+
+fn on_friend_doll_updated(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                info!("Received friend-doll-updated event: {:?}", first_value);
+            } else {
+                 info!("Received friend-doll-updated event with empty payload");
+            }
+        }
+        _ => error!("Received unexpected payload format for friend-doll-updated"),
+    }
+}
+
+fn on_friend_doll_deleted(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                info!("Received friend-doll-deleted event: {:?}", first_value);
+            } else {
+                 info!("Received friend-doll-deleted event with empty payload");
+            }
+        }
+        _ => error!("Received unexpected payload format for friend-doll-deleted"),
+    }
+}
+
 pub async fn report_cursor_data(cursor_position: CursorPosition) {
     // Only attempt to get clients if lock_r succeeds (it should, but safety first)
     // and if clients are actually initialized.
@@ -225,6 +269,9 @@ pub async fn build_ws_client(
             .on(WS_EVENT::UNFRIENDED, on_unfriended)
             .on(WS_EVENT::FRIEND_CURSOR_POSITION, on_friend_cursor_position)
             .on(WS_EVENT::FRIEND_DISCONNECTED, on_friend_disconnected)
+            .on(WS_EVENT::FRIEND_DOLL_CREATED, on_friend_doll_created)
+            .on(WS_EVENT::FRIEND_DOLL_UPDATED, on_friend_doll_updated)
+            .on(WS_EVENT::FRIEND_DOLL_DELETED, on_friend_doll_deleted)
             .auth(json!({ "token": token }))
             .connect()
     })
