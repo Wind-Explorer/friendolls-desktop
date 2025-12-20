@@ -18,6 +18,7 @@ pub struct UserProfile {
     pub created_at: String,
     pub updated_at: String,
     pub last_login_at: Option<String>,
+    pub active_doll_id: Option<String>,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
@@ -75,6 +76,20 @@ impl UserRemote {
 
     pub async fn delete_user(&self, user_id: Option<&str>) -> Result<(), Error> {
         let url = format!("{}/users/{}", self.base_url, user_id.unwrap_or("me"));
+        let resp = with_auth(self.client.delete(url)).await.send().await?;
+        resp.error_for_status()?;
+        Ok(())
+    }
+
+    pub async fn set_active_doll(&self, doll_id: &str) -> Result<(), Error> {
+        let url = format!("{}/users/me/active-doll/{}", self.base_url, doll_id);
+        let resp = with_auth(self.client.put(url)).await.send().await?;
+        resp.error_for_status()?;
+        Ok(())
+    }
+
+    pub async fn remove_active_doll(&self) -> Result<(), Error> {
+        let url = format!("{}/users/me/active-doll", self.base_url);
         let resp = with_auth(self.client.delete(url)).await.send().await?;
         resp.error_for_status()?;
         Ok(())

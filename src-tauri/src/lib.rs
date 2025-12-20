@@ -5,6 +5,7 @@ use crate::{
         FriendRemote, FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto,
         UserBasicDto,
     },
+    remotes::user::UserRemote,
     services::cursor::start_cursor_tracking,
     state::{init_app_data, FDOLL},
 };
@@ -193,6 +194,22 @@ async fn delete_doll(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn set_active_doll(doll_id: String) -> Result<(), String> {
+    UserRemote::new()
+        .set_active_doll(&doll_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn remove_active_doll() -> Result<(), String> {
+    UserRemote::new()
+        .remove_active_doll()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn recolor_gif_base64(
     white_color_hex: String,
     black_color_hex: String,
@@ -235,6 +252,8 @@ pub fn run() {
             create_doll,
             update_doll,
             delete_doll,
+            set_active_doll,
+            remove_active_doll,
             recolor_gif_base64,
             quit_app
         ])

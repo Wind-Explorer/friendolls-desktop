@@ -22,6 +22,7 @@ pub struct UserBasicDto {
     pub id: String,
     pub name: String,
     pub username: Option<String>,
+    pub active_doll_id: Option<String>,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]

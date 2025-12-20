@@ -2,11 +2,14 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import type { DollDto } from "../../../types/bindings/DollDto";
+  import type { UserProfile } from "../../../types/bindings/UserProfile";
+  import type { AppData } from "../../../types/bindings/AppData";
   import type { CreateDollDto } from "../../../types/bindings/CreateDollDto";
   import type { UpdateDollDto } from "../../../types/bindings/UpdateDollDto";
   import DollPreview from "./DollPreview.svelte";
 
   let dolls: DollDto[] = [];
+  let user: UserProfile | null = null;
   let loading = false;
   let error: string | null = null;
   let isCreateModalOpen = false;
@@ -29,6 +32,10 @@
     loading = true;
     try {
       dolls = await invoke("get_dolls");
+      // Use refresh_app_data to ensure we get the latest user state (including activeDollId)
+      // from the server, as the local state might be stale after updates.
+      const appData: AppData = await invoke("refresh_app_data");
+      user = appData.user;
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
     } finally {
@@ -112,6 +119,24 @@
       error = (e as Error)?.message ?? String(e);
     }
   }
+
+  async function handleSetActiveDoll(dollId: string) {
+    try {
+      await invoke("set_active_doll", { dollId });
+      await refreshDolls();
+    } catch (e) {
+      error = (e as Error)?.message ?? String(e);
+    }
+  }
+
+  async function handleRemoveActiveDoll() {
+    try {
+      await invoke("remove_active_doll");
+      await refreshDolls();
+    } catch (e) {
+      error = (e as Error)?.message ?? String(e);
+    }
+  }
 </script>
 
 <div class="dolls-page flex flex-col gap-4 p-4">
@@ -140,9 +165,16 @@
       <p>No dolls found. Create your first doll!</p>
     </div>
   {:else}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
       {#each dolls as doll (doll.id)}
-        <div class="card border border-base-200 bg-base-100">
+        <div class="card border border-base-200 bg-base-100 relative">
+          {#if user?.activeDollId === doll.id}
+            <div
+              class="absolute top-2 right-2 badge badge-success badge-sm gap-1 z-10"
+            >
+              Active
+            </div>
+          {/if}
           <div class="card-body">
             <h3 class="card-title text-base">{doll.name}</h3>
             <div class="flex justify-center mb-2">
@@ -170,6 +202,17 @@
               </div>
             </div>
             <div class="card-actions justify-end mt-2">
+              {#if user?.activeDollId === doll.id}
+                <button
+                  class="btn btn-xs btn-ghost text-warning"
+                  on:click={handleRemoveActiveDoll}>Deactivate</button
+                >
+              {:else}
+                <button
+                  class="btn btn-xs btn-ghost text-success"
+                  on:click={() => handleSetActiveDoll(doll.id)}>Activate</button
+                >
+              {/if}
               <button
                 class="btn btn-xs btn-ghost"
                 on:click={() => openEditModal(doll)}>Edit</button
