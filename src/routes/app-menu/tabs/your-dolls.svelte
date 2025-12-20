@@ -4,7 +4,7 @@
   import type { DollDto } from "../../../types/bindings/DollDto";
   import type { CreateDollDto } from "../../../types/bindings/CreateDollDto";
   import type { UpdateDollDto } from "../../../types/bindings/UpdateDollDto";
-  import DollPreview from './DollPreview.svelte';
+  import DollPreview from "./DollPreview.svelte";
 
   let dolls: DollDto[] = [];
   let loading = false;
@@ -142,11 +142,14 @@
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {#each dolls as doll (doll.id)}
-        <div class="card bg-base-200 shadow-sm">
-          <div class="card-body p-4">
+        <div class="card border border-base-200 bg-base-100">
+          <div class="card-body">
             <h3 class="card-title text-base">{doll.name}</h3>
             <div class="flex justify-center mb-2">
-              <DollPreview bodyColor={doll.configuration.colorScheme.body} outlineColor={doll.configuration.colorScheme.outline} />
+              <DollPreview
+                bodyColor={doll.configuration.colorScheme.body}
+                outlineColor={doll.configuration.colorScheme.outline}
+              />
             </div>
             <div class="flex gap-2 text-sm text-base-content/70">
               <div class="flex items-center gap-1">
@@ -195,13 +198,16 @@
             type="text"
             placeholder="Doll Name"
             class="input input-bordered w-full"
-             bind:value={newDollName}
-           />
-         </div>
-         <div class="flex justify-center mt-4">
-           <DollPreview bodyColor={newDollColorBody} outlineColor={newDollColorOutline} />
-         </div>
-         <div class="form-control w-full mt-2">
+            bind:value={newDollName}
+          />
+        </div>
+        <div class="flex justify-center mt-4">
+          <DollPreview
+            bodyColor={newDollColorBody}
+            outlineColor={newDollColorOutline}
+          />
+        </div>
+        <div class="form-control w-full mt-2">
           <label class="label">
             <span class="label-text">Body Color</span>
           </label>
@@ -260,13 +266,16 @@
             type="text"
             placeholder="Doll Name"
             class="input input-bordered w-full"
-             bind:value={editDollName}
-           />
-         </div>
-         <div class="flex justify-center mt-4">
-           <DollPreview bodyColor={editDollColorBody} outlineColor={editDollColorOutline} />
-         </div>
-         <div class="form-control w-full mt-2">
+            bind:value={editDollName}
+          />
+        </div>
+        <div class="flex justify-center mt-4">
+          <DollPreview
+            bodyColor={editDollColorBody}
+            outlineColor={editDollColorOutline}
+          />
+        </div>
+        <div class="form-control w-full mt-2">
           <label class="label">
             <span class="label-text">Body Color</span>
           </label>
