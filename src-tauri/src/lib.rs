@@ -1,10 +1,10 @@
 use crate::{
     models::app_data::AppData,
+    remotes::dolls::{CreateDollDto, DollDto, DollsRemote, UpdateDollDto},
     remotes::friends::{
         FriendRemote, FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto,
         UserBasicDto,
     },
-    remotes::dolls::{DollsRemote, CreateDollDto, UpdateDollDto, DollDto},
     services::cursor::start_cursor_tracking,
     state::{init_app_data, FDOLL},
 };
@@ -193,6 +193,20 @@ async fn delete_doll(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn recolor_gif_base64(
+    white_color_hex: String,
+    black_color_hex: String,
+    apply_texture: bool,
+) -> Result<String, String> {
+    services::sprite_recolor::recolor_gif_base64(
+        white_color_hex.as_str(),
+        black_color_hex.as_str(),
+        apply_texture,
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn quit_app() -> Result<(), String> {
     let app_handle = get_app_handle();
     app_handle.exit(0);
@@ -221,6 +235,7 @@ pub fn run() {
             create_doll,
             update_doll,
             delete_doll,
+            recolor_gif_base64,
             quit_app
         ])
         .setup(|app| {

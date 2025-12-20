@@ -76,3 +76,7 @@
 :root {
   background-color: transparent;
 }
+
+.pixelated {
+  image-rendering: pixelated;
+}

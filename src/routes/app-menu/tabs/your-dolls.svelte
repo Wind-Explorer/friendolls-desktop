@@ -4,6 +4,7 @@
   import type { DollDto } from "../../../types/bindings/DollDto";
   import type { CreateDollDto } from "../../../types/bindings/CreateDollDto";
   import type { UpdateDollDto } from "../../../types/bindings/UpdateDollDto";
+  import DollPreview from './DollPreview.svelte';
 
   let dolls: DollDto[] = [];
   let loading = false;
@@ -144,6 +145,9 @@
         <div class="card bg-base-200 shadow-sm">
           <div class="card-body p-4">
             <h3 class="card-title text-base">{doll.name}</h3>
+            <div class="flex justify-center mb-2">
+              <DollPreview bodyColor={doll.configuration.colorScheme.body} outlineColor={doll.configuration.colorScheme.outline} />
+            </div>
             <div class="flex gap-2 text-sm text-base-content/70">
               <div class="flex items-center gap-1">
                 <div
@@ -191,10 +195,13 @@
             type="text"
             placeholder="Doll Name"
             class="input input-bordered w-full"
-            bind:value={newDollName}
-          />
-        </div>
-        <div class="form-control w-full mt-2">
+             bind:value={newDollName}
+           />
+         </div>
+         <div class="flex justify-center mt-4">
+           <DollPreview bodyColor={newDollColorBody} outlineColor={newDollColorOutline} />
+         </div>
+         <div class="form-control w-full mt-2">
           <label class="label">
             <span class="label-text">Body Color</span>
           </label>
@@ -253,10 +260,13 @@
             type="text"
             placeholder="Doll Name"
             class="input input-bordered w-full"
-            bind:value={editDollName}
-          />
-        </div>
-        <div class="form-control w-full mt-2">
+             bind:value={editDollName}
+           />
+         </div>
+         <div class="flex justify-center mt-4">
+           <DollPreview bodyColor={editDollColorBody} outlineColor={editDollColorOutline} />
+         </div>
+         <div class="form-control w-full mt-2">
           <label class="label">
             <span class="label-text">Body Color</span>
           </label>

@@ -250,8 +250,4 @@
     pointer-events: none; /* Let clicks pass through */
     will-change: transform;
   }
-
-  .pixelated {
-    image-rendering: pixelated;
-  }
 </style>
