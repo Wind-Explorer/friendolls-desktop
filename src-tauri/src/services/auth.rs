@@ -187,31 +187,41 @@ pub fn save_auth_pass(auth_pass: &AuthPass) -> Result<(), OAuthError> {
     let encoded = URL_SAFE_NO_PAD.encode(&compressed);
     info!("Encoded length: {}", encoded.len());
 
-    // Windows keyring has a 2560-byte UTF-16 limit, which means 1280 chars max
-    // Split into chunks of 1200 chars to be safe
-    const CHUNK_SIZE: usize = 1200;
-    let chunks: Vec<&str> = encoded
-        .as_bytes()
-        .chunks(CHUNK_SIZE)
-        .map(|chunk| std::str::from_utf8(chunk).unwrap())
-        .collect();
+    #[cfg(target_os = "windows")]
+    {
+        // Windows keyring has a 2560-byte UTF-16 limit, which means 1280 chars max
+        // Split into chunks of 1200 chars to be safe
+        const CHUNK_SIZE: usize = 1200;
+        let chunks: Vec<&str> = encoded
+            .as_bytes()
+            .chunks(CHUNK_SIZE)
+            .map(|chunk| std::str::from_utf8(chunk).unwrap())
+            .collect();
 
-    info!("Splitting auth pass into {} chunks", chunks.len());
+        info!("Splitting auth pass into {} chunks", chunks.len());
 
-    // Save chunk count
-    let count_entry = Entry::new(SERVICE_NAME, "auth_pass_count")?;
-    count_entry.set_password(&chunks.len().to_string())?;
+        // Save chunk count
+        let count_entry = Entry::new(SERVICE_NAME, "auth_pass_count")?;
+        count_entry.set_password(&chunks.len().to_string())?;
 
-    // Save each chunk
-    for (i, chunk) in chunks.iter().enumerate() {
-        let entry = Entry::new(SERVICE_NAME, &format!("auth_pass_{}", i))?;
-        entry.set_password(chunk)?;
+        // Save each chunk
+        for (i, chunk) in chunks.iter().enumerate() {
+            let entry = Entry::new(SERVICE_NAME, &format!("auth_pass_{}", i))?;
+            entry.set_password(chunk)?;
+        }
+
+        info!(
+            "Auth pass saved to keyring successfully in {} chunks",
+            chunks.len()
+        );
     }
 
-    info!(
-        "Auth pass saved to keyring successfully in {} chunks",
-        chunks.len()
-    );
+    #[cfg(not(target_os = "windows"))]
+    {
+        let entry = Entry::new(SERVICE_NAME, "auth_pass")?;
+        entry.set_password(&encoded)?;
+        info!("Auth pass saved to keyring successfully");
+    }
     Ok(())
 }
 
@@ -219,40 +229,60 @@ pub fn save_auth_pass(auth_pass: &AuthPass) -> Result<(), OAuthError> {
 pub fn load_auth_pass() -> Result<Option<AuthPass>, OAuthError> {
     info!("Reading credentials from keyring");
 
-    // Get chunk count
-    let count_entry = Entry::new(SERVICE_NAME, "auth_pass_count")?;
-    let chunk_count = match count_entry.get_password() {
-        Ok(count_str) => match count_str.parse::<usize>() {
-            Ok(count) => count,
-            Err(_) => {
-                error!("Invalid chunk count in keyring");
+    #[cfg(target_os = "windows")]
+    let encoded = {
+        // Get chunk count
+        let count_entry = Entry::new(SERVICE_NAME, "auth_pass_count")?;
+        let chunk_count = match count_entry.get_password() {
+            Ok(count_str) => match count_str.parse::<usize>() {
+                Ok(count) => count,
+                Err(_) => {
+                    error!("Invalid chunk count in keyring");
+                    return Ok(None);
+                }
+            },
+            Err(keyring::Error::NoEntry) => {
+                info!("No auth pass found in keyring");
                 return Ok(None);
             }
-        },
-        Err(keyring::Error::NoEntry) => {
-            info!("No auth pass found in keyring");
-            return Ok(None);
+            Err(e) => {
+                error!("Failed to load chunk count from keyring");
+                return Err(OAuthError::KeyringError(e));
+            }
+        };
+
+        info!("Loading {} auth pass chunks from keyring", chunk_count);
+
+        // Reassemble chunks
+        let mut encoded = String::new();
+        for i in 0..chunk_count {
+            let entry = Entry::new(SERVICE_NAME, &format!("auth_pass_{}", i))?;
+            match entry.get_password() {
+                Ok(chunk) => encoded.push_str(&chunk),
+                Err(e) => {
+                    error!("Failed to load chunk {} from keyring", i);
+                    return Err(OAuthError::KeyringError(e));
+                }
+            }
         }
-        Err(e) => {
-            error!("Failed to load chunk count from keyring");
-            return Err(OAuthError::KeyringError(e));
-        }
+        encoded
     };
 
-    info!("Loading {} auth pass chunks from keyring", chunk_count);
-
-    // Reassemble chunks
-    let mut encoded = String::new();
-    for i in 0..chunk_count {
-        let entry = Entry::new(SERVICE_NAME, &format!("auth_pass_{}", i))?;
+    #[cfg(not(target_os = "windows"))]
+    let encoded = {
+        let entry = Entry::new(SERVICE_NAME, "auth_pass")?;
         match entry.get_password() {
-            Ok(chunk) => encoded.push_str(&chunk),
+            Ok(pass) => pass,
+            Err(keyring::Error::NoEntry) => {
+                info!("No auth pass found in keyring");
+                return Ok(None);
+            }
             Err(e) => {
-                error!("Failed to load chunk {} from keyring", i);
+                error!("Failed to load auth pass from keyring");
                 return Err(OAuthError::KeyringError(e));
             }
         }
-    }
+    };
 
     info!("Reassembled encoded length: {}", encoded.len());
 
@@ -288,21 +318,30 @@ pub fn load_auth_pass() -> Result<Option<AuthPass>, OAuthError> {
 
 /// Clear auth_pass from secure storage and app state.
 pub fn clear_auth_pass() -> Result<(), OAuthError> {
-    // Try to get chunk count
-    let count_entry = Entry::new(SERVICE_NAME, "auth_pass_count")?;
-    let chunk_count = match count_entry.get_password() {
-        Ok(count_str) => count_str.parse::<usize>().unwrap_or(0),
-        Err(_) => 0,
-    };
+    #[cfg(target_os = "windows")]
+    {
+        // Try to get chunk count
+        let count_entry = Entry::new(SERVICE_NAME, "auth_pass_count")?;
+        let chunk_count = match count_entry.get_password() {
+            Ok(count_str) => count_str.parse::<usize>().unwrap_or(0),
+            Err(_) => 0,
+        };
 
-    // Delete all chunks
-    for i in 0..chunk_count {
-        let entry = Entry::new(SERVICE_NAME, &format!("auth_pass_{}", i))?;
-        let _ = entry.delete_credential();
+        // Delete all chunks
+        for i in 0..chunk_count {
+            let entry = Entry::new(SERVICE_NAME, &format!("auth_pass_{}", i))?;
+            let _ = entry.delete_credential();
+        }
+
+        // Delete chunk count
+        let _ = count_entry.delete_credential();
     }
 
-    // Delete chunk count
-    let _ = count_entry.delete_credential();
+    #[cfg(not(target_os = "windows"))]
+    {
+        let entry = Entry::new(SERVICE_NAME, "auth_pass")?;
+        let _ = entry.delete_credential();
+    }
 
     info!("Auth pass cleared from keyring successfully");
     Ok(())
