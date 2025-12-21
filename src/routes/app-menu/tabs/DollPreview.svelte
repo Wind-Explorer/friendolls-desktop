@@ -152,7 +152,7 @@
   });
 </script>
 
-<div class="scale-150 p-2">
+<div class="scale-200 p-4">
   <div class="size-8">
     {#if error}
       <div

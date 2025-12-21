@@ -7,6 +7,8 @@
   import type { CreateDollDto } from "../../../types/bindings/CreateDollDto";
   import type { UpdateDollDto } from "../../../types/bindings/UpdateDollDto";
   import DollPreview from "./DollPreview.svelte";
+  import PawPrint from "../../../assets/icons/paw-print.svelte";
+  import Backpack from "../../../assets/icons/backpack.svelte";
 
   let dolls: DollDto[] = [];
   let user: UserProfile | null = null;
@@ -139,11 +141,11 @@
   }
 </script>
 
-<div class="dolls-page flex flex-col gap-4 p-4">
+<div class="dolls-page flex flex-col gap-4">
   <div class="flex justify-between items-center">
-    <h2 class="text-xl font-bold">Your Dolls</h2>
+    <h2 class="text-lg font-bold">Your Nekos</h2>
     <button class="btn btn-primary btn-sm" on:click={openCreateModal}>
-      Create Doll
+      Add a Neko
     </button>
   </div>
 
@@ -156,77 +158,72 @@
     </div>
   {/if}
 
-  {#if loading}
-    <div class="flex justify-center p-4">
-      <span class="loading loading-spinner loading-md"></span>
-    </div>
-  {:else if dolls.length === 0}
-    <div class="text-center text-base-content/70 py-8">
-      <p>No dolls found. Create your first doll!</p>
-    </div>
-  {:else}
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-      {#each dolls as doll (doll.id)}
-        <div class="card border border-base-200 bg-base-100 relative">
-          {#if user?.activeDollId === doll.id}
-            <div
-              class="absolute top-2 right-2 badge badge-success badge-sm gap-1 z-10"
-            >
-              Active
-            </div>
-          {/if}
-          <div class="card-body">
-            <h3 class="card-title text-base">{doll.name}</h3>
-            <div class="flex justify-center mb-2">
-              <DollPreview
-                bodyColor={doll.configuration.colorScheme.body}
-                outlineColor={doll.configuration.colorScheme.outline}
-              />
-            </div>
-            <div class="flex gap-2 text-sm text-base-content/70">
-              <div class="flex items-center gap-1">
-                <div
-                  class="w-4 h-4 rounded border border-base-content/20"
-                  style="background-color: {doll.configuration.colorScheme
-                    .body};"
-                ></div>
-                <span>Body</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <div
-                  class="w-4 h-4 rounded border border-base-content/20"
-                  style="background-color: {doll.configuration.colorScheme
-                    .outline};"
-                ></div>
-                <span>Outline</span>
-              </div>
-            </div>
-            <div class="card-actions justify-end mt-2">
-              {#if user?.activeDollId === doll.id}
-                <button
-                  class="btn btn-xs btn-ghost text-warning"
-                  on:click={handleRemoveActiveDoll}>Deactivate</button
-                >
-              {:else}
-                <button
-                  class="btn btn-xs btn-ghost text-success"
-                  on:click={() => handleSetActiveDoll(doll.id)}>Activate</button
-                >
-              {/if}
+  <div class="flex flex-col relative">
+    {#if loading}
+      <progress class="progress w-full h-px absolute inset-0 z-10"></progress>
+    {/if}
+
+    {#if dolls.length === 0}
+      <div class="text-center text-base-content/70 py-8">
+        <p>No dolls found. Create your first doll!</p>
+      </div>
+    {:else}
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {#each dolls as doll (doll.id)}
+          <div
+            class="card border border-base-200 bg-linear-to-b from-base-100 to-base-300 relative"
+          >
+            <div class="flex flex-col w-full">
               <button
-                class="btn btn-xs btn-ghost"
-                on:click={() => openEditModal(doll)}>Edit</button
+                on:click={() => openEditModal(doll)}
+                class="flex flex-col w-full text-center py-6 gap-2 *:mx-auto hover:opacity-70 hover:cursor-pointer"
               >
-              <button
-                class="btn btn-xs btn-ghost text-error"
-                on:click={() => handleDeleteDoll(doll.id)}>Delete</button
+                <div class="flex justify-center">
+                  <DollPreview
+                    bodyColor={doll.configuration.colorScheme.body}
+                    outlineColor={doll.configuration.colorScheme.outline}
+                  />
+                </div>
+                <p
+                  style:background-color={doll.configuration.colorScheme.body}
+                  style:color={doll.configuration.colorScheme.outline}
+                  class="badge border-none text-xs w-max mx-auto"
+                >
+                  {doll.name}
+                </p>
+              </button>
+
+              <div class="*:btn *:btn-block *:rounded-t-none">
+                {#if user?.activeDollId === doll.id}
+                  <button
+                    class="btn-primary text-accent flex-1"
+                    on:click={handleRemoveActiveDoll}
+                  >
+                    <div class="scale-60"><Backpack /></div>
+                    Recall
+                  </button>
+                {:else}
+                  <button
+                    class="flex-1 text-primary"
+                    on:click={() => handleSetActiveDoll(doll.id)}
+                  >
+                    <div class="scale-60"><PawPrint /></div>
+                    Deploy
+                  </button>
+                {/if}
+              </div>
+              <!-- <button
+                class=" text-error"
+                on:click={() => handleDeleteDoll(doll.id)}
               >
+                <div class="scale-60"><Trash /></div>
+              </button> -->
             </div>
           </div>
-        </div>
-      {/each}
-    </div>
-  {/if}
+        {/each}
+      </div>
+    {/if}
+  </div>
 
   <!-- Create Modal -->
   {#if isCreateModalOpen}

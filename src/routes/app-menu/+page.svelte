@@ -15,7 +15,7 @@
           type="radio"
           name="app_menu_tabs"
           class="tab"
-          aria-label="Your Dolls"
+          aria-label="Your Nekos"
           checked
         />
         <div class="tab-content bg-base-100 border-base-300 p-4">
