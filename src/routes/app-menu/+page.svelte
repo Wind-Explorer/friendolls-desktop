@@ -1,7 +1,7 @@
 <script lang="ts">
   import Friends from "./tabs/friends.svelte";
   import Preferences from "./tabs/preferences.svelte";
-  import YourDolls from "./tabs/your-dolls.svelte";
+  import YourDolls from "./tabs/your-dolls/index.svelte";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 </script>
 
