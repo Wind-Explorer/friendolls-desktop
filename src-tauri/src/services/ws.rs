@@ -39,6 +39,9 @@ impl WS_EVENT {
     pub const FRIEND_DOLL_CREATED: &str = "friend-doll-created";
     pub const FRIEND_DOLL_UPDATED: &str = "friend-doll-updated";
     pub const FRIEND_DOLL_DELETED: &str = "friend-doll-deleted";
+    pub const DOLL_CREATED: &str = "doll.created";
+    pub const DOLL_UPDATED: &str = "doll.updated";
+    pub const DOLL_DELETED: &str = "doll.deleted";
 }
 
 fn on_friend_request_received(payload: Payload, _socket: RawClient) {
@@ -184,6 +187,54 @@ fn on_friend_doll_deleted(payload: Payload, _socket: RawClient) {
     }
 }
 
+fn on_doll_created(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                info!("Received doll.created event: {:?}", first_value);
+                 if let Err(e) = get_app_handle().emit(WS_EVENT::DOLL_CREATED, first_value) {
+                    error!("Failed to emit doll.created event: {:?}", e);
+                }
+            } else {
+                 info!("Received doll.created event with empty payload");
+            }
+        }
+         _ => error!("Received unexpected payload format for doll.created"),
+    }
+}
+
+fn on_doll_updated(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                info!("Received doll.updated event: {:?}", first_value);
+                if let Err(e) = get_app_handle().emit(WS_EVENT::DOLL_UPDATED, first_value) {
+                    error!("Failed to emit doll.updated event: {:?}", e);
+                }
+            } else {
+                 info!("Received doll.updated event with empty payload");
+            }
+        }
+        _ => error!("Received unexpected payload format for doll.updated"),
+    }
+}
+
+fn on_doll_deleted(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                info!("Received doll.deleted event: {:?}", first_value);
+                if let Err(e) = get_app_handle().emit(WS_EVENT::DOLL_DELETED, first_value) {
+                    error!("Failed to emit doll.deleted event: {:?}", e);
+                }
+            } else {
+                 info!("Received doll.deleted event with empty payload");
+            }
+        }
+        _ => error!("Received unexpected payload format for doll.deleted"),
+    }
+}
+
 pub async fn report_cursor_data(cursor_position: CursorPosition) {
     // Only attempt to get clients if lock_r succeeds (it should, but safety first)
     // and if clients are actually initialized.
@@ -272,6 +323,9 @@ pub async fn build_ws_client(
             .on(WS_EVENT::FRIEND_DOLL_CREATED, on_friend_doll_created)
             .on(WS_EVENT::FRIEND_DOLL_UPDATED, on_friend_doll_updated)
             .on(WS_EVENT::FRIEND_DOLL_DELETED, on_friend_doll_deleted)
+            .on(WS_EVENT::DOLL_CREATED, on_doll_created)
+            .on(WS_EVENT::DOLL_UPDATED, on_doll_updated)
+            .on(WS_EVENT::DOLL_DELETED, on_doll_deleted)
             .auth(json!({ "token": token }))
             .connect()
     })

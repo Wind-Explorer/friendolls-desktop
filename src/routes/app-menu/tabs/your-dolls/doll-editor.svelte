@@ -12,6 +12,7 @@
     outlineColor: string,
   ) => void;
   export let onCancel: () => void;
+  export let standalone = false;
 
   let name = initialName;
   let bodyColor = initialBodyColor;
@@ -29,9 +30,84 @@
   }
 </script>
 
-{#if isOpen}
-  <div class="modal modal-open">
-    <div class="modal-box">
+  {#if !standalone}
+    {#if isOpen}
+      <div class="modal modal-open">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg">
+            {#if mode === "create"}
+              Create New Doll
+            {:else}
+              Edit Doll
+            {/if}
+          </h3>
+          <div class="form-control w-full mt-4">
+            <label class="label">
+              <span class="label-text">Name</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Doll Name"
+              class="input input-bordered w-full"
+              bind:value={name}
+            />
+          </div>
+          <div class="flex justify-center mt-4">
+            <DollPreview {bodyColor} {outlineColor} />
+          </div>
+          <div class="form-control w-full mt-2">
+            <label class="label">
+              <span class="label-text">Body Color</span>
+            </label>
+            <div class="flex gap-2">
+              <input
+                type="color"
+                class="input input-bordered w-12 p-1 h-10"
+                bind:value={bodyColor}
+              />
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                bind:value={bodyColor}
+              />
+            </div>
+          </div>
+          <div class="form-control w-full mt-2">
+            <label class="label">
+              <span class="label-text">Outline Color</span>
+            </label>
+            <div class="flex gap-2">
+              <input
+                type="color"
+                class="input input-bordered w-12 p-1 h-10"
+                bind:value={outlineColor}
+              />
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                bind:value={outlineColor}
+              />
+            </div>
+          </div>
+          <div class="modal-action">
+            <button class="btn" on:click={onCancel}>Cancel</button>
+            <button
+              class="btn btn-primary"
+              on:click={handleSave}
+              disabled={!name.trim()}
+            >
+              {#if mode === "create"}
+                Create
+              {:else}
+                Save
+              {/if}
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+  {:else}
+    <div class="h-full w-full bg-base-100 p-4 flex flex-col">
       <h3 class="font-bold text-lg">
         {#if mode === "create"}
           Create New Doll
@@ -87,7 +163,7 @@
           />
         </div>
       </div>
-      <div class="modal-action">
+      <div class="mt-auto pt-4 flex justify-end gap-2">
         <button class="btn" on:click={onCancel}>Cancel</button>
         <button
           class="btn btn-primary"
@@ -102,5 +178,4 @@
         </button>
       </div>
     </div>
-  </div>
-{/if}
+  {/if}

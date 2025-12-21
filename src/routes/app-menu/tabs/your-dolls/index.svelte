@@ -1,27 +1,46 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
   import type { DollDto } from "../../../../types/bindings/DollDto";
   import type { UserProfile } from "../../../../types/bindings/UserProfile";
   import type { AppData } from "../../../../types/bindings/AppData";
-  import type { CreateDollDto } from "../../../../types/bindings/CreateDollDto";
-  import type { UpdateDollDto } from "../../../../types/bindings/UpdateDollDto";
   import DollsList from "./dolls-list.svelte";
-  import DollEditor from "./doll-editor.svelte";
 
   let dolls: DollDto[] = [];
   let user: UserProfile | null = null;
   let loading = false;
   let error: string | null = null;
-  let isEditorOpen = false;
-  let editorMode: "create" | "edit" = "create";
-  let editingDollId: string | null = null;
-  let editorInitialName = "";
-  let editorInitialBodyColor = "#FFFFFF";
-  let editorInitialOutlineColor = "#000000";
 
+  // We still keep the focus listener as a fallback, but the websocket events should handle most updates
   onMount(() => {
     refreshDolls();
+    
+    // Set up listeners
+    const unlistenCreated = listen("doll.created", (event) => {
+        console.log("Received doll.created event", event);
+        refreshDolls();
+    });
+
+    const unlistenUpdated = listen("doll.updated", (event) => {
+        console.log("Received doll.updated event", event);
+        refreshDolls();
+    });
+
+    const unlistenDeleted = listen("doll.deleted", (event) => {
+        console.log("Received doll.deleted event", event);
+        refreshDolls();
+    });
+
+    // Listen for focus events to refresh data when returning from editor window
+    window.addEventListener("focus", refreshDolls);
+    
+    return async () => {
+      window.removeEventListener("focus", refreshDolls);
+      (await unlistenCreated)();
+      (await unlistenUpdated)();
+      (await unlistenDeleted)();
+    };
   });
 
   async function refreshDolls() {
@@ -39,86 +58,12 @@
     }
   }
 
-  function openCreateModal() {
-    editorMode = "create";
-    editorInitialName = "";
-    editorInitialBodyColor = "#FFFFFF";
-    editorInitialOutlineColor = "#000000";
-    isEditorOpen = true;
+  async function openCreateModal() {
+    await invoke("open_doll_editor_window", { dollId: null });
   }
 
-  function openEditModal(doll: DollDto) {
-    editorMode = "edit";
-    editingDollId = doll.id;
-    editorInitialName = doll.name;
-    editorInitialBodyColor = doll.configuration.colorScheme.body;
-    editorInitialOutlineColor = doll.configuration.colorScheme.outline;
-    isEditorOpen = true;
-  }
-
-  function closeEditor() {
-    isEditorOpen = false;
-    editingDollId = null;
-  }
-
-  async function handleSave(
-    name: string,
-    bodyColor: string,
-    outlineColor: string,
-  ) {
-    if (editorMode === "create") {
-      await handleCreateDoll(name, bodyColor, outlineColor);
-    } else {
-      await handleUpdateDoll(name, bodyColor, outlineColor);
-    }
-  }
-
-  async function handleCreateDoll(
-    name: string,
-    bodyColor: string,
-    outlineColor: string,
-  ) {
-    try {
-      const dto: CreateDollDto = {
-        name,
-        configuration: {
-          colorScheme: {
-            body: bodyColor,
-            outline: outlineColor,
-          },
-        },
-      };
-      await invoke("create_doll", { dto });
-      closeEditor();
-      await refreshDolls();
-    } catch (e) {
-      error = (e as Error)?.message ?? String(e);
-    }
-  }
-
-  async function handleUpdateDoll(
-    name: string,
-    bodyColor: string,
-    outlineColor: string,
-  ) {
-    if (!editingDollId) return;
-
-    try {
-      const dto: UpdateDollDto = {
-        name,
-        configuration: {
-          colorScheme: {
-            body: bodyColor,
-            outline: outlineColor,
-          },
-        },
-      };
-      await invoke("update_doll", { id: editingDollId, dto });
-      closeEditor();
-      await refreshDolls();
-    } catch (e) {
-      error = (e as Error)?.message ?? String(e);
-    }
+  async function openEditModal(doll: DollDto) {
+    await invoke("open_doll_editor_window", { dollId: doll.id });
   }
 
   async function handleSetActiveDoll(dollId: string) {
@@ -156,15 +101,5 @@
     onEditDoll={openEditModal}
     onSetActiveDoll={handleSetActiveDoll}
     onRemoveActiveDoll={handleRemoveActiveDoll}
-  />
-
-  <DollEditor
-    isOpen={isEditorOpen}
-    mode={editorMode}
-    initialName={editorInitialName}
-    initialBodyColor={editorInitialBodyColor}
-    initialOutlineColor={editorInitialOutlineColor}
-    onSave={handleSave}
-    onCancel={closeEditor}
   />
 </div>

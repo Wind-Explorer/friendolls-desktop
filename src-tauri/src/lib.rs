@@ -7,6 +7,7 @@ use crate::{
     },
     remotes::user::UserRemote,
     services::cursor::start_cursor_tracking,
+    services::doll_editor::open_doll_editor_window,
     state::{init_app_data, FDOLL},
 };
 use tauri::async_runtime;
@@ -189,6 +190,14 @@ async fn get_dolls() -> Result<Vec<DollDto>, String> {
 }
 
 #[tauri::command]
+async fn get_doll(id: String) -> Result<DollDto, String> {
+    DollsRemote::new()
+        .get_doll(&id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn create_doll(dto: CreateDollDto) -> Result<DollDto, String> {
     DollsRemote::new()
         .create_doll(dto)
@@ -268,13 +277,15 @@ pub fn run() {
             deny_friend_request,
             unfriend,
             get_dolls,
+            get_doll,
             create_doll,
             update_doll,
             delete_doll,
             set_active_doll,
             remove_active_doll,
             recolor_gif_base64,
-            quit_app
+            quit_app,
+            open_doll_editor_window
         ])
         .setup(|app| {
             APP_HANDLE

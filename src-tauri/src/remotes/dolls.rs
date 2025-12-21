@@ -105,6 +105,30 @@ impl DollsRemote {
         Ok(dolls)
     }
 
+    pub async fn get_doll(&self, id: &str) -> Result<DollDto, RemoteError> {
+        let url = format!("{}/dolls/{}", self.base_url, id);
+        tracing::info!("DollsRemote::get_doll - Sending GET request to URL: {}", url);
+        
+        let resp = with_auth(self.client.get(url)).await.send().await?;
+
+        let resp = resp.error_for_status().map_err(|e| {
+            tracing::error!("DollsRemote::get_doll - HTTP error: {}", e);
+            e
+        })?;
+
+        let text = resp.text().await.map_err(|e| {
+            tracing::error!("DollsRemote::get_doll - Failed to read response text: {}", e);
+            e
+        })?;
+
+        let doll: DollDto = serde_json::from_str(&text).map_err(|e| {
+            tracing::error!("DollsRemote::get_doll - Failed to parse JSON: {}", e);
+            e
+        })?;
+        
+        Ok(doll)
+    }
+
     pub async fn create_doll(&self, dto: CreateDollDto) -> Result<DollDto, RemoteError> {
         let url = format!("{}/dolls", self.base_url);
         tracing::info!("DollsRemote::create_doll - Sending POST request to URL: {}", url);
