@@ -20,7 +20,7 @@ pub fn open_app_menu_window() {
         tauri::WebviewUrl::App("/app-menu".into()),
     )
     .title("Friendolls")
-    .inner_size(600.0, 500.0)
+    .inner_size(400.0, 550.0)
     .resizable(true)
     .decorations(true)
     .transparent(false)
