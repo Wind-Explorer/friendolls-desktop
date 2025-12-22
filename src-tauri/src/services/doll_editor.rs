@@ -3,7 +3,6 @@ use tracing::{error, info};
 
 use crate::get_app_handle;
 
-static DOLL_EDITOR_WINDOW_LABEL: &str = "doll_editor";
 static APP_MENU_WINDOW_LABEL: &str = "app_menu";
 
 #[tauri::command]
@@ -14,8 +13,15 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
     let _ = app_handle.run_on_main_thread(move || {
         let app_handle = get_app_handle();
 
+        // Construct a unique window label
+        let window_label = if let Some(ref id) = doll_id {
+            format!("doll_editor_{}", id)
+        } else {
+            "doll_editor_create".to_string()
+        };
+
         // Check if the window already exists
-        let existing_window = app_handle.get_webview_window(DOLL_EDITOR_WINDOW_LABEL);
+        let existing_window = app_handle.get_webview_window(&window_label);
         if let Some(window) = existing_window {
             // If it exists, we might want to reload it with new params or just focus it
             if let Err(e) = window.set_focus() {
@@ -44,14 +50,14 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
 
         let mut builder = tauri::WebviewWindowBuilder::new(
             app_handle,
-            DOLL_EDITOR_WINDOW_LABEL,
+            &window_label,
             tauri::WebviewUrl::App(url_path.into()),
         )
         .title("Doll Editor")
         .inner_size(300.0, 400.0)
         .resizable(false)
         .decorations(true)
-        .transparent(true)
+        .transparent(false)
         .shadow(true)
         .visible(true)
         .skip_taskbar(false)
@@ -73,12 +79,12 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
 
         match builder.build() {
             Ok(window) => {
-                info!("{} window builder succeeded", DOLL_EDITOR_WINDOW_LABEL);
-                #[cfg(debug_assertions)]
-                window.open_devtools();
+                info!("{} window builder succeeded", window_label);
+                // #[cfg(debug_assertions)]
+                // window.open_devtools();
             }
             Err(e) => {
-                error!("Failed to build {} window: {}", DOLL_EDITOR_WINDOW_LABEL, e);
+                error!("Failed to build {} window: {}", window_label, e);
             }
         };
     });

@@ -15,46 +15,56 @@
   // We still keep the focus listener as a fallback, but the websocket events should handle most updates
   onMount(() => {
     refreshDolls();
-    
+
     // Set up listeners
-    const unlistenCreated = listen("doll.created", (event) => {
-        console.log("Received doll.created event", event);
-        refreshDolls();
+    const unlistenCreated = listen("doll_created", (event) => {
+      console.log("Received doll_created event", event);
+      refreshDolls();
     });
 
-    const unlistenUpdated = listen("doll.updated", (event) => {
-        console.log("Received doll.updated event", event);
-        refreshDolls();
+    const unlistenUpdated = listen("doll_updated", (event) => {
+      console.log("Received doll_updated event", event);
+      refreshDolls();
     });
 
-    const unlistenDeleted = listen("doll.deleted", (event) => {
-        console.log("Received doll.deleted event", event);
-        refreshDolls();
+    const unlistenDeleted = listen("doll_deleted", (event) => {
+      console.log("Received doll_deleted event", event);
+      refreshDolls();
     });
 
-    // Listen for focus events to refresh data when returning from editor window
-    window.addEventListener("focus", refreshDolls);
-    
     return async () => {
-      window.removeEventListener("focus", refreshDolls);
       (await unlistenCreated)();
       (await unlistenUpdated)();
       (await unlistenDeleted)();
     };
   });
 
+  let isRefreshing = false;
+  let refreshQueued = false;
+
   async function refreshDolls() {
+    if (isRefreshing) {
+      refreshQueued = true;
+      return;
+    }
+
+    isRefreshing = true;
     loading = true;
+
     try {
-      dolls = await invoke("get_dolls");
-      // Use refresh_app_data to ensure we get the latest user state (including activeDollId)
-      // from the server, as the local state might be stale after updates.
-      const appData: AppData = await invoke("refresh_app_data");
-      user = appData.user;
-    } catch (e) {
-      error = (e as Error)?.message ?? String(e);
+      do {
+        refreshQueued = false;
+        try {
+          dolls = await invoke("get_dolls");
+          const appData: AppData = await invoke("refresh_app_data");
+          user = appData.user;
+        } catch (e) {
+          error = (e as Error)?.message ?? String(e);
+        }
+      } while (refreshQueued);
     } finally {
       loading = false;
+      isRefreshing = false;
     }
   }
 

@@ -23,7 +23,7 @@ pub fn open_app_menu_window() {
     .inner_size(600.0, 500.0)
     .resizable(true)
     .decorations(true)
-    .transparent(true)
+    .transparent(false)
     .shadow(true)
     .visible(true)
     .skip_taskbar(false)

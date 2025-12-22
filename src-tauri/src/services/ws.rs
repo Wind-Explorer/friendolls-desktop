@@ -39,9 +39,9 @@ impl WS_EVENT {
     pub const FRIEND_DOLL_CREATED: &str = "friend-doll-created";
     pub const FRIEND_DOLL_UPDATED: &str = "friend-doll-updated";
     pub const FRIEND_DOLL_DELETED: &str = "friend-doll-deleted";
-    pub const DOLL_CREATED: &str = "doll.created";
-    pub const DOLL_UPDATED: &str = "doll.updated";
-    pub const DOLL_DELETED: &str = "doll.deleted";
+    pub const DOLL_CREATED: &str = "doll_created";
+    pub const DOLL_UPDATED: &str = "doll_updated";
+    pub const DOLL_DELETED: &str = "doll_deleted";
 }
 
 fn on_friend_request_received(payload: Payload, _socket: RawClient) {

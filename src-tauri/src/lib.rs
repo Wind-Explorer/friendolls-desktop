@@ -11,7 +11,7 @@ use crate::{
     state::{init_app_data, FDOLL},
 };
 use tauri::async_runtime;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tracing_subscriber::{self, util::SubscriberInitExt};
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
@@ -199,18 +199,33 @@ async fn get_doll(id: String) -> Result<DollDto, String> {
 
 #[tauri::command]
 async fn create_doll(dto: CreateDollDto) -> Result<DollDto, String> {
-    DollsRemote::new()
+    let result = DollsRemote::new()
         .create_doll(dto)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Emit event locally so the app knows about the update immediately
+    // The websocket event will also come in, but this makes the UI snappy
+    if let Err(e) = get_app_handle().emit("doll_created", &result) {
+        tracing::error!("Failed to emit local doll.created event: {}", e);
+    }
+    
+    Ok(result)
 }
 
 #[tauri::command]
 async fn update_doll(id: String, dto: UpdateDollDto) -> Result<DollDto, String> {
-    DollsRemote::new()
+    let result = DollsRemote::new()
         .update_doll(&id, dto)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Emit event locally
+    if let Err(e) = get_app_handle().emit("doll_updated", &result) {
+        tracing::error!("Failed to emit local doll.updated event: {}", e);
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -218,7 +233,24 @@ async fn delete_doll(id: String) -> Result<(), String> {
     DollsRemote::new()
         .delete_doll(&id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Emit event locally
+    // We need to send something that matches the structure expected by the frontend
+    // The WS event sends the full object, but for deletion usually ID is enough or the object itself
+    // Let's send a dummy object with just the ID if we can, or just the ID if the frontend handles it.
+    // Looking at WS code: on_doll_deleted emits the payload it gets.
+    // Ideally we'd return the deleted doll from the backend but delete usually returns empty.
+    // Let's just emit the ID wrapped in an object or similar if needed.
+    // Actually, let's check what the frontend expects.
+    // src/routes/app-menu/tabs/your-dolls/index.svelte just listens and calls refreshDolls(), 
+    // it doesn't use the payload. So any payload is fine.
+    
+    if let Err(e) = get_app_handle().emit("doll_deleted", ()) {
+        tracing::error!("Failed to emit local doll.deleted event: {}", e);
+    }
+
+    Ok(())
 }
 
 #[tauri::command]

@@ -1,21 +1,20 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { page } from "$app/stores";
   import { invoke } from "@tauri-apps/api/core";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-  import DollEditor from "./doll-editor.svelte";
   import type { DollDto } from "../../../../types/bindings/DollDto";
   import type { CreateDollDto } from "../../../../types/bindings/CreateDollDto";
   import type { UpdateDollDto } from "../../../../types/bindings/UpdateDollDto";
+  import DollPreview from "../DollPreview.svelte";
 
   let mode: "create" | "edit" = "create";
   let dollId: string | null = null;
   let loading = true;
   let error: string | null = null;
 
-  let initialName = "";
-  let initialBodyColor = "#FFFFFF";
-  let initialOutlineColor = "#000000";
+  let name = "";
+  let bodyColor = "#FFFFFF";
+  let outlineColor = "#000000";
 
   onMount(async () => {
     // Check URL search params for ID
@@ -36,9 +35,9 @@
     loading = true;
     try {
       const doll: DollDto = await invoke("get_doll", { id });
-      initialName = doll.name;
-      initialBodyColor = doll.configuration.colorScheme.body;
-      initialOutlineColor = doll.configuration.colorScheme.outline;
+      name = doll.name;
+      bodyColor = doll.configuration.colorScheme.body;
+      outlineColor = doll.configuration.colorScheme.outline;
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
       console.error("Failed to fetch doll:", e);
@@ -47,11 +46,9 @@
     }
   }
 
-  async function handleSave(
-    name: string,
-    bodyColor: string,
-    outlineColor: string,
-  ) {
+  async function handleSave() {
+    if (!name.trim()) return;
+
     try {
       if (mode === "create") {
         const dto: CreateDollDto = {
@@ -90,7 +87,7 @@
   }
 </script>
 
-<div class="w-screen h-screen bg-base-100">
+<div class="w-screen h-screen bg-base-100 flex flex-col">
   {#if loading}
     <div class="flex h-full items-center justify-center">
       <span class="loading loading-spinner loading-lg"></span>
@@ -103,15 +100,69 @@
       <button class="btn btn-sm mt-4" on:click={handleCancel}>Close</button>
     </div>
   {:else}
-    <DollEditor
-      isOpen={true}
-      standalone={true}
-      {mode}
-      {initialName}
-      {initialBodyColor}
-      {initialOutlineColor}
-      onSave={handleSave}
-      onCancel={handleCancel}
-    />
+    <div class="h-full w-full p-4 flex flex-col">
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Name</span>
+        </label>
+        <input
+          type="text"
+          placeholder="Doll Name"
+          class="input input-bordered w-full"
+          bind:value={name}
+        />
+      </div>
+      <div class="flex justify-center mt-4">
+        <DollPreview {bodyColor} {outlineColor} />
+      </div>
+      <div class="form-control w-full mt-2">
+        <label class="label">
+          <span class="label-text">Body Color</span>
+        </label>
+        <div class="flex gap-2">
+          <input
+            type="color"
+            class="input input-bordered w-12 p-1 h-10"
+            bind:value={bodyColor}
+          />
+          <input
+            type="text"
+            class="input input-bordered w-full"
+            bind:value={bodyColor}
+          />
+        </div>
+      </div>
+      <div class="form-control w-full mt-2">
+        <label class="label">
+          <span class="label-text">Outline Color</span>
+        </label>
+        <div class="flex gap-2">
+          <input
+            type="color"
+            class="input input-bordered w-12 p-1 h-10"
+            bind:value={outlineColor}
+          />
+          <input
+            type="text"
+            class="input input-bordered w-full"
+            bind:value={outlineColor}
+          />
+        </div>
+      </div>
+      <div class="mt-auto pt-4 flex justify-end gap-2">
+        <button class="btn" on:click={handleCancel}>Cancel</button>
+        <button
+          class="btn btn-primary"
+          on:click={handleSave}
+          disabled={!name.trim()}
+        >
+          {#if mode === "create"}
+            Create
+          {:else}
+            Save
+          {/if}
+        </button>
+      </div>
+    </div>
   {/if}
 </div>
