@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
 
-use crate::{lock_r, services::auth::with_auth, state::FDOLL};
+use crate::{lock_r, remotes::dolls::DollDto, services::auth::with_auth, state::FDOLL};
 
 #[derive(Error, Debug)]
 pub enum RemoteError {
@@ -22,7 +22,7 @@ pub struct UserBasicDto {
     pub id: String,
     pub name: String,
     pub username: Option<String>,
-    pub active_doll_id: Option<String>,
+    pub active_doll: Option<DollDto>,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]

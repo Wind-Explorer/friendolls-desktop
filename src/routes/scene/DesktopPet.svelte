@@ -1,10 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import onekoGif from "../../assets/oneko/oneko.gif";
 
   export let targetX = 0;
   export let targetY = 0;
   export let name = "";
+  export let bodyColor: string | undefined = undefined;
+  export let outlineColor: string | undefined = undefined;
 
   let nekoPosX = 32;
   let nekoPosY = 32;
@@ -17,6 +20,35 @@
   const nekoSpeed = 10;
   let animationFrameId: number;
   let lastFrameTimestamp: number;
+
+  let spriteSheetUrl = onekoGif; // Default to standard GIF
+  let isCustomSprite = false;
+
+  // Watch for color changes to regenerate sprite
+  $: if (bodyColor && outlineColor) {
+    updateSpriteSheet(bodyColor, outlineColor);
+  } else {
+    // Revert to default if colors are missing
+    spriteSheetUrl = onekoGif;
+    isCustomSprite = false;
+  }
+
+  async function updateSpriteSheet(body: string, outline: string) {
+    try {
+      const result = await invoke<string>("recolor_gif_base64", {
+        whiteColorHex: body,
+        blackColorHex: outline,
+        applyTexture: true,
+      });
+      spriteSheetUrl = `data:image/gif;base64,${result}`;
+      isCustomSprite = true;
+    } catch (e) {
+      console.error("Failed to recolor sprite:", e);
+      // Fallback
+      spriteSheetUrl = onekoGif;
+      isCustomSprite = false;
+    }
+  }
 
   // Sprite constants from oneko.js
   const spriteSets: Record<string, [number, number][]> = {
@@ -231,7 +263,7 @@
     style="
       width: 32px;
       height: 32px;
-      background-image: url({onekoGif});
+      background-image: url('{spriteSheetUrl}');
       background-position: {currentSprite.x}px {currentSprite.y}px;
     "
   ></div>

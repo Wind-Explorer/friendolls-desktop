@@ -1,4 +1,4 @@
-use rust_socketio::{ClientBuilder, Payload, RawClient};
+use rust_socketio::{ClientBuilder, Event, Payload, RawClient};
 use serde_json::json;
 use tauri::{async_runtime, Emitter};
 use tracing::{error, info};
@@ -39,9 +39,39 @@ impl WS_EVENT {
     pub const FRIEND_DOLL_CREATED: &str = "friend-doll-created";
     pub const FRIEND_DOLL_UPDATED: &str = "friend-doll-updated";
     pub const FRIEND_DOLL_DELETED: &str = "friend-doll-deleted";
+    pub const FRIEND_ACTIVE_DOLL_CHANGED: &str = "friend-active-doll-changed";
     pub const DOLL_CREATED: &str = "doll_created";
     pub const DOLL_UPDATED: &str = "doll_updated";
     pub const DOLL_DELETED: &str = "doll_deleted";
+    pub const CLIENT_INITIALIZE: &str = "client-initialize";
+    pub const INITIALIZED: &str = "initialized";
+}
+
+fn on_connected(_payload: Payload, socket: RawClient) {
+    info!("WebSocket connected. Sending initialization request.");
+    if let Err(e) = socket.emit(WS_EVENT::CLIENT_INITIALIZE, json!({})) {
+        error!("Failed to emit client-initialize: {:?}", e);
+    }
+}
+
+fn on_initialized(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                info!("Received initialized event: {:?}", first_value);
+                
+                // Mark WebSocket as initialized
+                let mut guard = lock_w!(FDOLL);
+                if let Some(clients) = guard.clients.as_mut() {
+                    clients.is_ws_initialized = true;
+                    info!("WebSocket marked as initialized and ready for business");
+                }
+            } else {
+                info!("Received initialized event with empty payload");
+            }
+        }
+        _ => error!("Received unexpected payload format for initialized"),
+    }
 }
 
 fn on_friend_request_received(payload: Payload, _socket: RawClient) {
@@ -154,10 +184,10 @@ fn on_friend_doll_created(payload: Payload, _socket: RawClient) {
                 info!("Received friend-doll-created event: {:?}", first_value);
                 // Future: Trigger re-fetch or emit to frontend
             } else {
-                 info!("Received friend-doll-created event with empty payload");
+                info!("Received friend-doll-created event with empty payload");
             }
         }
-         _ => error!("Received unexpected payload format for friend-doll-created"),
+        _ => error!("Received unexpected payload format for friend-doll-created"),
     }
 }
 
@@ -167,7 +197,7 @@ fn on_friend_doll_updated(payload: Payload, _socket: RawClient) {
             if let Some(first_value) = values.first() {
                 info!("Received friend-doll-updated event: {:?}", first_value);
             } else {
-                 info!("Received friend-doll-updated event with empty payload");
+                info!("Received friend-doll-updated event with empty payload");
             }
         }
         _ => error!("Received unexpected payload format for friend-doll-updated"),
@@ -180,10 +210,33 @@ fn on_friend_doll_deleted(payload: Payload, _socket: RawClient) {
             if let Some(first_value) = values.first() {
                 info!("Received friend-doll-deleted event: {:?}", first_value);
             } else {
-                 info!("Received friend-doll-deleted event with empty payload");
+                info!("Received friend-doll-deleted event with empty payload");
             }
         }
         _ => error!("Received unexpected payload format for friend-doll-deleted"),
+    }
+}
+
+fn on_friend_active_doll_changed(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                info!(
+                    "Received friend-active-doll-changed event: {:?}",
+                    first_value
+                );
+                if let Err(e) =
+                    get_app_handle().emit(WS_EVENT::FRIEND_ACTIVE_DOLL_CHANGED, first_value)
+                {
+                    error!("Failed to emit friend-active-doll-changed event: {:?}", e);
+                } else {
+                    info!("Emitted friend-active-doll-changed to frontend");
+                }
+            } else {
+                info!("Received friend-active-doll-changed event with empty payload");
+            }
+        }
+        _ => error!("Received unexpected payload format for friend-active-doll-changed"),
     }
 }
 
@@ -192,14 +245,14 @@ fn on_doll_created(payload: Payload, _socket: RawClient) {
         Payload::Text(values) => {
             if let Some(first_value) = values.first() {
                 info!("Received doll.created event: {:?}", first_value);
-                 if let Err(e) = get_app_handle().emit(WS_EVENT::DOLL_CREATED, first_value) {
+                if let Err(e) = get_app_handle().emit(WS_EVENT::DOLL_CREATED, first_value) {
                     error!("Failed to emit doll.created event: {:?}", e);
                 }
             } else {
-                 info!("Received doll.created event with empty payload");
+                info!("Received doll.created event with empty payload");
             }
         }
-         _ => error!("Received unexpected payload format for doll.created"),
+        _ => error!("Received unexpected payload format for doll.created"),
     }
 }
 
@@ -212,7 +265,7 @@ fn on_doll_updated(payload: Payload, _socket: RawClient) {
                     error!("Failed to emit doll.updated event: {:?}", e);
                 }
             } else {
-                 info!("Received doll.updated event with empty payload");
+                info!("Received doll.updated event with empty payload");
             }
         }
         _ => error!("Received unexpected payload format for doll.updated"),
@@ -228,7 +281,7 @@ fn on_doll_deleted(payload: Payload, _socket: RawClient) {
                     error!("Failed to emit doll.deleted event: {:?}", e);
                 }
             } else {
-                 info!("Received doll.deleted event with empty payload");
+                info!("Received doll.deleted event with empty payload");
             }
         }
         _ => error!("Received unexpected payload format for doll.deleted"),
@@ -240,11 +293,15 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
     // and if clients are actually initialized.
     let client_opt = {
         let guard = lock_r!(FDOLL);
-        guard
-            .clients
-            .as_ref()
-            .and_then(|c| c.ws_client.as_ref())
-            .cloned()
+        if let Some(clients) = &guard.clients {
+            if clients.is_ws_initialized {
+                clients.ws_client.as_ref().cloned()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     };
 
     if let Some(client) = client_opt {
@@ -261,9 +318,7 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
             Err(e) => error!("Failed to execute blocking task for cursor report: {}", e),
         }
     } else {
-        // Quietly fail if client is not ready (e.g. during startup/shutdown)
-        // or debug log it.
-        // debug!("WebSocket client not ready to report cursor data");
+        // Quietly fail if client is not ready (e.g. during startup/shutdown or before initialization)
     }
 }
 
@@ -323,9 +378,15 @@ pub async fn build_ws_client(
             .on(WS_EVENT::FRIEND_DOLL_CREATED, on_friend_doll_created)
             .on(WS_EVENT::FRIEND_DOLL_UPDATED, on_friend_doll_updated)
             .on(WS_EVENT::FRIEND_DOLL_DELETED, on_friend_doll_deleted)
+            .on(
+                WS_EVENT::FRIEND_ACTIVE_DOLL_CHANGED,
+                on_friend_active_doll_changed,
+            )
             .on(WS_EVENT::DOLL_CREATED, on_doll_created)
             .on(WS_EVENT::DOLL_UPDATED, on_doll_updated)
             .on(WS_EVENT::DOLL_DELETED, on_doll_deleted)
+            .on(WS_EVENT::INITIALIZED, on_initialized)
+            .on(Event::Connect, on_connected)
             .auth(json!({ "token": token }))
             .connect()
     })

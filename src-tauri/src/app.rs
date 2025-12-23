@@ -29,6 +29,12 @@ async fn construct_app() {
     });
 
     let init_ws = tauri::async_runtime::spawn(async {
+        // init_ws_client calls get_access_token().await.
+        // During a fresh login, this token might be in the process of being saved/refreshed
+        // or the client initialization might be racing.
+        // However, construct_app is called after auth success, so tokens should be there.
+        // The issue might be that init_ws_client is idempotent but if called twice or early...
+        // Actually, init_ws_client handles creating the socket.
         crate::services::ws::init_ws_client().await;
     });
 

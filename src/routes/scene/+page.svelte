@@ -2,6 +2,7 @@
   import {
     cursorPositionOnScreen,
     friendsCursorPositions,
+    friendsActiveDolls,
   } from "../../events/cursor";
   import { appData } from "../../events/app-data";
 
@@ -13,6 +14,18 @@
   function getFriendName(userId: string) {
     const friend = $appData?.friends?.find((f) => f.friend.id === userId);
     return friend ? friend.friend.name : userId.slice(0, 8) + "...";
+  }
+
+  function getFriendDollConfig(userId: string) {
+      // 1. Try to get from real-time store (most up-to-date)
+      // Check if key exists to distinguish between "unknown" (undefined) and "no doll" (null)
+      if (userId in $friendsActiveDolls) {
+          return $friendsActiveDolls[userId]?.configuration;
+      }
+      
+      // 2. Fallback to initial app data (snapshot on load)
+      const friend = $appData?.friends?.find((f) => f.friend.id === userId);
+      return friend?.friend.activeDoll?.configuration;
   }
 </script>
 
@@ -66,11 +79,16 @@
   <div class="absolute inset-0 size-full">
     {#if Object.keys($friendsCursorPositions).length > 0}
       {#each Object.entries($friendsCursorPositions) as [userId, position]}
-        <DesktopPet
-          targetX={position.mapped.x * innerWidth}
-          targetY={position.mapped.y * innerHeight}
-          name={getFriendName(userId)}
-        />
+        {@const config = getFriendDollConfig(userId)}
+        {#if config}
+          <DesktopPet
+            targetX={position.mapped.x * innerWidth}
+            targetY={position.mapped.y * innerHeight}
+            name={getFriendName(userId)}
+            bodyColor={config?.colorScheme?.body}
+            outlineColor={config?.colorScheme?.outline}
+          />
+        {/if}
       {/each}
     {/if}
   </div>
