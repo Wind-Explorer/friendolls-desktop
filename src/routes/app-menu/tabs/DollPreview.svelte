@@ -106,7 +106,7 @@
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       generatePreview();
-    }, 300); // Adjust debounce delay as needed (300ms is a common starting point)
+    }, 100);
   }
 
   function updateFrame() {
