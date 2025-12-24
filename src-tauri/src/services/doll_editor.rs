@@ -122,7 +122,7 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
 
         // macOS Specific: Focus Trap Listener ID
         // We need to capture this to unlisten later.
-        
+
         let mut parent_focus_listener_id: Option<u32> = None;
 
         if let Some(parent) = app_handle.get_webview_window(APP_MENU_WINDOW_LABEL) {

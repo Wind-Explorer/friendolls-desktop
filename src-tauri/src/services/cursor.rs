@@ -135,11 +135,8 @@ async fn init_cursor_tracking() -> Result<(), String> {
         };
 
         let mapped = absolute_to_normalized(&raw);
-        
-        let positions = CursorPositions {
-            raw,
-            mapped,
-        };
+
+        let positions = CursorPositions { raw, mapped };
 
         // Send to consumer channel (non-blocking)
         if let Err(e) = tx.try_send(positions) {

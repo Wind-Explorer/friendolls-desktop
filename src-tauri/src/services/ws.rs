@@ -7,7 +7,7 @@ use crate::{
     get_app_handle, lock_r, lock_w,
     models::app_config::AppConfig,
     services::cursor::{normalized_to_absolute, CursorPosition, CursorPositions},
-    state::FDOLL,
+    state::{init_app_data_scoped, AppDataRefreshScope, FDOLL},
 };
 use serde::{Deserialize, Serialize};
 
@@ -59,7 +59,7 @@ fn on_initialized(payload: Payload, _socket: RawClient) {
         Payload::Text(values) => {
             if let Some(first_value) = values.first() {
                 info!("Received initialized event: {:?}", first_value);
-                
+
                 // Mark WebSocket as initialized
                 let mut guard = lock_w!(FDOLL);
                 if let Some(clients) = guard.clients.as_mut() {
@@ -93,6 +93,11 @@ fn on_friend_request_accepted(payload: Payload, _socket: RawClient) {
             if let Err(e) = get_app_handle().emit(WS_EVENT::FRIEND_REQUEST_ACCEPTED, str) {
                 error!("Failed to emit friend request accepted event: {:?}", e);
             }
+
+            // Refresh friends list only (optimized - no need to fetch user profile)
+            tauri::async_runtime::spawn(async {
+                init_app_data_scoped(AppDataRefreshScope::Friends).await;
+            });
         }
         _ => error!("Received unexpected payload format for friend request accepted"),
     }
@@ -117,6 +122,11 @@ fn on_unfriended(payload: Payload, _socket: RawClient) {
             if let Err(e) = get_app_handle().emit(WS_EVENT::UNFRIENDED, str) {
                 error!("Failed to emit unfriended event: {:?}", e);
             }
+
+            // Refresh friends list only (optimized - no need to fetch user profile)
+            tauri::async_runtime::spawn(async {
+                init_app_data_scoped(AppDataRefreshScope::Friends).await;
+            });
         }
         _ => error!("Received unexpected payload format for unfriended"),
     }
@@ -232,6 +242,12 @@ fn on_friend_active_doll_changed(payload: Payload, _socket: RawClient) {
                 } else {
                     info!("Emitted friend-active-doll-changed to frontend");
                 }
+
+                // Refresh friends list only (optimized - friend's active doll is part of friends data)
+                // Deduplicate burst events inside init_app_data_scoped.
+                tauri::async_runtime::spawn(async {
+                    init_app_data_scoped(AppDataRefreshScope::Friends).await;
+                });
             } else {
                 info!("Received friend-active-doll-changed event with empty payload");
             }
@@ -245,9 +261,11 @@ fn on_doll_created(payload: Payload, _socket: RawClient) {
         Payload::Text(values) => {
             if let Some(first_value) = values.first() {
                 info!("Received doll.created event: {:?}", first_value);
-                if let Err(e) = get_app_handle().emit(WS_EVENT::DOLL_CREATED, first_value) {
-                    error!("Failed to emit doll.created event: {:?}", e);
-                }
+
+                // Refresh dolls list
+                tauri::async_runtime::spawn(async {
+                    init_app_data_scoped(AppDataRefreshScope::Dolls).await;
+                });
             } else {
                 info!("Received doll.created event with empty payload");
             }
@@ -261,9 +279,31 @@ fn on_doll_updated(payload: Payload, _socket: RawClient) {
         Payload::Text(values) => {
             if let Some(first_value) = values.first() {
                 info!("Received doll.updated event: {:?}", first_value);
-                if let Err(e) = get_app_handle().emit(WS_EVENT::DOLL_UPDATED, first_value) {
-                    error!("Failed to emit doll.updated event: {:?}", e);
-                }
+
+                // Try to extract doll ID to check if it's the active doll
+                let doll_id = first_value.get("id").and_then(|v| v.as_str());
+
+                let is_active_doll = if let Some(id) = doll_id {
+                    let guard = lock_r!(FDOLL);
+                    guard
+                        .app_data
+                        .user
+                        .as_ref()
+                        .and_then(|u| u.active_doll_id.as_ref())
+                        .map(|active_id| active_id == id)
+                        .unwrap_or(false)
+                } else {
+                    false
+                };
+
+                // Refresh dolls + potentially User/Friends if active doll
+                tauri::async_runtime::spawn(async move {
+                    init_app_data_scoped(AppDataRefreshScope::Dolls).await;
+                    if is_active_doll {
+                        init_app_data_scoped(AppDataRefreshScope::User).await;
+                        init_app_data_scoped(AppDataRefreshScope::Friends).await;
+                    }
+                });
             } else {
                 info!("Received doll.updated event with empty payload");
             }
@@ -277,9 +317,31 @@ fn on_doll_deleted(payload: Payload, _socket: RawClient) {
         Payload::Text(values) => {
             if let Some(first_value) = values.first() {
                 info!("Received doll.deleted event: {:?}", first_value);
-                if let Err(e) = get_app_handle().emit(WS_EVENT::DOLL_DELETED, first_value) {
-                    error!("Failed to emit doll.deleted event: {:?}", e);
-                }
+
+                // Try to extract doll ID to check if it was the active doll
+                let doll_id = first_value.get("id").and_then(|v| v.as_str());
+
+                let is_active_doll = if let Some(id) = doll_id {
+                    let guard = lock_r!(FDOLL);
+                    guard
+                        .app_data
+                        .user
+                        .as_ref()
+                        .and_then(|u| u.active_doll_id.as_ref())
+                        .map(|active_id| active_id == id)
+                        .unwrap_or(false)
+                } else {
+                    false
+                };
+
+                // Refresh dolls + User/Friends if the deleted doll was active
+                tauri::async_runtime::spawn(async move {
+                    init_app_data_scoped(AppDataRefreshScope::Dolls).await;
+                    if is_active_doll {
+                        init_app_data_scoped(AppDataRefreshScope::User).await;
+                        init_app_data_scoped(AppDataRefreshScope::Friends).await;
+                    }
+                });
             } else {
                 info!("Received doll.deleted event with empty payload");
             }

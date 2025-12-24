@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::remotes::{friends::FriendshipResponseDto, user::UserProfile};
+use crate::remotes::{dolls::DollDto, friends::FriendshipResponseDto, user::UserProfile};
 
 #[derive(Serialize, Deserialize, Clone, Debug, TS)]
 #[ts(export)]
@@ -42,5 +42,6 @@ impl Default for SceneData {
 pub struct AppData {
     pub user: Option<UserProfile>,
     pub friends: Option<Vec<FriendshipResponseDto>>,
+    pub dolls: Option<Vec<DollDto>>,
     pub scene: SceneData,
 }

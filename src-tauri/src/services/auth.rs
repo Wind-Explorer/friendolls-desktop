@@ -633,6 +633,15 @@ where
                         if let Err(e) = save_auth_pass(&auth_pass) {
                             error!("Failed to save auth pass: {}", e);
                         }
+
+                        // Immediately refresh app data now that auth is available
+                        tauri::async_runtime::spawn(async {
+                            crate::state::init_app_data_scoped(
+                                crate::state::AppDataRefreshScope::All,
+                            )
+                            .await;
+                        });
+
                         on_success();
                     }
                     Err(e) => error!("Token exchange failed: {}", e),

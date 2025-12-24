@@ -1,72 +1,19 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { listen } from "@tauri-apps/api/event";
+  import { appData } from "../../../../events/app-data";
   import type { DollDto } from "../../../../types/bindings/DollDto";
   import type { UserProfile } from "../../../../types/bindings/UserProfile";
-  import type { AppData } from "../../../../types/bindings/AppData";
   import DollsList from "./dolls-list.svelte";
 
-  let dolls: DollDto[] = [];
-  let user: UserProfile | null = null;
   let loading = false;
   let error: string | null = null;
+  let user: UserProfile | null = null;
+  let initialLoading = true;
 
-  // We still keep the focus listener as a fallback, but the websocket events should handle most updates
-  onMount(() => {
-    refreshDolls();
-
-    // Set up listeners
-    const unlistenCreated = listen("doll_created", (event) => {
-      console.log("Received doll_created event", event);
-      refreshDolls();
-    });
-
-    const unlistenUpdated = listen("doll_updated", (event) => {
-      console.log("Received doll_updated event", event);
-      refreshDolls();
-    });
-
-    const unlistenDeleted = listen("doll_deleted", (event) => {
-      console.log("Received doll_deleted event", event);
-      refreshDolls();
-    });
-
-    return async () => {
-      (await unlistenCreated)();
-      (await unlistenUpdated)();
-      (await unlistenDeleted)();
-    };
-  });
-
-  let isRefreshing = false;
-  let refreshQueued = false;
-
-  async function refreshDolls() {
-    if (isRefreshing) {
-      refreshQueued = true;
-      return;
-    }
-
-    isRefreshing = true;
-    loading = true;
-
-    try {
-      do {
-        refreshQueued = false;
-        try {
-          dolls = await invoke("get_dolls");
-          const appData: AppData = await invoke("refresh_app_data");
-          user = appData.user;
-        } catch (e) {
-          error = (e as Error)?.message ?? String(e);
-        }
-      } while (refreshQueued);
-    } finally {
-      loading = false;
-      isRefreshing = false;
-    }
-  }
+  // Reactive - automatically updates when appData changes
+  $: dolls = $appData?.dolls ?? [];
+  $: user = $appData?.user ?? null;
+  $: initialLoading = $appData === null;
 
   async function openCreateModal() {
     await invoke("open_doll_editor_window", { dollId: null });
@@ -78,19 +25,25 @@
 
   async function handleSetActiveDoll(dollId: string) {
     try {
+      loading = true;
       await invoke("set_active_doll", { dollId });
-      await refreshDolls();
+      // No manual refresh needed - backend will refresh and emit app-data-refreshed
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
+    } finally {
+      loading = false;
     }
   }
 
   async function handleRemoveActiveDoll() {
     try {
+      loading = true;
       await invoke("remove_active_doll");
-      await refreshDolls();
+      // No manual refresh needed - backend will refresh and emit app-data-refreshed
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
+    } finally {
+      loading = false;
     }
   }
 </script>
@@ -106,7 +59,7 @@
   <DollsList
     {dolls}
     {user}
-    {loading}
+    loading={loading || initialLoading}
     {error}
     onEditDoll={openEditModal}
     onSetActiveDoll={handleSetActiveDoll}

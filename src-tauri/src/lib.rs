@@ -6,12 +6,11 @@ use crate::{
         UserBasicDto,
     },
     remotes::user::UserRemote,
-    services::cursor::start_cursor_tracking,
-    services::doll_editor::open_doll_editor_window,
-    state::{init_app_data, FDOLL},
+    services::{cursor::start_cursor_tracking, doll_editor::open_doll_editor_window},
+    state::{init_app_data, init_app_data_scoped, AppDataRefreshScope, FDOLL},
 };
 use tauri::async_runtime;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 use tracing_subscriber::{self, util::SubscriberInitExt};
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
@@ -204,12 +203,11 @@ async fn create_doll(dto: CreateDollDto) -> Result<DollDto, String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    // Emit event locally so the app knows about the update immediately
-    // The websocket event will also come in, but this makes the UI snappy
-    if let Err(e) = get_app_handle().emit("doll_created", &result) {
-        tracing::error!("Failed to emit local doll.created event: {}", e);
-    }
-    
+    // Refresh dolls list in background (deduped inside init_app_data_scoped)
+    async_runtime::spawn(async {
+        init_app_data_scoped(AppDataRefreshScope::Dolls).await;
+    });
+
     Ok(result)
 }
 
@@ -220,10 +218,26 @@ async fn update_doll(id: String, dto: UpdateDollDto) -> Result<DollDto, String> 
         .await
         .map_err(|e| e.to_string())?;
 
-    // Emit event locally
-    if let Err(e) = get_app_handle().emit("doll_updated", &result) {
-        tracing::error!("Failed to emit local doll.updated event: {}", e);
-    }
+    // Check if this was the active doll (after update completes to avoid stale reads)
+    let is_active_doll = {
+        let guard = lock_r!(FDOLL);
+        guard
+            .app_data
+            .user
+            .as_ref()
+            .and_then(|u| u.active_doll_id.as_ref())
+            .map(|active_id| active_id == &id)
+            .unwrap_or(false)
+    };
+
+    // Refresh dolls list + User/Friends if this was the active doll
+    async_runtime::spawn(async move {
+        init_app_data_scoped(AppDataRefreshScope::Dolls).await;
+        if is_active_doll {
+            init_app_data_scoped(AppDataRefreshScope::User).await;
+            init_app_data_scoped(AppDataRefreshScope::Friends).await;
+        }
+    });
 
     Ok(result)
 }
@@ -235,20 +249,26 @@ async fn delete_doll(id: String) -> Result<(), String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    // Emit event locally
-    // We need to send something that matches the structure expected by the frontend
-    // The WS event sends the full object, but for deletion usually ID is enough or the object itself
-    // Let's send a dummy object with just the ID if we can, or just the ID if the frontend handles it.
-    // Looking at WS code: on_doll_deleted emits the payload it gets.
-    // Ideally we'd return the deleted doll from the backend but delete usually returns empty.
-    // Let's just emit the ID wrapped in an object or similar if needed.
-    // Actually, let's check what the frontend expects.
-    // src/routes/app-menu/tabs/your-dolls/index.svelte just listens and calls refreshDolls(), 
-    // it doesn't use the payload. So any payload is fine.
-    
-    if let Err(e) = get_app_handle().emit("doll_deleted", ()) {
-        tracing::error!("Failed to emit local doll.deleted event: {}", e);
-    }
+    // Check if this was the active doll (after delete completes to avoid stale reads)
+    let is_active_doll = {
+        let guard = lock_r!(FDOLL);
+        guard
+            .app_data
+            .user
+            .as_ref()
+            .and_then(|u| u.active_doll_id.as_ref())
+            .map(|active_id| active_id == &id)
+            .unwrap_or(false)
+    };
+
+    // Refresh dolls list + User/Friends if the deleted doll was active
+    async_runtime::spawn(async move {
+        init_app_data_scoped(AppDataRefreshScope::Dolls).await;
+        if is_active_doll {
+            init_app_data_scoped(AppDataRefreshScope::User).await;
+            init_app_data_scoped(AppDataRefreshScope::Friends).await;
+        }
+    });
 
     Ok(())
 }
@@ -258,7 +278,16 @@ async fn set_active_doll(doll_id: String) -> Result<(), String> {
     UserRemote::new()
         .set_active_doll(&doll_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Refresh User (for active_doll_id) + Friends (so friends see your active doll)
+    // We don't need to refresh Dolls since the doll itself hasn't changed
+    async_runtime::spawn(async {
+        init_app_data_scoped(AppDataRefreshScope::User).await;
+        init_app_data_scoped(AppDataRefreshScope::Friends).await;
+    });
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -266,7 +295,15 @@ async fn remove_active_doll() -> Result<(), String> {
     UserRemote::new()
         .remove_active_doll()
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Refresh User (for active_doll_id) + Friends (so friends see your doll is gone)
+    async_runtime::spawn(async {
+        init_app_data_scoped(AppDataRefreshScope::User).await;
+        init_app_data_scoped(AppDataRefreshScope::Friends).await;
+    });
+
+    Ok(())
 }
 
 #[tauri::command]
