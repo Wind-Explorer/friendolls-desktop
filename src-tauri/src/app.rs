@@ -1,11 +1,13 @@
 use std::time::Duration;
+
 use tokio::time::{sleep, Instant};
 use tracing::info;
 
 use crate::{
     services::{
-        auth::get_tokens,
+        auth::{get_access_token, get_tokens},
         scene::{close_splash_window, open_scene_window, open_splash_window},
+        ws::init_ws_client,
     },
     state::init_app_data,
     system_tray::init_system_tray,
@@ -16,30 +18,31 @@ pub async fn start_fdoll() {
     bootstrap().await;
 }
 
+async fn init_ws_after_auth() {
+    const MAX_ATTEMPTS: u8 = 5;
+    const BACKOFF: Duration = Duration::from_millis(300);
+
+    for attempt in 1..=MAX_ATTEMPTS {
+        if get_access_token().await.is_some() {
+            init_ws_client().await;
+            return;
+        }
+
+        sleep(BACKOFF).await;
+    }
+}
+
 async fn construct_app() {
     open_splash_window();
 
     // Record start time for minimum splash duration
     let start = Instant::now();
 
-    // Spawn initialization tasks in parallel
-    // We want to wait for them to finish, but they run concurrently
-    let init_data = tauri::async_runtime::spawn(async {
-        init_app_data().await;
-    });
+    // Initialize app data first so we only start WebSocket after auth is fully available
+    init_app_data().await;
 
-    let init_ws = tauri::async_runtime::spawn(async {
-        // init_ws_client calls get_access_token().await.
-        // During a fresh login, this token might be in the process of being saved/refreshed
-        // or the client initialization might be racing.
-        // However, construct_app is called after auth success, so tokens should be there.
-        // The issue might be that init_ws_client is idempotent but if called twice or early...
-        // Actually, init_ws_client handles creating the socket.
-        crate::services::ws::init_ws_client().await;
-    });
-
-    // Wait for both to complete
-    let _ = tokio::join!(init_data, init_ws);
+    // Initialize WebSocket client after we know auth is present
+    init_ws_after_auth().await;
 
     // Ensure splash stays visible for at least 3 seconds
     let elapsed = start.elapsed();
@@ -54,16 +57,15 @@ async fn construct_app() {
 
 pub async fn bootstrap() {
     match get_tokens().await {
-        Some(_) => {
-            info!("User session restored");
+        Some(tokens) => {
+            info!("Tokens found in keyring - restoring user session");
             construct_app().await;
         }
         None => {
-            info!("No active session, user needs to authenticate");
+            info!("No active session found - user needs to authenticate");
             match crate::services::auth::init_auth_code_retrieval(|| {
                 info!("Authentication successful, creating scene...");
                 tauri::async_runtime::spawn(async {
-                    info!("Creating scene after auth success...");
                     construct_app().await;
                 });
             }) {

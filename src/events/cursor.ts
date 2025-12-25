@@ -25,7 +25,9 @@ type FriendCursorData = {
 // The exported store will only expose the position part to consumers,
 // but internally we manage the full data.
 // Actually, it's easier if we just export the positions and manage state internally.
-export let friendsCursorPositions = writable<Record<string, CursorPositions>>({});
+export let friendsCursorPositions = writable<Record<string, CursorPositions>>(
+  {},
+);
 export let friendsActiveDolls = writable<Record<string, DollDto | null>>({});
 
 let unlistenCursor: UnlistenFn | null = null;
@@ -90,10 +92,7 @@ export async function initCursorTracking() {
           try {
             payload = JSON.parse(payload);
           } catch (e) {
-            console.error(
-              "[Cursor] Failed to parse friend disconnected payload:",
-              e,
-            );
+            console.error("Failed to parse friend disconnected payload:", e);
             return;
           }
         }
@@ -129,7 +128,7 @@ export async function initCursorTracking() {
           data = JSON.parse(data);
         } catch (e) {
           console.error(
-            "[Cursor] Failed to parse friend-active-doll-changed payload:",
+            "Failed to parse friend-active-doll-changed payload:",
             e,
           );
           return;
@@ -139,16 +138,8 @@ export async function initCursorTracking() {
       // Cast to expected type after parsing
       const payload = data as { friendId: string; doll: DollDto | null };
 
-      console.log(
-        "[Cursor] Received friend-active-doll-changed event:",
-        payload,
-      );
-
       if (!payload.doll) {
         // If doll is null, it means the friend deactivated their doll.
-        console.log(
-          `[Cursor] Removing doll for friend ${payload.friendId} due to deactivation`,
-        );
 
         // Update the active dolls store to explicitly set this friend's doll to null
         // We MUST set it to null instead of deleting it, otherwise the UI might
@@ -167,10 +158,6 @@ export async function initCursorTracking() {
         });
       } else {
         // Update or add the new doll configuration
-        console.log(
-          `[Cursor] Updating doll for friend ${payload.friendId}:`,
-          payload.doll,
-        );
         friendsActiveDolls.update((current) => {
           return {
             ...current,
@@ -182,7 +169,7 @@ export async function initCursorTracking() {
 
     isListening = true;
   } catch (err) {
-    console.error("[Cursor] Failed to initialize cursor tracking:", err);
+    console.error("Failed to initialize cursor tracking:", err);
     throw err;
   }
 }

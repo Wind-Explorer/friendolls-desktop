@@ -17,15 +17,12 @@
   }
 
   function getFriendDollConfig(userId: string) {
-      // 1. Try to get from real-time store (most up-to-date)
-      // Check if key exists to distinguish between "unknown" (undefined) and "no doll" (null)
-      if (userId in $friendsActiveDolls) {
-          return $friendsActiveDolls[userId]?.configuration;
-      }
-      
-      // 2. Fallback to initial app data (snapshot on load)
-      const friend = $appData?.friends?.find((f) => f.friend.id === userId);
-      return friend?.friend.activeDoll?.configuration;
+    if (userId in $friendsActiveDolls) {
+      return $friendsActiveDolls[userId]?.configuration;
+    }
+
+    const friend = $appData?.friends?.find((f) => f.friend.id === userId);
+    return friend?.friend.activeDoll?.configuration;
   }
 </script>
 
@@ -55,6 +52,7 @@
           <p class="text-sm font-semibold opacity-75">Friends Online</p>
           <div>
             {#each Object.entries($friendsCursorPositions) as [userId, position]}
+              {@const dollConfig = getFriendDollConfig(userId)}
               <div
                 class="bg-base-200/50 p-2 rounded text-xs text-left flex gap-2 flex-col"
               >

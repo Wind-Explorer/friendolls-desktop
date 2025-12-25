@@ -60,11 +60,10 @@ fn on_initialized(payload: Payload, _socket: RawClient) {
             if let Some(first_value) = values.first() {
                 info!("Received initialized event: {:?}", first_value);
 
-                // Mark WebSocket as initialized
+                // Mark WebSocket as initialized and reset backoff timer
                 let mut guard = lock_w!(FDOLL);
                 if let Some(clients) = guard.clients.as_mut() {
                     clients.is_ws_initialized = true;
-                    info!("WebSocket marked as initialized and ready for business");
                 }
             } else {
                 info!("Received initialized event with empty payload");
@@ -239,8 +238,6 @@ fn on_friend_active_doll_changed(payload: Payload, _socket: RawClient) {
                     get_app_handle().emit(WS_EVENT::FRIEND_ACTIVE_DOLL_CHANGED, first_value)
                 {
                     error!("Failed to emit friend-active-doll-changed event: {:?}", e);
-                } else {
-                    info!("Emitted friend-active-doll-changed to frontend");
                 }
 
                 // Refresh friends list only (optimized - friend's active doll is part of friends data)
@@ -353,20 +350,23 @@ fn on_doll_deleted(payload: Payload, _socket: RawClient) {
 pub async fn report_cursor_data(cursor_position: CursorPosition) {
     // Only attempt to get clients if lock_r succeeds (it should, but safety first)
     // and if clients are actually initialized.
-    let client_opt = {
+    let (client_opt, is_initialized) = {
         let guard = lock_r!(FDOLL);
         if let Some(clients) = &guard.clients {
-            if clients.is_ws_initialized {
-                clients.ws_client.as_ref().cloned()
-            } else {
-                None
-            }
+            (
+                clients.ws_client.as_ref().cloned(),
+                clients.is_ws_initialized,
+            )
         } else {
-            None
+            (None, false)
         }
     };
 
     if let Some(client) = client_opt {
+        if !is_initialized {
+            return;
+        }
+
         match async_runtime::spawn_blocking(move || {
             client.emit(
                 WS_EVENT::CURSOR_REPORT_POSITION,
@@ -379,8 +379,6 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
             Ok(Err(e)) => error!("Failed to emit cursor report: {}", e),
             Err(e) => error!("Failed to execute blocking task for cursor report: {}", e),
         }
-    } else {
-        // Quietly fail if client is not ready (e.g. during startup/shutdown or before initialization)
     }
 }
 
@@ -395,8 +393,8 @@ pub async fn init_ws_client() {
             let mut guard = lock_w!(FDOLL);
             if let Some(clients) = guard.clients.as_mut() {
                 clients.ws_client = Some(ws_client);
+                clients.is_ws_initialized = false; // wait for initialized event
             }
-            info!("WebSocket client initialized after authentication");
         }
         Err(e) => {
             error!("Failed to initialize WebSocket client: {}", e);
@@ -414,8 +412,6 @@ pub async fn build_ws_client(
         Some(t) => t,
         None => return Err("No access token available for WebSocket connection".to_string()),
     };
-
-    info!("Building WebSocket client with authentication");
 
     let api_base_url = app_config
         .api_base_url

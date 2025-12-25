@@ -11,7 +11,7 @@
         await initCursorTracking();
         await initAppDataListener();
       } catch (err) {
-        console.error("[Scene] Failed to initialize event listeners:", err);
+        console.error("Failed to initialize event listeners:", err);
       }
     });
 
