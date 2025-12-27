@@ -22,7 +22,7 @@ async fn init_ws_after_auth() {
     const MAX_ATTEMPTS: u8 = 5;
     const BACKOFF: Duration = Duration::from_millis(300);
 
-    for attempt in 1..=MAX_ATTEMPTS {
+    for _attempt in 1..=MAX_ATTEMPTS {
         if get_access_token().await.is_some() {
             init_ws_client().await;
             return;

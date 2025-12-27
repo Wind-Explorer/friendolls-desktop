@@ -47,11 +47,20 @@ impl WS_EVENT {
     pub const INITIALIZED: &str = "initialized";
 }
 
-fn on_connected(_payload: Payload, socket: RawClient) {
-    info!("WebSocket connected. Sending initialization request.");
+fn emit_initialize(socket: &RawClient) {
     if let Err(e) = socket.emit(WS_EVENT::CLIENT_INITIALIZE, json!({})) {
         error!("Failed to emit client-initialize: {:?}", e);
     }
+}
+
+fn on_connected(_payload: Payload, socket: RawClient) {
+    info!("WebSocket connected. Sending initialization request.");
+    emit_initialize(&socket);
+}
+
+fn on_reconnect(_payload: Payload, socket: RawClient) {
+    info!("WebSocket reconnected. Re-sending initialization request.");
+    emit_initialize(&socket);
 }
 
 fn on_initialized(payload: Payload, _socket: RawClient) {
@@ -398,7 +407,12 @@ pub async fn init_ws_client() {
         }
         Err(e) => {
             error!("Failed to initialize WebSocket client: {}", e);
-            // We should probably inform the user or retry here, but for now we just log it.
+            // If we failed because no token, clear the WS client to avoid stale retries
+            let mut guard = lock_w!(FDOLL);
+            if let Some(clients) = guard.clients.as_mut() {
+                clients.ws_client = None;
+                clients.is_ws_initialized = false;
+            }
         }
     }
 }
@@ -406,9 +420,8 @@ pub async fn init_ws_client() {
 pub async fn build_ws_client(
     app_config: &AppConfig,
 ) -> Result<rust_socketio::client::Client, String> {
-    let token_result = crate::services::auth::get_access_token().await;
-
-    let token = match token_result {
+    // Always fetch a fresh/valid token (refreshing if needed)
+    let token = match crate::services::auth::get_access_token().await {
         Some(t) => t,
         None => return Err("No access token available for WebSocket connection".to_string()),
     };
@@ -444,6 +457,8 @@ pub async fn build_ws_client(
             .on(WS_EVENT::DOLL_UPDATED, on_doll_updated)
             .on(WS_EVENT::DOLL_DELETED, on_doll_deleted)
             .on(WS_EVENT::INITIALIZED, on_initialized)
+            // rust-socketio fires Event::Connect on initial connect AND reconnects
+            // so we resend initialization there instead of a dedicated reconnect event.
             .on(Event::Connect, on_connected)
             .auth(json!({ "token": token }))
             .connect()
