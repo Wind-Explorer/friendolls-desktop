@@ -4,4 +4,6 @@ pub mod cursor;
 pub mod doll_editor;
 pub mod scene;
 pub mod sprite_recolor;
+pub mod welcome;
 pub mod ws;
+

@@ -7,6 +7,7 @@ use crate::{
     services::{
         auth::{get_access_token, get_tokens},
         scene::{close_splash_window, open_scene_window, open_splash_window},
+        welcome::open_welcome_window,
         ws::init_ws_client,
     },
     state::init_app_data,
@@ -57,21 +58,13 @@ async fn construct_app() {
 
 pub async fn bootstrap() {
     match get_tokens().await {
-        Some(tokens) => {
+        Some(_tokens) => {
             info!("Tokens found in keyring - restoring user session");
             construct_app().await;
         }
         None => {
-            info!("No active session found - user needs to authenticate");
-            match crate::services::auth::init_auth_code_retrieval(|| {
-                info!("Authentication successful, creating scene...");
-                tauri::async_runtime::spawn(async {
-                    construct_app().await;
-                });
-            }) {
-                Ok(it) => it,
-                Err(err) => todo!("Handle authentication error: {}", err),
-            };
+            info!("No active session found - showing welcome first");
+            open_welcome_window();
         }
     }
 }

@@ -1164,6 +1164,7 @@ dependencies = [
  "tauri-plugin-positioner",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-util",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",

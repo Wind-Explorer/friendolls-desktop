@@ -1,3 +1,3 @@
 <main class="card-body">
-  <button class="btn btn-primary">Hello TailwindCSS!</button>
+  <p class="text-lg">Friendolls desktop app shell</p>
 </main>

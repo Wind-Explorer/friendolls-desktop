@@ -11,8 +11,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri_plugin_opener::OpenerExt;
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use url::form_urlencoded;
 
@@ -21,6 +22,14 @@ static REFRESH_LOCK: once_cell::sync::Lazy<Mutex<()>> =
 
 static AUTH_SUCCESS_HTML: &str = include_str!("../assets/auth-success.html");
 const SERVICE_NAME: &str = "friendolls";
+
+pub fn cancel_auth_flow() {
+    let mut guard = lock_w!(FDOLL);
+    if let Some(token) = guard.oauth_flow.cancel_token.take() {
+        token.cancel();
+    }
+    guard.oauth_flow = Default::default();
+}
 
 /// Errors that can occur during OAuth authentication flow.
 #[derive(Debug, Error)]
@@ -48,6 +57,9 @@ pub enum OAuthError {
 
     #[error("Callback timeout - no response received")]
     CallbackTimeout,
+
+    #[error("Authentication flow cancelled")]
+    Cancelled,
 
     #[error("Invalid app configuration")]
     InvalidConfig,
@@ -526,6 +538,7 @@ where
     let code_verifier = generate_code_verifier(64);
     let code_challenge = generate_code_challenge(&code_verifier);
     let state = generate_code_verifier(16);
+    let cancel_token = CancellationToken::new();
 
     // Store state and code_verifier for validation
     let current_time = SystemTime::now()
@@ -538,6 +551,7 @@ where
         guard.oauth_flow.state = Some(state.clone());
         guard.oauth_flow.code_verifier = Some(code_verifier.clone());
         guard.oauth_flow.initiated_at = Some(current_time);
+        guard.oauth_flow.cancel_token = Some(cancel_token.clone());
     }
 
     let mut url = match url::Url::parse(&format!("{}/auth", &app_config.auth.auth_url)) {
@@ -592,6 +606,7 @@ where
         .append_pair("code_challenge", &code_challenge)
         .append_pair("code_challenge_method", "S256");
     let redirect_uri_clone = redirect_uri.clone();
+    let cancel_token_clone = cancel_token.clone();
     tauri::async_runtime::spawn(async move {
         info!("Starting callback listener task");
         let listener = match TcpListener::from_std(std_listener) {
@@ -602,7 +617,7 @@ where
             }
         };
 
-        match listen_for_callback(listener).await {
+        match listen_for_callback(listener, cancel_token_clone).await {
             Ok(params) => {
                 let (stored_state, stored_verifier) = {
                     let guard = lock_r!(FDOLL);
@@ -634,19 +649,13 @@ where
                             error!("Failed to save auth pass: {}", e);
                         }
 
-                        // Immediately refresh app data now that auth is available
-                        tauri::async_runtime::spawn(async {
-                            crate::state::init_app_data_scoped(
-                                crate::state::AppDataRefreshScope::All,
-                            )
-                            .await;
-                        });
-
+                        // Defer app initialization to the shared bootstrap path
                         on_success();
                     }
                     Err(e) => error!("Token exchange failed: {}", e),
                 }
             }
+            Err(OAuthError::Cancelled) => info!("Callback listener was cancelled"),
             Err(e) => error!("Callback listener error: {}", e),
         }
     });
@@ -753,7 +762,10 @@ pub async fn refresh_token(refresh_token: &str) -> Result<AuthPass, OAuthError> 
 /// Returns `OAuthError` if:
 /// - Required callback parameters are missing
 /// - Timeout is reached before callback is received
-async fn listen_for_callback(listener: TcpListener) -> Result<OAuthCallbackParams, OAuthError> {
+async fn listen_for_callback(
+    listener: TcpListener,
+    cancel_token: CancellationToken,
+) -> Result<OAuthCallbackParams, OAuthError> {
     // Set a 5-minute timeout
     let timeout = Duration::from_secs(300);
     let start_time = Instant::now();
@@ -765,9 +777,17 @@ async fn listen_for_callback(listener: TcpListener) -> Result<OAuthCallbackParam
             return Err(OAuthError::CallbackTimeout);
         }
 
-        let accept_result = tokio::time::timeout(timeout - elapsed, listener.accept()).await;
+        let remaining = timeout - elapsed;
 
-        let (mut stream, _) = match accept_result {
+        let accept_result = tokio::select! {
+            _ = cancel_token.cancelled() => {
+                info!("Callback listener cancelled");
+                return Err(OAuthError::Cancelled);
+            },
+            res = tokio::time::timeout(remaining, listener.accept()) => res,
+        };
+
+        let (mut stream, _): (TcpStream, _) = match accept_result {
             Ok(Ok(res)) => res,
             Ok(Err(e)) => {
                 warn!("Accept error: {}", e);

@@ -6,7 +6,10 @@ use crate::{
         UserBasicDto,
     },
     remotes::user::UserRemote,
-    services::{cursor::start_cursor_tracking, doll_editor::open_doll_editor_window},
+    services::{
+        cursor::start_cursor_tracking,
+        doll_editor::open_doll_editor_window,
+    },
     state::{init_app_data, init_app_data_scoped, AppDataRefreshScope, FDOLL},
 };
 use tauri::async_runtime;
@@ -327,6 +330,22 @@ fn quit_app() -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn start_auth_flow() -> Result<(), String> {
+    // Cancel any in-flight auth listener/state before starting a new one
+    crate::services::auth::cancel_auth_flow();
+
+    crate::services::auth::init_auth_code_retrieval(|| {
+        tracing::info!("Authentication successful, creating scene...");
+        // Close welcome window if it's still open
+        crate::services::welcome::close_welcome_window();
+        tauri::async_runtime::spawn(async {
+            crate::app::bootstrap().await;
+        });
+    })
+    .map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -354,7 +373,8 @@ pub fn run() {
             remove_active_doll,
             recolor_gif_base64,
             quit_app,
-            open_doll_editor_window
+            open_doll_editor_window,
+            start_auth_flow
         ])
         .setup(|app| {
             APP_HANDLE

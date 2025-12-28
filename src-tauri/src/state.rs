@@ -22,6 +22,7 @@ pub struct OAuthFlowTracker {
     pub state: Option<String>,
     pub code_verifier: Option<String>,
     pub initiated_at: Option<u64>,
+    pub cancel_token: Option<tokio_util::sync::CancellationToken>,
 }
 
 pub struct Clients {
