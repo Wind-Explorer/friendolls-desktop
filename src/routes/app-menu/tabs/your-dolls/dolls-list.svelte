@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { DollDto } from "../../../../types/bindings/DollDto";
   import type { UserProfile } from "../../../../types/bindings/UserProfile";
-  import DollPreview from "../DollPreview.svelte";
+  import DollPreview from "../../components/doll-preview.svelte";
   import PawPrint from "../../../../assets/icons/paw-print.svelte";
   import Backpack from "../../../../assets/icons/backpack.svelte";
 

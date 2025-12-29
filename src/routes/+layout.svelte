@@ -21,6 +21,6 @@
   }
 </script>
 
-<div class="size-full bg-transparent">
+<div class="w-screen h-screen bg-transparent">
   {@render children?.()}
 </div>

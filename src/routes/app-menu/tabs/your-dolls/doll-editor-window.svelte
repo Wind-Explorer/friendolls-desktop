@@ -5,7 +5,7 @@
   import type { DollDto } from "../../../../types/bindings/DollDto";
   import type { CreateDollDto } from "../../../../types/bindings/CreateDollDto";
   import type { UpdateDollDto } from "../../../../types/bindings/UpdateDollDto";
-  import DollPreview from "../DollPreview.svelte";
+  import DollPreview from "../../components/doll-preview.svelte";
 
   let mode: "create" | "edit" = "create";
   let dollId: string | null = null;
