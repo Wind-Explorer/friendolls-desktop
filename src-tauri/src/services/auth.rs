@@ -388,6 +388,47 @@ pub fn logout() -> Result<(), OAuthError> {
     Ok(())
 }
 
+/// Convenience helper to perform logout side effects before app restart.
+pub async fn logout_and_restart() -> Result<(), OAuthError> {
+    // capture tokens and base_url before clearing for backend revocation
+    let (refresh_token, session_state, base_url) = {
+        let guard = lock_r!(FDOLL);
+        (
+            guard.auth_pass.as_ref().map(|p| p.refresh_token.clone()),
+            guard
+                .auth_pass
+                .as_ref()
+                .map(|p| p.session_state.clone()),
+            guard
+                .app_config
+                .api_base_url
+                .as_ref()
+                .cloned()
+                .unwrap_or_default(),
+        )
+    };
+
+    logout()?;
+
+    if !base_url.is_empty() {
+        if let Some(refresh_token) = refresh_token.as_deref() {
+            let session_remote = crate::remotes::session::SessionRemote::new();
+            if let Err(err) = session_remote
+                .logout(refresh_token, session_state.as_deref())
+                .await
+            {
+                warn!("Failed to revoke session on server: {}", err);
+            }
+        } else {
+            warn!("No refresh token available to revoke on server");
+        }
+    }
+
+    let app_handle = get_app_handle();
+    app_handle.restart();
+    Ok(())
+}
+
 /// Helper to add authentication header to a request builder if tokens are available.
 ///
 /// # Example

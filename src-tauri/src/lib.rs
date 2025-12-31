@@ -331,6 +331,20 @@ fn quit_app() -> Result<(), String> {
 }
 
 #[tauri::command]
+fn restart_app() -> Result<(), String> {
+    let app_handle = get_app_handle();
+    app_handle.restart();
+    Ok(())
+}
+
+#[tauri::command]
+async fn logout_and_restart() -> Result<(), String> {
+    crate::services::auth::logout_and_restart()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn start_auth_flow() -> Result<(), String> {
     // Cancel any in-flight auth listener/state before starting a new one
     crate::services::auth::cancel_auth_flow();
@@ -352,6 +366,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             start_cursor_tracking,
             get_app_data,
@@ -373,8 +388,10 @@ pub fn run() {
             remove_active_doll,
             recolor_gif_base64,
             quit_app,
+            restart_app,
             open_doll_editor_window,
-            start_auth_flow
+            start_auth_flow,
+            logout_and_restart
         ])
         .setup(|app| {
             APP_HANDLE
