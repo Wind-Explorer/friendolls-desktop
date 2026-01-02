@@ -2,8 +2,8 @@ pub mod app_menu;
 pub mod auth;
 pub mod cursor;
 pub mod doll_editor;
+pub mod health_manager;
 pub mod scene;
 pub mod sprite_recolor;
 pub mod welcome;
 pub mod ws;
-

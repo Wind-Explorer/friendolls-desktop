@@ -1,14 +1,16 @@
 use crate::{
     models::app_data::AppData,
-    remotes::dolls::{CreateDollDto, DollDto, DollsRemote, UpdateDollDto},
-    remotes::friends::{
-        FriendRemote, FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto,
-        UserBasicDto,
+    remotes::{
+        dolls::{CreateDollDto, DollDto, DollsRemote, UpdateDollDto},
+        friends::{
+            FriendRemote, FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto,
+            UserBasicDto,
+        },
+        user::UserRemote,
     },
-    remotes::user::UserRemote,
     services::{
-        cursor::start_cursor_tracking,
-        doll_editor::open_doll_editor_window,
+        cursor::start_cursor_tracking, doll_editor::open_doll_editor_window,
+        scene::open_splash_window,
     },
     state::{init_app_data, init_app_data_scoped, AppDataRefreshScope, FDOLL},
 };
@@ -77,6 +79,8 @@ fn setup_fdoll() -> Result<(), tauri::Error> {
         .with(file_layer)
         .with(console_layer)
         .init();
+
+    open_splash_window();
 
     state::init_fdoll_state(Some(_guard));
     async_runtime::spawn(async move { app::start_fdoll().await });
@@ -334,7 +338,6 @@ fn quit_app() -> Result<(), String> {
 fn restart_app() -> Result<(), String> {
     let app_handle = get_app_handle();
     app_handle.restart();
-    Ok(())
 }
 
 #[tauri::command]

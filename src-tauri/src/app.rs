@@ -4,8 +4,10 @@ use tokio::time::{sleep, Instant};
 use tracing::info;
 
 use crate::{
+    remotes::health::HealthRemote,
     services::{
         auth::{get_access_token, get_tokens},
+        health_manager::open_health_manager_window,
         scene::{close_splash_window, open_scene_window, open_splash_window},
         welcome::open_welcome_window,
         ws::init_ws_client,
@@ -16,7 +18,7 @@ use crate::{
 
 pub async fn start_fdoll() {
     init_system_tray();
-    bootstrap().await;
+    init_startup_sequence().await;
 }
 
 async fn init_ws_after_auth() {
@@ -65,6 +67,28 @@ pub async fn bootstrap() {
         None => {
             info!("No active session found - showing welcome first");
             open_welcome_window();
+            close_splash_window();
+        }
+    }
+}
+
+/// Perform checks for environment, network condition
+/// and handle situations where startup would not be appropriate.
+async fn init_startup_sequence() {
+    let health_remote = HealthRemote::new();
+    let server_health = health_remote.get_health().await;
+    match server_health {
+        Ok(response) => {
+            if response.status == "OK" {
+                bootstrap().await;
+            } else {
+                info!("Server health check failed");
+            }
+        }
+        Err(err) => {
+            info!("Server health check failed: {}", err);
+            open_health_manager_window();
+            close_splash_window();
         }
     }
 }

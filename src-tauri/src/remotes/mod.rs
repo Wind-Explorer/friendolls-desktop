@@ -1,4 +1,5 @@
 pub mod dolls;
 pub mod friends;
-pub mod user;
+pub mod health;
 pub mod session;
+pub mod user;
