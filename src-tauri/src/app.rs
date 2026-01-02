@@ -1,13 +1,13 @@
+use reqwest::StatusCode;
 use std::time::Duration;
-
 use tokio::time::{sleep, Instant};
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::{
-    remotes::health::HealthRemote,
+    remotes::health::{HealthError, HealthRemote},
     services::{
         auth::{get_access_token, get_tokens},
-        health_manager::open_health_manager_window,
+        health_manager::show_health_manager_with_error,
         scene::{close_splash_window, open_scene_window, open_splash_window},
         welcome::open_welcome_window,
         ws::init_ws_client,
@@ -18,7 +18,10 @@ use crate::{
 
 pub async fn start_fdoll() {
     init_system_tray();
-    init_startup_sequence().await;
+    if let Err(err) = init_startup_sequence().await {
+        tracing::error!("startup sequence failed: {err}");
+        show_health_manager_with_error(Some(err.to_string()));
+    }
 }
 
 async fn init_ws_after_auth() {
@@ -74,21 +77,41 @@ pub async fn bootstrap() {
 
 /// Perform checks for environment, network condition
 /// and handle situations where startup would not be appropriate.
-async fn init_startup_sequence() {
-    let health_remote = HealthRemote::new();
-    let server_health = health_remote.get_health().await;
-    match server_health {
-        Ok(response) => {
-            if response.status == "OK" {
+async fn init_startup_sequence() -> Result<(), HealthError> {
+    let health_remote = HealthRemote::try_new()?;
+
+    // simple retry loop to smooth transient network issues
+    const MAX_ATTEMPTS: u8 = 3;
+    const BACKOFF_MS: u64 = 500;
+
+    for attempt in 1..=MAX_ATTEMPTS {
+        match health_remote.get_health().await {
+            Ok(_) => {
                 bootstrap().await;
-            } else {
-                info!("Server health check failed");
+                return Ok(());
+            }
+            Err(HealthError::NonOkStatus(status)) => {
+                warn!(attempt, "server health reported non-OK status: {status}");
+                return Err(HealthError::NonOkStatus(status));
+            }
+            Err(HealthError::UnexpectedStatus(status)) => {
+                warn!(attempt, "server health check failed with status: {status}");
+                return Err(HealthError::UnexpectedStatus(status));
+            }
+            Err(err) => {
+                warn!(attempt, "server health check failed: {err}");
+                if attempt == MAX_ATTEMPTS {
+                    return Err(err);
+                }
             }
         }
-        Err(err) => {
-            info!("Server health check failed: {}", err);
-            open_health_manager_window();
-            close_splash_window();
+
+        if attempt < MAX_ATTEMPTS {
+            sleep(Duration::from_millis(BACKOFF_MS)).await;
         }
     }
+
+    Err(HealthError::UnexpectedStatus(
+        StatusCode::SERVICE_UNAVAILABLE,
+    ))
 }

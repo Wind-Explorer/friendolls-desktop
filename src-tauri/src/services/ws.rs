@@ -7,6 +7,8 @@ use crate::{
     get_app_handle, lock_r, lock_w,
     models::app_config::AppConfig,
     services::cursor::{normalized_to_absolute, CursorPosition, CursorPositions},
+    services::health_manager::{close_health_manager_window, show_health_manager_with_error},
+    services::scene::open_scene_window,
     state::{init_app_data_scoped, AppDataRefreshScope, FDOLL},
 };
 use serde::{Deserialize, Serialize};
@@ -74,6 +76,10 @@ fn on_initialized(payload: Payload, _socket: RawClient) {
                 if let Some(clients) = guard.clients.as_mut() {
                     clients.is_ws_initialized = true;
                 }
+
+                // Connection restored: close health manager and reopen scene
+                close_health_manager_window();
+                open_scene_window();
             } else {
                 info!("Received initialized event with empty payload");
             }
@@ -385,8 +391,20 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
         .await
         {
             Ok(Ok(_)) => (),
-            Ok(Err(e)) => error!("Failed to emit cursor report: {}", e),
-            Err(e) => error!("Failed to execute blocking task for cursor report: {}", e),
+            Ok(Err(e)) => {
+                error!("Failed to emit cursor report: {}", e);
+                show_health_manager_with_error(Some(format!(
+                    "WebSocket emit failed: {}",
+                    e
+                )));
+            }
+            Err(e) => {
+                error!("Failed to execute blocking task for cursor report: {}", e);
+                show_health_manager_with_error(Some(format!(
+                    "WebSocket task failed: {}",
+                    e
+                )));
+            }
         }
     }
 }

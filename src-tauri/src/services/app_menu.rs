@@ -3,7 +3,7 @@ use tracing::{error, info};
 
 use crate::get_app_handle;
 
-static APP_MENU_WINDOW_LABEL: &str = "app_menu";
+pub static APP_MENU_WINDOW_LABEL: &str = "app_menu";
 
 pub fn open_app_menu_window() {
     let app_handle = get_app_handle();

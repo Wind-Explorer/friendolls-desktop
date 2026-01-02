@@ -335,7 +335,7 @@ fn quit_app() -> Result<(), String> {
 }
 
 #[tauri::command]
-fn restart_app() -> Result<(), String> {
+fn restart_app() {
     let app_handle = get_app_handle();
     app_handle.restart();
 }

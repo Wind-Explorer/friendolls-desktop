@@ -1,13 +1,29 @@
 use crate::get_app_handle;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogBuilder, MessageDialogKind};
 use tauri_plugin_positioner::WindowExt;
 use tracing::{error, info};
 
 pub static HEALTH_MANAGER_WINDOW_LABEL: &str = "health_manager";
+pub static HEALTH_MANAGER_EVENT: &str = "health-error";
 
-pub fn open_health_manager_window() {
+fn close_window_if_exists(label: &str) {
     let app_handle = get_app_handle();
+    if let Some(window) = app_handle.get_window(label) {
+        if let Err(e) = window.close() {
+            error!("Failed to close {} window: {}", label, e);
+        }
+    }
+}
+
+/// Closes primary UI windows and shows the health manager with an optional error message.
+pub fn show_health_manager_with_error(error_message: Option<String>) {
+    let app_handle = get_app_handle();
+    // Ensure other windows are closed before showing health manager
+    close_window_if_exists(crate::services::scene::SPLASH_WINDOW_LABEL);
+    close_window_if_exists(crate::services::scene::SCENE_WINDOW_LABEL);
+    close_window_if_exists(crate::services::app_menu::APP_MENU_WINDOW_LABEL);
+
     let existing_webview_window = app_handle.get_window(HEALTH_MANAGER_WINDOW_LABEL);
 
     if let Some(window) = existing_webview_window {
@@ -20,6 +36,12 @@ pub fn open_health_manager_window() {
             )
             .kind(MessageDialogKind::Error)
             .show(|_| {});
+        }
+
+        if let Some(message) = error_message {
+            if let Err(e) = window.emit(HEALTH_MANAGER_EVENT, message.clone()) {
+                error!("Failed to emit health error event: {}", e);
+            }
         }
         return;
     }
@@ -56,6 +78,12 @@ pub fn open_health_manager_window() {
 
     if let Err(e) = webview_window.move_window(tauri_plugin_positioner::Position::Center) {
         error!("Failed to move health manager window to center: {}", e);
+    }
+
+    if let Some(message) = error_message {
+        if let Err(e) = webview_window.emit(HEALTH_MANAGER_EVENT, message.clone()) {
+            error!("Failed to emit health error event: {}", e);
+        }
     }
 
     if let Err(e) = webview_window.show() {

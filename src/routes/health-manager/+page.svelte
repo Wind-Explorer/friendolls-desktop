@@ -1,5 +1,35 @@
-<script>
+<script lang="ts">
+  import { onDestroy, onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
+
+  let errorMessage = "";
+  let unlisten: (() => void) | null = null;
+  let isRestarting = false;
+
+  onMount(async () => {
+    unlisten = await listen<string>("health-error", (event) => {
+      errorMessage = event.payload;
+    });
+  });
+
+  onDestroy(() => {
+    if (unlisten) {
+      unlisten();
+    }
+  });
+
+  const tryAgain = async () => {
+    if (isRestarting) return;
+    isRestarting = true;
+    errorMessage = "";
+    try {
+      await invoke("restart_app");
+    } catch (err) {
+      errorMessage = `Restart failed: ${err}`;
+      isRestarting = false;
+    }
+  };
 </script>
 
 <div class="size-full p-4">
@@ -9,13 +39,21 @@
       <p class="opacity-70 text-3xl font-bold">
         Seems like the server is inaccessible. Check your network?
       </p>
+      {#if errorMessage}
+        <p class="text-sm opacity-70 wrap-break-word">{errorMessage}</p>
+      {/if}
     </div>
     <button
       class="btn"
-      onclick={() => {
-        console.log("Retrying server health detection");
-        invoke("restart_app");
-      }}>Try again</button
+      class:btn-disabled={isRestarting}
+      disabled={isRestarting}
+      onclick={tryAgain}
     >
+      {#if isRestarting}
+        Retrying…
+      {:else}
+        Try again
+      {/if}
+    </button>
   </div>
 </div>
