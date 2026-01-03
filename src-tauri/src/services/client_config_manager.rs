@@ -28,6 +28,10 @@ pub enum ClientConfigError {
     Io(#[from] std::io::Error),
     #[error("failed to parse client config: {0}")]
     Parse(#[from] serde_json::Error),
+    #[error("failed to build client config manager window: {0}")]
+    Window(tauri::Error),
+    #[error("failed to show client config manager window: {0}")]
+    ShowWindow(tauri::Error),
 }
 
 pub static CLIENT_CONFIG_MANAGER_WINDOW_LABEL: &str = "client_config_manager";
@@ -48,38 +52,34 @@ fn strip_trailing_slash(value: &str) -> String {
     value.trim_end_matches('/').to_string()
 }
 
+fn parse_http_url(value: &str) -> Option<String> {
+    if value.is_empty() {
+        return None;
+    }
+
+    let attempts = [value.to_string(), format!("https://{value}")];
+
+    for attempt in attempts {
+        if let Ok(parsed) = Url::parse(&attempt) {
+            if matches!(parsed.scheme(), "http" | "https") {
+                return Some(strip_trailing_slash(parsed.as_str()));
+            }
+        }
+    }
+
+    None
+}
+
 fn sanitize(mut config: AppConfig) -> AppConfig {
-    // Trim and normalize optional api_base_url
     config.api_base_url = config
         .api_base_url
-        .and_then(|v| {
-            let trimmed = v.trim().to_string();
-            if trimmed.is_empty() {
-                None
-            } else {
-                // ensure scheme present and no double prefixes
-                if let Ok(parsed) = Url::parse(&trimmed) {
-                    Some(strip_trailing_slash(parsed.as_str()))
-                } else if let Ok(parsed) = Url::parse(&format!("https://{trimmed}")) {
-                    Some(strip_trailing_slash(parsed.as_str()))
-                } else {
-                    None
-                }
-            }
-        })
+        .and_then(|v| parse_http_url(v.trim()))
         .or_else(|| Some(DEFAULT_API_BASE_URL.to_string()))
         .map(|v| strip_trailing_slash(&v));
 
     let auth_url_trimmed = config.auth.auth_url.trim();
-    if auth_url_trimmed.is_empty() {
-        config.auth.auth_url = DEFAULT_AUTH_URL.to_string();
-    } else if let Ok(parsed) = Url::parse(auth_url_trimmed) {
-        config.auth.auth_url = strip_trailing_slash(parsed.as_str());
-    } else if let Ok(parsed) = Url::parse(&format!("https://{auth_url_trimmed}")) {
-        config.auth.auth_url = strip_trailing_slash(parsed.as_str());
-    } else {
-        config.auth.auth_url = DEFAULT_AUTH_URL.to_string();
-    }
+    config.auth.auth_url = parse_http_url(auth_url_trimmed)
+        .unwrap_or_else(|| DEFAULT_AUTH_URL.to_string());
 
     if config.auth.audience.trim().is_empty() {
         config.auth.audience = DEFAULT_JWT_AUDIENCE.to_string();
@@ -139,23 +139,28 @@ pub fn save_app_config(config: AppConfig) -> Result<AppConfig, ClientConfigError
 
     let sanitized = sanitize(config);
     let serialized = serde_json::to_string_pretty(&sanitized)?;
-    fs::write(&path, serialized)?;
+
+    let temp_path = path.with_extension("tmp");
+    fs::write(&temp_path, serialized)?;
+    fs::rename(&temp_path, &path)?;
+
     Ok(sanitized)
 }
 
-pub fn open_config_manager_window() {
+pub fn open_config_manager_window() -> Result<(), ClientConfigError> {
     let app_handle = get_app_handle();
     let existing_webview_window = app_handle.get_window(CLIENT_CONFIG_MANAGER_WINDOW_LABEL);
 
     if let Some(window) = existing_webview_window {
         if let Err(e) = window.show() {
             error!("Failed to show client config manager window: {e}");
+            return Err(ClientConfigError::ShowWindow(e));
         }
-        return;
+        return Ok(());
     }
 
     info!("Starting client config manager...");
-    let webview_window = match tauri::WebviewWindowBuilder::new(
+    match tauri::WebviewWindowBuilder::new(
         app_handle,
         CLIENT_CONFIG_MANAGER_WINDOW_LABEL,
         tauri::WebviewUrl::App("/client-config-manager".into()),
@@ -164,15 +169,14 @@ pub fn open_config_manager_window() {
     .inner_size(600.0, 500.0)
     .build()
     {
-        Ok(window) => {
+        Ok(_) => {
             info!("Client config manager window builder succeeded");
-            window
+            info!("Client config manager window initialized successfully.");
+            Ok(())
         }
         Err(e) => {
             error!("Failed to build client config manager window: {}", e);
-            return;
+            Err(ClientConfigError::Window(e))
         }
-    };
-
-    info!("Client config manager window initialized successfully.");
+    }
 }

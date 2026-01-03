@@ -365,8 +365,7 @@ fn save_client_config(config: AppConfig) -> Result<(), String> {
 
 #[tauri::command]
 fn open_client_config_manager() -> Result<(), String> {
-    open_config_manager_window();
-    Ok(())
+    open_config_manager_window().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
