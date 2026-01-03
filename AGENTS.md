@@ -56,4 +56,6 @@ Desktop client app for Friendolls.
 
 ## Note
 
-Do not run the app yourself. Detect errors via LSPs if available, `cd src-tauri && cargo check` & `pnpm check` else. Don't perform git actions yourself either.
+Be sure to gather sufficient context from codebase before proceeding with changes. Observe patterns and follow trends.
+
+Do not run the app yourself. `cd src-tauri && cargo check` & `pnpm check` to confirm your changes are error-free. Don't perform git actions yourself.
