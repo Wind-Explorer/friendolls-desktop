@@ -395,10 +395,7 @@ pub async fn logout_and_restart() -> Result<(), OAuthError> {
         let guard = lock_r!(FDOLL);
         (
             guard.auth_pass.as_ref().map(|p| p.refresh_token.clone()),
-            guard
-                .auth_pass
-                .as_ref()
-                .map(|p| p.session_state.clone()),
+            guard.auth_pass.as_ref().map(|p| p.session_state.clone()),
             guard
                 .app_config
                 .api_base_url

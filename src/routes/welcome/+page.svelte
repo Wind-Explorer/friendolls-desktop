@@ -17,6 +17,14 @@
       isContinuing = false;
     }
   };
+
+  const openClientConfigManager = async () => {
+    try {
+      await invoke("open_client_config_manager");
+    } catch (error) {
+      console.error("Failed to open client config manager", error);
+    }
+  };
 </script>
 
 <div class="size-full relative bg-linear-to-br from-base-100 to-[#b7f2ff77]">
@@ -32,22 +40,26 @@
               a cute passive socialization layer!
             </p>
           </div>
-          <div>
-            <button
-              class="btn btn-primary"
-              onclick={handleContinue}
-              disabled={isContinuing}
-            >
-              {#if isContinuing}
-                Loading...
-              {:else}
-                <div class="scale-70">
-                  <ExternalLink />
-                </div>
-                Sign in with browser
-              {/if}
-            </button>
-          </div>
+           <div class="flex flex-col gap-2">
+             <button
+               class="btn btn-primary"
+               onclick={handleContinue}
+               disabled={isContinuing}
+             >
+               {#if isContinuing}
+                 Loading...
+               {:else}
+                 <div class="scale-70">
+                   <ExternalLink />
+                 </div>
+                 Sign in with browser
+               {/if}
+             </button>
+             <button class="btn btn-outline" onclick={openClientConfigManager}>
+               Advanced options
+             </button>
+           </div>
+
           <p class="text-xs opacity-50 max-w-60">
             An account is needed to identify you for connecting with friends.
           </p>

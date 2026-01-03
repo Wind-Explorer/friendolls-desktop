@@ -34,15 +34,16 @@
 
 <div class="size-full p-4">
   <div class="flex flex-col gap-4 size-full justify-between">
-    <div class="flex flex-col gap-2">
-      <p class="text-md font-light">Something is not right...</p>
-      <p class="opacity-70 text-3xl font-bold">
-        Seems like the server is inaccessible. Check your network?
-      </p>
-      {#if errorMessage}
-        <p class="text-sm opacity-70 wrap-break-word">{errorMessage}</p>
-      {/if}
-    </div>
+  <div class="flex flex-col gap-2">
+    <p class="text-md font-light">Something is not right...</p>
+    <p class="opacity-70 text-3xl font-bold">
+      Seems like the server is inaccessible. Check your network?
+    </p>
+    {#if errorMessage}
+      <p class="text-sm opacity-70 wrap-break-word">{errorMessage}</p>
+    {/if}
+  </div>
+  <div class="flex flex-row gap-2">
     <button
       class="btn"
       class:btn-disabled={isRestarting}
@@ -55,5 +56,10 @@
         Try again
       {/if}
     </button>
+    <button class="btn btn-outline" onclick={async () => invoke("open_client_config_manager")}>
+      Advanced options
+    </button>
+  </div>
+
   </div>
 </div>

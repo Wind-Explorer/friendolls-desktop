@@ -9,7 +9,11 @@ use crate::{
         user::UserRemote,
     },
     services::{
-        cursor::start_cursor_tracking, doll_editor::open_doll_editor_window,
+        client_config_manager::{
+            load_app_config, open_config_manager_window, save_app_config, AppConfig,
+        },
+        cursor::start_cursor_tracking,
+        doll_editor::open_doll_editor_window,
         scene::open_splash_window,
     },
     state::{init_app_data, init_app_data_scoped, AppDataRefreshScope, FDOLL},
@@ -341,6 +345,31 @@ fn restart_app() {
 }
 
 #[tauri::command]
+fn get_client_config() -> AppConfig {
+    let mut guard = lock_w!(FDOLL);
+    guard.app_config = load_app_config();
+    guard.app_config.clone()
+}
+
+#[tauri::command]
+fn save_client_config(config: AppConfig) -> Result<(), String> {
+    match save_app_config(config) {
+        Ok(saved) => {
+            let mut guard = lock_w!(FDOLL);
+            guard.app_config = saved;
+            Ok(())
+        }
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn open_client_config_manager() -> Result<(), String> {
+    open_config_manager_window();
+    Ok(())
+}
+
+#[tauri::command]
 async fn logout_and_restart() -> Result<(), String> {
     crate::services::auth::logout_and_restart()
         .await
@@ -392,6 +421,9 @@ pub fn run() {
             recolor_gif_base64,
             quit_app,
             restart_app,
+            get_client_config,
+            save_client_config,
+            open_client_config_manager,
             open_doll_editor_window,
             start_auth_flow,
             logout_and_restart

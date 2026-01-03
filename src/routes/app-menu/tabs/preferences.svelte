@@ -15,14 +15,27 @@
       signingOut = false;
     }
   }
+
+  const openClientConfigManager = async () => {
+    try {
+      await invoke("open_client_config_manager");
+    } catch (error) {
+      console.error("Failed to open client config manager", error);
+    }
+  };
 </script>
 
 <div class="size-full flex flex-col justify-between">
   <div class="flex flex-col gap-2">
     <p>{$appData?.user?.name}'s preferences</p>
-    <button class="btn" class:btn-disabled={signingOut} onclick={handleSignOut}>
-      {signingOut ? "Signing out..." : "Sign out"}
-    </button>
+    <div class="flex flex-row gap-2">
+      <button class="btn" class:btn-disabled={signingOut} onclick={handleSignOut}>
+        {signingOut ? "Signing out..." : "Sign out"}
+      </button>
+      <button class="btn btn-outline" onclick={openClientConfigManager}>
+        Advanced options
+      </button>
+    </div>
   </div>
   <div class="w-full flex flex-row justify-between">
     <div></div>

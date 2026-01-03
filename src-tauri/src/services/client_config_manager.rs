@@ -1,0 +1,178 @@
+use std::{fs, path::PathBuf};
+
+use serde::{Deserialize, Serialize};
+use tauri::Manager;
+use thiserror::Error;
+use tracing::{error, info, warn};
+use url::Url;
+
+use crate::get_app_handle;
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug)]
+pub struct AuthConfig {
+    pub audience: String,
+    pub auth_url: String,
+}
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug)]
+pub struct AppConfig {
+    pub api_base_url: Option<String>,
+    pub auth: AuthConfig,
+}
+
+#[derive(Debug, Error)]
+pub enum ClientConfigError {
+    #[error("failed to resolve app config dir: {0}")]
+    ResolvePath(tauri::Error),
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("failed to parse client config: {0}")]
+    Parse(#[from] serde_json::Error),
+}
+
+pub static CLIENT_CONFIG_MANAGER_WINDOW_LABEL: &str = "client_config_manager";
+const CONFIG_FILENAME: &str = "client_config.json";
+const DEFAULT_API_BASE_URL: &str = "https://api.fdolls.adamcv.com";
+const DEFAULT_AUTH_URL: &str = "https://auth.adamcv.com/realms/friendolls/protocol/openid-connect";
+const DEFAULT_JWT_AUDIENCE: &str = "friendolls-desktop";
+
+fn config_file_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, ClientConfigError> {
+    let dir = app_handle
+        .path()
+        .app_config_dir()
+        .map_err(ClientConfigError::ResolvePath)?;
+    Ok(dir.join(CONFIG_FILENAME))
+}
+
+fn strip_trailing_slash(value: &str) -> String {
+    value.trim_end_matches('/').to_string()
+}
+
+fn sanitize(mut config: AppConfig) -> AppConfig {
+    // Trim and normalize optional api_base_url
+    config.api_base_url = config
+        .api_base_url
+        .and_then(|v| {
+            let trimmed = v.trim().to_string();
+            if trimmed.is_empty() {
+                None
+            } else {
+                // ensure scheme present and no double prefixes
+                if let Ok(parsed) = Url::parse(&trimmed) {
+                    Some(strip_trailing_slash(parsed.as_str()))
+                } else if let Ok(parsed) = Url::parse(&format!("https://{trimmed}")) {
+                    Some(strip_trailing_slash(parsed.as_str()))
+                } else {
+                    None
+                }
+            }
+        })
+        .or_else(|| Some(DEFAULT_API_BASE_URL.to_string()))
+        .map(|v| strip_trailing_slash(&v));
+
+    let auth_url_trimmed = config.auth.auth_url.trim();
+    if auth_url_trimmed.is_empty() {
+        config.auth.auth_url = DEFAULT_AUTH_URL.to_string();
+    } else if let Ok(parsed) = Url::parse(auth_url_trimmed) {
+        config.auth.auth_url = strip_trailing_slash(parsed.as_str());
+    } else if let Ok(parsed) = Url::parse(&format!("https://{auth_url_trimmed}")) {
+        config.auth.auth_url = strip_trailing_slash(parsed.as_str());
+    } else {
+        config.auth.auth_url = DEFAULT_AUTH_URL.to_string();
+    }
+
+    if config.auth.audience.trim().is_empty() {
+        config.auth.audience = DEFAULT_JWT_AUDIENCE.to_string();
+    } else {
+        config.auth.audience = config.auth.audience.trim().to_string();
+    }
+
+    config
+}
+
+pub fn default_app_config() -> AppConfig {
+    AppConfig {
+        api_base_url: Some(DEFAULT_API_BASE_URL.to_string()),
+        auth: AuthConfig {
+            audience: DEFAULT_JWT_AUDIENCE.to_string(),
+            auth_url: DEFAULT_AUTH_URL.to_string(),
+        },
+    }
+}
+
+pub fn load_app_config() -> AppConfig {
+    let app_handle = get_app_handle();
+    let path = match config_file_path(app_handle) {
+        Ok(p) => p,
+        Err(e) => {
+            warn!("Unable to resolve client config path: {e}");
+            return default_app_config();
+        }
+    };
+
+    if !path.exists() {
+        return default_app_config();
+    }
+
+    match fs::read_to_string(&path) {
+        Ok(content) => match serde_json::from_str::<AppConfig>(&content) {
+            Ok(cfg) => sanitize(cfg),
+            Err(e) => {
+                warn!("Failed to parse client config, using defaults: {e}");
+                default_app_config()
+            }
+        },
+        Err(e) => {
+            warn!("Failed to read client config, using defaults: {e}");
+            default_app_config()
+        }
+    }
+}
+
+pub fn save_app_config(config: AppConfig) -> Result<AppConfig, ClientConfigError> {
+    let app_handle = get_app_handle();
+    let path = config_file_path(app_handle)?;
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let sanitized = sanitize(config);
+    let serialized = serde_json::to_string_pretty(&sanitized)?;
+    fs::write(&path, serialized)?;
+    Ok(sanitized)
+}
+
+pub fn open_config_manager_window() {
+    let app_handle = get_app_handle();
+    let existing_webview_window = app_handle.get_window(CLIENT_CONFIG_MANAGER_WINDOW_LABEL);
+
+    if let Some(window) = existing_webview_window {
+        if let Err(e) = window.show() {
+            error!("Failed to show client config manager window: {e}");
+        }
+        return;
+    }
+
+    info!("Starting client config manager...");
+    let webview_window = match tauri::WebviewWindowBuilder::new(
+        app_handle,
+        CLIENT_CONFIG_MANAGER_WINDOW_LABEL,
+        tauri::WebviewUrl::App("/client-config-manager".into()),
+    )
+    .title("Friendolls Client Config Manager")
+    .inner_size(600.0, 500.0)
+    .build()
+    {
+        Ok(window) => {
+            info!("Client config manager window builder succeeded");
+            window
+        }
+        Err(e) => {
+            error!("Failed to build client config manager window: {}", e);
+            return;
+        }
+    };
+
+    info!("Client config manager window initialized successfully.");
+}

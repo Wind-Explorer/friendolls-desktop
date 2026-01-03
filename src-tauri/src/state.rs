@@ -1,16 +1,15 @@
 // in app-core/src/state.rs
 use crate::{
     get_app_handle, lock_r, lock_w,
-    models::{
-        app_config::{AppConfig, AuthConfig},
-        app_data::AppData,
-    },
+    models::app_data::AppData,
     remotes::{dolls::DollsRemote, friends::FriendRemote, user::UserRemote},
-    services::auth::{load_auth_pass, AuthPass},
+    services::{
+        auth::{load_auth_pass, AuthPass},
+        client_config_manager::{load_app_config, AppConfig, AuthConfig},
+    },
 };
 use std::{
     collections::HashSet,
-    env,
     sync::{Arc, LazyLock, RwLock},
 };
 use tauri::Emitter;
@@ -53,13 +52,7 @@ pub fn init_fdoll_state(tracing_guard: Option<tracing_appender::non_blocking::Wo
         let mut guard = lock_w!(FDOLL);
         dotenvy::dotenv().ok();
         guard.tracing_guard = tracing_guard;
-        guard.app_config = AppConfig {
-            api_base_url: Some(env::var("API_BASE_URL").expect("API_BASE_URL must be set")),
-            auth: AuthConfig {
-                audience: env::var("JWT_AUDIENCE").expect("JWT_AUDIENCE must be set"),
-                auth_url: env::var("AUTH_URL").expect("AUTH_URL must be set"),
-            },
-        };
+        guard.app_config = load_app_config();
         guard.auth_pass = match load_auth_pass() {
             Ok(pass) => pass,
             Err(e) => {

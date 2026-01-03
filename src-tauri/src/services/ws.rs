@@ -5,10 +5,12 @@ use tracing::{error, info};
 
 use crate::{
     get_app_handle, lock_r, lock_w,
-    models::app_config::AppConfig,
-    services::cursor::{normalized_to_absolute, CursorPosition, CursorPositions},
-    services::health_manager::{close_health_manager_window, show_health_manager_with_error},
-    services::scene::open_scene_window,
+    services::{
+        client_config_manager::AppConfig,
+        cursor::{normalized_to_absolute, CursorPosition, CursorPositions},
+        health_manager::{close_health_manager_window, show_health_manager_with_error},
+        scene::open_scene_window,
+    },
     state::{init_app_data_scoped, AppDataRefreshScope, FDOLL},
 };
 use serde::{Deserialize, Serialize};
@@ -393,17 +395,11 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
             Ok(Ok(_)) => (),
             Ok(Err(e)) => {
                 error!("Failed to emit cursor report: {}", e);
-                show_health_manager_with_error(Some(format!(
-                    "WebSocket emit failed: {}",
-                    e
-                )));
+                show_health_manager_with_error(Some(format!("WebSocket emit failed: {}", e)));
             }
             Err(e) => {
                 error!("Failed to execute blocking task for cursor report: {}", e);
-                show_health_manager_with_error(Some(format!(
-                    "WebSocket task failed: {}",
-                    e
-                )));
+                show_health_manager_with_error(Some(format!("WebSocket task failed: {}", e)));
             }
         }
     }

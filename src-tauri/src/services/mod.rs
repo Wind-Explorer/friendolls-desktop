@@ -1,5 +1,6 @@
 pub mod app_menu;
 pub mod auth;
+pub mod client_config_manager;
 pub mod cursor;
 pub mod doll_editor;
 pub mod health_manager;
