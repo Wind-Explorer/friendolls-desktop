@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use thiserror::Error;
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 use url::Url;
 
 use crate::get_app_handle;
@@ -28,6 +28,8 @@ pub enum ClientConfigError {
     Io(#[from] std::io::Error),
     #[error("failed to parse client config: {0}")]
     Parse(#[from] serde_json::Error),
+    #[error("failed to run on main thread: {0}")]
+    Dispatch(#[from] tauri::Error),
     #[error("failed to build client config manager window: {0}")]
     Window(tauri::Error),
     #[error("failed to show client config manager window: {0}")]
@@ -78,8 +80,8 @@ fn sanitize(mut config: AppConfig) -> AppConfig {
         .map(|v| strip_trailing_slash(&v));
 
     let auth_url_trimmed = config.auth.auth_url.trim();
-    config.auth.auth_url = parse_http_url(auth_url_trimmed)
-        .unwrap_or_else(|| DEFAULT_AUTH_URL.to_string());
+    config.auth.auth_url =
+        parse_http_url(auth_url_trimmed).unwrap_or_else(|| DEFAULT_AUTH_URL.to_string());
 
     if config.auth.audience.trim().is_empty() {
         config.auth.audience = DEFAULT_JWT_AUDIENCE.to_string();
@@ -149,6 +151,24 @@ pub fn save_app_config(config: AppConfig) -> Result<AppConfig, ClientConfigError
 
 pub fn open_config_manager_window() -> Result<(), ClientConfigError> {
     let app_handle = get_app_handle();
+
+    // Directly run on main thread via dispatch but handle errors properly
+    // This is essentially what we did but let's simplify and make sure we don't block
+    let handle_for_closure = app_handle.clone();
+
+    // We want to return immediately, the window creation happens asynchronously on main thread
+    let _ = app_handle.run_on_main_thread(move || {
+        if let Err(e) = open_config_manager_window_inner(&handle_for_closure) {
+            error!("Failed to open client config manager window: {e}");
+        }
+    });
+
+    Ok(())
+}
+
+fn open_config_manager_window_inner(
+    app_handle: &tauri::AppHandle,
+) -> Result<(), ClientConfigError> {
     let existing_webview_window = app_handle.get_window(CLIENT_CONFIG_MANAGER_WINDOW_LABEL);
 
     if let Some(window) = existing_webview_window {
@@ -156,10 +176,12 @@ pub fn open_config_manager_window() -> Result<(), ClientConfigError> {
             error!("Failed to show client config manager window: {e}");
             return Err(ClientConfigError::ShowWindow(e));
         }
+        if let Err(e) = window.set_focus() {
+            error!("Failed to focus client config manager window: {e}");
+        }
         return Ok(());
     }
 
-    info!("Starting client config manager...");
     match tauri::WebviewWindowBuilder::new(
         app_handle,
         CLIENT_CONFIG_MANAGER_WINDOW_LABEL,
@@ -167,11 +189,17 @@ pub fn open_config_manager_window() -> Result<(), ClientConfigError> {
     )
     .title("Friendolls Client Config Manager")
     .inner_size(600.0, 500.0)
+    .visible(false)
     .build()
     {
-        Ok(_) => {
-            info!("Client config manager window builder succeeded");
-            info!("Client config manager window initialized successfully.");
+        Ok(window) => {
+            if let Err(e) = window.show() {
+                error!("Failed to show client config manager window: {}", e);
+                return Err(ClientConfigError::ShowWindow(e));
+            }
+            if let Err(e) = window.set_focus() {
+                error!("Failed to focus client config manager window: {e}");
+            }
             Ok(())
         }
         Err(e) => {

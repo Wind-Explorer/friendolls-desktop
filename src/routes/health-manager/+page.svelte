@@ -56,7 +56,16 @@
         Try again
       {/if}
     </button>
-    <button class="btn btn-outline" onclick={async () => invoke("open_client_config_manager")}>
+    <button
+      class="btn btn-outline"
+      onclick={async () => {
+        try {
+          await invoke("open_client_config_manager");
+        } catch (err) {
+          errorMessage = `Failed to open config manager: ${err}`;
+        }
+      }}
+    >
       Advanced options
     </button>
   </div>

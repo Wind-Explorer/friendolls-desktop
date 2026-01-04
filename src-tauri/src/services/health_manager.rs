@@ -10,9 +10,14 @@ pub static HEALTH_MANAGER_EVENT: &str = "health-error";
 fn close_window_if_exists(label: &str) {
     let app_handle = get_app_handle();
     if let Some(window) = app_handle.get_window(label) {
+        info!("Closing window with label: {}", label);
         if let Err(e) = window.close() {
             error!("Failed to close {} window: {}", label, e);
+        } else {
+            info!("Closed window with label: {}", label);
         }
+    } else {
+        info!("No window found with label: {}", label);
     }
 }
 
@@ -46,6 +51,7 @@ pub fn show_health_manager_with_error(error_message: Option<String>) {
         return;
     }
 
+    info!("Building health manager window");
     let webview_window = match tauri::WebviewWindowBuilder::new(
         app_handle,
         HEALTH_MANAGER_WINDOW_LABEL,
@@ -95,6 +101,8 @@ pub fn show_health_manager_with_error(error_message: Option<String>) {
         )
         .kind(MessageDialogKind::Error)
         .show(|_| {});
+    } else {
+        info!("Health manager window shown successfully");
     }
 }
 
