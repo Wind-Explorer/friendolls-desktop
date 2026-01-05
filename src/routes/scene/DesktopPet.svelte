@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
+  import { usePetState } from "$lib/composables/usePetState";
+  import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
+  import PetSprite from "$lib/components/PetSprite.svelte";
   import onekoGif from "../../assets/oneko/oneko.gif";
 
   export let targetX = 0;
@@ -10,176 +12,30 @@
   export let outlineColor: string | undefined = undefined;
   export let isInteractive = false;
 
-  let nekoPosX = 32;
-  let nekoPosY = 32;
-  let frameCount = 0;
-  let idleTime = 0;
-  let idleAnimation: string | null = null;
-  let idleAnimationFrame = 0;
-  let currentSprite = { x: -3, y: -3 }; // idle sprite initially
+  const { position, currentSprite, updatePosition, setPosition } = usePetState(
+    32,
+    32,
+  );
 
-  const nekoSpeed = 10;
   let animationFrameId: number;
   let lastFrameTimestamp: number;
-
-  let spriteSheetUrl = onekoGif; // Default to standard GIF
-  let isCustomSprite = false;
+  let spriteSheetUrl = onekoGif;
 
   // Watch for color changes to regenerate sprite
-  $: if (bodyColor && outlineColor) {
-    updateSpriteSheet(bodyColor, outlineColor);
-  } else {
-    // Revert to default if colors are missing
-    spriteSheetUrl = onekoGif;
-    isCustomSprite = false;
-  }
+  $: updateSprite(bodyColor, outlineColor);
 
-  async function updateSpriteSheet(body: string, outline: string) {
-    try {
-      const result = await invoke<string>("recolor_gif_base64", {
-        whiteColorHex: body,
-        blackColorHex: outline,
-        applyTexture: true,
+  async function updateSprite(
+    body: string | undefined,
+    outline: string | undefined,
+  ) {
+    if (body && outline) {
+      spriteSheetUrl = await getSpriteSheetUrl({
+        bodyColor: body,
+        outlineColor: outline,
       });
-      spriteSheetUrl = `data:image/gif;base64,${result}`;
-      isCustomSprite = true;
-    } catch (e) {
-      console.error("Failed to recolor sprite:", e);
-      // Fallback
+    } else {
       spriteSheetUrl = onekoGif;
-      isCustomSprite = false;
     }
-  }
-
-  // Sprite constants from oneko.js
-  const spriteSets: Record<string, [number, number][]> = {
-    idle: [[-3, -3]],
-    alert: [[-7, -3]],
-    scratchSelf: [
-      [-5, 0],
-      [-6, 0],
-      [-7, 0],
-    ],
-    scratchWallN: [
-      [0, 0],
-      [0, -1],
-    ],
-    scratchWallS: [
-      [-7, -1],
-      [-6, -2],
-    ],
-    scratchWallE: [
-      [-2, -2],
-      [-2, -3],
-    ],
-    scratchWallW: [
-      [-4, 0],
-      [-4, -1],
-    ],
-    tired: [[-3, -2]],
-    sleeping: [
-      [-2, 0],
-      [-2, -1],
-    ],
-    N: [
-      [-1, -2],
-      [-1, -3],
-    ],
-    NE: [
-      [0, -2],
-      [0, -3],
-    ],
-    E: [
-      [-3, 0],
-      [-3, -1],
-    ],
-    SE: [
-      [-5, -1],
-      [-5, -2],
-    ],
-    S: [
-      [-6, -3],
-      [-7, -2],
-    ],
-    SW: [
-      [-5, -3],
-      [-6, -1],
-    ],
-    W: [
-      [-4, -2],
-      [-4, -3],
-    ],
-    NW: [
-      [-1, 0],
-      [-1, -1],
-    ],
-  };
-
-  function setSprite(name: string, frame: number) {
-    const sprites = spriteSets[name];
-    const sprite = sprites[frame % sprites.length];
-    currentSprite = { x: sprite[0] * 32, y: sprite[1] * 32 };
-  }
-
-  function resetIdleAnimation() {
-    idleAnimation = null;
-    idleAnimationFrame = 0;
-  }
-
-  function idle() {
-    idleTime += 1;
-
-    // every ~ 20 seconds (idleTime increments every frame, with ~10 frames/second, so ~200 frames)
-    if (
-      idleTime > 10 &&
-      Math.floor(Math.random() * 200) == 0 &&
-      idleAnimation == null
-    ) {
-      let availableIdleAnimations = ["sleeping", "scratchSelf"];
-      if (nekoPosX < 32) {
-        availableIdleAnimations.push("scratchWallW");
-      }
-      if (nekoPosY < 32) {
-        availableIdleAnimations.push("scratchWallN");
-      }
-      if (nekoPosX > window.innerWidth - 32) {
-        availableIdleAnimations.push("scratchWallE");
-      }
-      if (nekoPosY > window.innerHeight - 32) {
-        availableIdleAnimations.push("scratchWallS");
-      }
-      idleAnimation =
-        availableIdleAnimations[
-          Math.floor(Math.random() * availableIdleAnimations.length)
-        ];
-    }
-
-    switch (idleAnimation) {
-      case "sleeping":
-        if (idleAnimationFrame < 8) {
-          setSprite("tired", 0);
-          break;
-        }
-        setSprite("sleeping", Math.floor(idleAnimationFrame / 4));
-        if (idleAnimationFrame > 192) {
-          resetIdleAnimation();
-        }
-        break;
-      case "scratchWallN":
-      case "scratchWallS":
-      case "scratchWallE":
-      case "scratchWallW":
-      case "scratchSelf":
-        setSprite(idleAnimation, idleAnimationFrame);
-        if (idleAnimationFrame > 9) {
-          resetIdleAnimation();
-        }
-        break;
-      default:
-        setSprite("idle", 0);
-        return;
-    }
-    idleAnimationFrame += 1;
   }
 
   function frame(timestamp: number) {
@@ -190,58 +46,15 @@
     // 100ms per frame for the animation loop
     if (timestamp - lastFrameTimestamp > 100) {
       lastFrameTimestamp = timestamp;
-      updatePosition();
+      updatePosition(targetX, targetY, window.innerWidth, window.innerHeight);
     }
 
     animationFrameId = requestAnimationFrame(frame);
   }
 
-  function updatePosition() {
-    frameCount += 1;
-    const diffX = nekoPosX - targetX;
-    const diffY = nekoPosY - targetY;
-    const distance = Math.sqrt(diffX ** 2 + diffY ** 2);
-
-    // If close enough, stop moving and idle
-    if (distance < nekoSpeed || distance < 48) {
-      idle();
-      return;
-    }
-
-    // Alert behavior: pause briefly before moving if we were idling
-    if (idleTime > 1) {
-      setSprite("alert", 0);
-      idleTime = Math.min(idleTime, 7);
-      idleTime -= 1;
-      return;
-    }
-
-    idleTime = 0;
-    idleAnimation = null;
-    idleAnimationFrame = 0;
-
-    // Calculate direction
-    let direction = "";
-    direction = diffY / distance > 0.5 ? "N" : "";
-    direction += diffY / distance < -0.5 ? "S" : "";
-    direction += diffX / distance > 0.5 ? "W" : "";
-    direction += diffX / distance < -0.5 ? "E" : "";
-
-    // Fallback if direction is empty (shouldn't happen with logic above but good safety)
-    if (direction === "") direction = "idle";
-
-    setSprite(direction, frameCount);
-
-    // Move towards target
-    nekoPosX -= (diffX / distance) * nekoSpeed;
-    nekoPosY -= (diffY / distance) * nekoSpeed;
-  }
-
   onMount(() => {
     // Initialize position to target so it doesn't fly in from 32,32 every time
-    nekoPosX = targetX;
-    nekoPosY = targetY;
-
+    setPosition(targetX, targetY);
     animationFrameId = requestAnimationFrame(frame);
   });
 
@@ -258,19 +71,18 @@
   }}
   class="desktop-pet flex flex-col items-center relative"
   style="
-    transform: translate({nekoPosX - 16}px, {nekoPosY - 16}px);
+    transform: translate({$position.x - 16}px, {$position.y - 16}px);
     z-index: 50;
   "
 >
-  <div
-    class="pixelated hover:scale-110 active:scale-95"
-    style="
-      width: 32px;
-      height: 32px;
-      background-image: url('{spriteSheetUrl}');
-      background-position: {currentSprite.x}px {currentSprite.y}px;
-    "
-  ></div>
+  <div class="hover:scale-110 active:scale-95 transition-transform">
+    <PetSprite
+      {spriteSheetUrl}
+      spriteX={$currentSprite.x}
+      spriteY={$currentSprite.y}
+    />
+  </div>
+
   <span
     class="absolute -bottom-5 width-full text-[10px] bg-black/50 text-white px-1 rounded backdrop-blur-sm mt-1 whitespace-nowrap opacity-0 transition-opacity"
     class:opacity-100={isInteractive}

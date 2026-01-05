@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
+  import { SPRITE_SETS, SPRITE_SIZE } from "$lib/constants/pet-sprites";
+  import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
+  import PetSprite from "$lib/components/PetSprite.svelte";
 
   export let bodyColor: string;
   export let outlineColor: string;
@@ -15,91 +17,22 @@
   let frameTimer: number;
   let switchTimeout: number;
 
-  // Sprite constants from DesktopPet.svelte
-  const spriteSets: Record<string, [number, number][]> = {
-    idle: [[-3, -3]],
-    alert: [[-7, -3]],
-    scratchSelf: [
-      [-5, 0],
-      [-6, 0],
-      [-7, 0],
-    ],
-    scratchWallN: [
-      [0, 0],
-      [0, -1],
-    ],
-    scratchWallS: [
-      [-7, -1],
-      [-6, -2],
-    ],
-    scratchWallE: [
-      [-2, -2],
-      [-2, -3],
-    ],
-    scratchWallW: [
-      [-4, 0],
-      [-4, -1],
-    ],
-    tired: [[-3, -2]],
-    sleeping: [
-      [-2, 0],
-      [-2, -1],
-    ],
-    N: [
-      [-1, -2],
-      [-1, -3],
-    ],
-    NE: [
-      [0, -2],
-      [0, -3],
-    ],
-    E: [
-      [-3, 0],
-      [-3, -1],
-    ],
-    SE: [
-      [-5, -1],
-      [-5, -2],
-    ],
-    S: [
-      [-6, -3],
-      [-7, -2],
-    ],
-    SW: [
-      [-5, -3],
-      [-6, -1],
-    ],
-    W: [
-      [-4, -2],
-      [-4, -3],
-    ],
-    NW: [
-      [-1, 0],
-      [-1, -1],
-    ],
-  };
-
-  const setNames = Object.keys(spriteSets);
+  const setNames = Object.keys(SPRITE_SETS);
 
   function generatePreview() {
     error = null;
-    try {
-      invoke<string>("recolor_gif_base64", {
-        whiteColorHex: bodyColor,
-        blackColorHex: outlineColor,
-        applyTexture,
+    getSpriteSheetUrl({
+      bodyColor,
+      outlineColor,
+      applyTexture,
+    })
+      .then((url: string) => {
+        previewBase64 = url;
       })
-        .then((result) => {
-          previewBase64 = result;
-        })
-        .catch((e) => {
-          error = (e as Error)?.message ?? String(e);
-          console.error(e);
-        });
-    } catch (e) {
-      error = (e as Error)?.message ?? String(e);
-      console.error(e);
-    }
+      .catch((e: unknown) => {
+        error = (e as Error)?.message ?? String(e);
+        console.error(e);
+      });
   }
 
   function debouncedGeneratePreview() {
@@ -111,9 +44,9 @@
 
   function updateFrame() {
     const setName = setNames[currentSetIndex];
-    const frames = spriteSets[setName];
+    const frames = SPRITE_SETS[setName];
     const sprite = frames[frameIndex % frames.length];
-    currentSprite = { x: sprite[0] * 32, y: sprite[1] * 32 };
+    currentSprite = { x: sprite[0] * SPRITE_SIZE, y: sprite[1] * SPRITE_SIZE };
   }
 
   function switchSet() {
@@ -123,7 +56,7 @@
 
   function startSet() {
     const setName = setNames[currentSetIndex];
-    const frames = spriteSets[setName];
+    const frames = SPRITE_SETS[setName];
     frameIndex = 0;
     updateFrame();
     const frameDuration = frames.length > 0 ? 1000 / frames.length : 1000;
@@ -161,15 +94,14 @@
         Error
       </div>
     {:else if previewBase64}
-      <div
-        class="pixelated"
-        style="
-          width: 32px;
-          height: 32px;
-          background-image: url('data:image/gif;base64,{previewBase64}');
-          background-position: {currentSprite.x}px {currentSprite.y}px;
-        "
-      ></div>
+      <div class="hover:scale-110 active:scale-95 transition-transform">
+        <PetSprite
+          spriteSheetUrl={previewBase64}
+          spriteX={currentSprite.x}
+          spriteY={currentSprite.y}
+          size={32}
+        />
+      </div>
     {:else}
       <div class="size-full skeleton" style:background-color={bodyColor}></div>
     {/if}
