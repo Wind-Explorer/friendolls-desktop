@@ -1,9 +1,124 @@
-use crate::get_app_handle;
-use tauri::Manager;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
+
+use device_query::{DeviceQuery, DeviceState, Keycode};
+use once_cell::sync::OnceCell;
+use tauri::{Emitter, Manager};
 use tauri_plugin_positioner::WindowExt;
-use tracing::{error, info};
+use tracing::{error, info, warn};
+
+use crate::get_app_handle;
+
 pub static SCENE_WINDOW_LABEL: &str = "scene";
 pub static SPLASH_WINDOW_LABEL: &str = "splash";
+
+static SCENE_INTERACTIVE_STATE: OnceCell<Arc<AtomicBool>> = OnceCell::new();
+static MODIFIER_LISTENER_INIT: OnceCell<()> = OnceCell::new();
+
+fn scene_interactive_state() -> Arc<AtomicBool> {
+    SCENE_INTERACTIVE_STATE
+        .get_or_init(|| Arc::new(AtomicBool::new(false)))
+        .clone()
+}
+
+fn update_scene_interactive(interactive: bool) {
+    let app_handle = get_app_handle();
+
+    if let Some(window) = app_handle.get_window(SCENE_WINDOW_LABEL) {
+        if let Err(e) = window.set_ignore_cursor_events(!interactive) {
+            error!("Failed to toggle scene cursor events: {}", e);
+        }
+
+        if let Err(e) = window.emit("scene-interactive", &interactive) {
+            error!("Failed to emit scene interactive event: {}", e);
+        }
+    } else {
+        warn!("Scene window not available for interactive update");
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[link(name = "ApplicationServices", kind = "framework")]
+extern "C" {
+    fn AXIsProcessTrusted() -> bool;
+}
+
+fn start_scene_modifier_listener() {
+    MODIFIER_LISTENER_INIT.get_or_init(|| {
+        let state = scene_interactive_state();
+        update_scene_interactive(false);
+
+        let app_handle = get_app_handle().clone();
+
+        #[cfg(target_os = "macos")]
+        unsafe {
+          info!("Accessibility status: {}", AXIsProcessTrusted());
+            if !AXIsProcessTrusted() {
+                // Warning only - polling might work without explicit permissions for just key state in some contexts,
+                // or we just want to avoid the crash. We'll show the dialog but not return early if we want to try anyway.
+                // However, usually global key monitoring requires it.
+                // Let's show the dialog but NOT return, to try polling.
+                // Or better, let's keep the return if we think it won't work at all,
+                // but since the crash was the main issue, let's try to proceed safely.
+                // For now, I will keep the dialog and the return to encourage users to enable it,
+                // as it's likely needed for global input monitoring.
+
+                // On second thought, let's keep the return to be safe and clear to the user.
+                error!("Accessibility permissions not granted. Global modifier listener will NOT start.");
+
+                use tauri_plugin_dialog::DialogExt;
+                use tauri_plugin_dialog::MessageDialogBuilder;
+                use tauri_plugin_dialog::MessageDialogKind;
+
+                MessageDialogBuilder::new(
+                    app_handle.dialog().clone(),
+                    "Missing Permissions",
+                    "Friendolls needs Accessibility permissions to detect the Alt key for interactivity. Please grant permissions in System Settings -> Privacy & Security -> Accessibility and restart the app.",
+                )
+                .kind(MessageDialogKind::Warning)
+                .show(|_| {});
+
+                return;
+            }
+        }
+
+        // Spawn a thread for polling key state
+        thread::spawn(move || {
+            let device_state = DeviceState::new();
+            let mut last_interactive = false;
+
+            loop {
+                let keys = device_state.get_keys();
+                // Check for Alt key (Option on Mac)
+                let interactive = (keys.contains(&Keycode::LAlt) || keys.contains(&Keycode::RAlt)) || keys.contains(&Keycode::Command);
+
+                if interactive != last_interactive {
+                    // State changed
+                    info!("Key down state chanegd!");
+                    let previous = state.swap(interactive, Ordering::SeqCst);
+                    if previous != interactive {
+                        if let Some(window) = app_handle.get_window(SCENE_WINDOW_LABEL) {
+                            if let Err(err) = window.set_ignore_cursor_events(!interactive) {
+                                error!("Failed to toggle scene cursor events: {}", err);
+                            }
+
+                            if let Err(err) = window.emit("scene-interactive", &interactive) {
+                                error!("Failed to emit scene interactive event: {}", err);
+                            }
+                        } else {
+                            warn!("Scene window not available for interactive update");
+                        }
+                    }
+                    last_interactive = interactive;
+                }
+
+                // Poll every 100ms
+                thread::sleep(std::time::Duration::from_millis(100));
+            }
+        });
+    });
+}
 
 pub fn overlay_fullscreen(window: &tauri::Window) -> Result<(), tauri::Error> {
     // Get the primary monitor
@@ -141,6 +256,9 @@ pub fn open_scene_window() {
         error!("Failed to set ignore cursor events: {}", e);
         return;
     }
+
+    // Start global modifier listener once scene window exists
+    start_scene_modifier_listener();
 
     #[cfg(debug_assertions)]
     webview_window.open_devtools();

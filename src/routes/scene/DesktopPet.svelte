@@ -8,6 +8,7 @@
   export let name = "";
   export let bodyColor: string | undefined = undefined;
   export let outlineColor: string | undefined = undefined;
+  export let isInteractive = false;
 
   let nekoPosX = 32;
   let nekoPosY = 32;
@@ -251,15 +252,18 @@
   });
 </script>
 
-<div
-  class="desktop-pet flex flex-col items-center"
+<button
+  onclick={() => {
+    console.log("clicked on neko");
+  }}
+  class="desktop-pet flex flex-col items-center relative"
   style="
     transform: translate({nekoPosX - 16}px, {nekoPosY - 16}px);
     z-index: 50;
   "
 >
   <div
-    class="pixelated"
+    class="pixelated hover:scale-110 active:scale-95"
     style="
       width: 32px;
       height: 32px;
@@ -268,18 +272,18 @@
     "
   ></div>
   <span
-    class="text-[10px] bg-black/50 text-white px-1 rounded backdrop-blur-sm mt-1 whitespace-nowrap"
+    class="absolute -bottom-5 width-full text-[10px] bg-black/50 text-white px-1 rounded backdrop-blur-sm mt-1 whitespace-nowrap opacity-0 transition-opacity"
+    class:opacity-100={isInteractive}
   >
     {name}
   </span>
-</div>
+</button>
 
 <style>
   .desktop-pet {
     position: fixed; /* Fixed relative to the viewport/container */
     top: 0;
     left: 0;
-    pointer-events: none; /* Let clicks pass through */
     will-change: transform;
   }
 </style>
