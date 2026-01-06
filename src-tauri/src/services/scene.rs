@@ -118,18 +118,17 @@ fn start_scene_modifier_listener() {
 pub fn overlay_fullscreen(window: &tauri::Window) -> Result<(), tauri::Error> {
     // Get the primary monitor
     let monitor = get_app_handle().primary_monitor()?.unwrap();
-    // Get the work area (usable space, excluding menu bar/dock/notch)
-    let work_area = monitor.work_area();
-    // Set window position to top-left of the work area
-    window.set_position(tauri::PhysicalPosition {
-        x: work_area.position.x,
-        y: work_area.position.y,
-    })?;
-    // Set window size to match work area size
+    let monitor_size = monitor.size();
+
+    // Fullscreen the window by expanding the window to match monitor size then move it to the top-left corner
+    // This forces the window to fit under the notch that exists on MacBooks with a notch
     window.set_size(tauri::PhysicalSize {
-        width: work_area.size.width,
-        height: work_area.size.height,
+        width: monitor_size.width,
+        height: monitor_size.height,
     })?;
+
+    window.set_position(tauri::PhysicalPosition { x: 0, y: 0 })?;
+
     Ok(())
 }
 
