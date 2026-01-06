@@ -94,7 +94,7 @@
         Error
       </div>
     {:else if previewBase64}
-      <div class="hover:scale-110 active:scale-95 transition-transform">
+      <div>
         <PetSprite
           spriteSheetUrl={previewBase64}
           spriteX={currentSprite.x}
