@@ -14,7 +14,7 @@ use crate::{
         },
         cursor::start_cursor_tracking,
         doll_editor::open_doll_editor_window,
-        scene::open_splash_window,
+        scene::{open_splash_window, set_scene_interactive},
     },
     state::{init_app_data, init_app_data_scoped, AppDataRefreshScope, FDOLL},
 };
@@ -424,6 +424,7 @@ pub fn run() {
             save_client_config,
             open_client_config_manager,
             open_doll_editor_window,
+            set_scene_interactive,
             start_auth_flow,
             logout_and_restart
         ])

@@ -7,6 +7,8 @@
   import { appData } from "../../events/app-data";
   import { sceneInteractive } from "../../events/scene-interactive";
 
+  import { invoke } from "@tauri-apps/api/core";
+
   import DesktopPet from "./DesktopPet.svelte";
 
   let innerWidth = 0;
@@ -32,6 +34,13 @@
 <svelte:window bind:innerWidth bind:innerHeight />
 
 <div class="w-svw h-svh p-4 relative overflow-hidden">
+  <button
+    class="absolute inset-0 z-10 size-full"
+    aria-label="Deactive scene interactive"
+    onclick={async () => {
+      await invoke("set_scene_interactive", { interactive: false });
+    }}>&nbsp;</button
+  >
   <div
     class="size-max mx-auto bg-base-100 border-base-200 border p-1 rounded-lg shadow-md"
   >

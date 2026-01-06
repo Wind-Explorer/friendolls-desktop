@@ -22,7 +22,7 @@ fn scene_interactive_state() -> Arc<AtomicBool> {
         .clone()
 }
 
-fn update_scene_interactive(interactive: bool) {
+pub fn update_scene_interactive(interactive: bool) {
     let app_handle = get_app_handle();
 
     if let Some(window) = app_handle.get_window(SCENE_WINDOW_LABEL) {
@@ -36,6 +36,11 @@ fn update_scene_interactive(interactive: bool) {
     } else {
         warn!("Scene window not available for interactive update");
     }
+}
+
+#[tauri::command]
+pub fn set_scene_interactive(interactive: bool) {
+    update_scene_interactive(interactive);
 }
 
 #[cfg(target_os = "macos")]
@@ -98,17 +103,7 @@ fn start_scene_modifier_listener() {
                     info!("Key down state chanegd!");
                     let previous = state.swap(interactive, Ordering::SeqCst);
                     if previous != interactive {
-                        if let Some(window) = app_handle.get_window(SCENE_WINDOW_LABEL) {
-                            if let Err(err) = window.set_ignore_cursor_events(!interactive) {
-                                error!("Failed to toggle scene cursor events: {}", err);
-                            }
-
-                            if let Err(err) = window.emit("scene-interactive", &interactive) {
-                                error!("Failed to emit scene interactive event: {}", err);
-                            }
-                        } else {
-                            warn!("Scene window not available for interactive update");
-                        }
+                        update_scene_interactive(interactive);
                     }
                     last_interactive = interactive;
                 }
