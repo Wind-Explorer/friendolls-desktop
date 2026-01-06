@@ -88,6 +88,7 @@
         {@const config = getFriendDollConfig(userId)}
         {#if config}
           <DesktopPet
+            id={userId}
             targetX={position.mapped.x * innerWidth}
             targetY={position.mapped.y * innerHeight}
             name={getFriendName(userId)}

@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import { usePetState } from "$lib/composables/usePetState";
   import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
   import PetSprite from "$lib/components/PetSprite.svelte";
   import onekoGif from "../../assets/oneko/oneko.gif";
 
+  export let id = "";
   export let targetX = 0;
   export let targetY = 0;
   export let name = "";
@@ -21,8 +23,18 @@
   let lastFrameTimestamp: number;
   let spriteSheetUrl = onekoGif;
 
+  let isPetMenuOpen = false;
+
   // Watch for color changes to regenerate sprite
   $: updateSprite(bodyColor, outlineColor);
+
+  $: (isInteractive, (isPetMenuOpen = false));
+
+  $: {
+    if (id) {
+      invoke("set_pet_menu_state", { id, open: isPetMenuOpen });
+    }
+  }
 
   async function updateSprite(
     body: string | undefined,
@@ -65,23 +77,32 @@
   });
 </script>
 
-<button
-  onclick={() => {
-    console.log("clicked on neko");
-  }}
+<div
   class="desktop-pet flex flex-col items-center relative"
   style="
     transform: translate({$position.x - 16}px, {$position.y - 16}px);
     z-index: 50;
   "
 >
-  <div class="hover:scale-110 active:scale-95 transition-transform">
+  {#if isPetMenuOpen}
+    <div
+      class="absolute -translate-y-44 w-30 h-40 bg-neutral-500 rounded-md"
+      role="menu"
+      tabindex="0"
+      aria-label="Pet Menu"
+    ></div>
+  {/if}
+  <button
+    onclick={() => {
+      isPetMenuOpen = !isPetMenuOpen;
+    }}
+  >
     <PetSprite
       {spriteSheetUrl}
       spriteX={$currentSprite.x}
       spriteY={$currentSprite.y}
     />
-  </div>
+  </button>
 
   <span
     class="absolute -bottom-5 width-full text-[10px] bg-black/50 text-white px-1 rounded backdrop-blur-sm mt-1 whitespace-nowrap opacity-0 transition-opacity"
@@ -89,7 +110,7 @@
   >
     {name}
   </span>
-</button>
+</div>
 
 <style>
   .desktop-pet {

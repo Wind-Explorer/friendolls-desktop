@@ -16,6 +16,16 @@ pub static SPLASH_WINDOW_LABEL: &str = "splash";
 static SCENE_INTERACTIVE_STATE: OnceCell<Arc<AtomicBool>> = OnceCell::new();
 static MODIFIER_LISTENER_INIT: OnceCell<()> = OnceCell::new();
 
+// New: Track which pets have open menus
+static OPEN_PET_MENUS: OnceCell<Arc<std::sync::Mutex<std::collections::HashSet<String>>>> =
+    OnceCell::new();
+
+fn get_open_pet_menus() -> Arc<std::sync::Mutex<std::collections::HashSet<String>>> {
+    OPEN_PET_MENUS
+        .get_or_init(|| Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())))
+        .clone()
+}
+
 fn scene_interactive_state() -> Arc<AtomicBool> {
     SCENE_INTERACTIVE_STATE
         .get_or_init(|| Arc::new(AtomicBool::new(false)))
@@ -24,6 +34,14 @@ fn scene_interactive_state() -> Arc<AtomicBool> {
 
 pub fn update_scene_interactive(interactive: bool) {
     let app_handle = get_app_handle();
+
+    // If we are forcing interactive to false (e.g. background click), clear any open menus
+    // This prevents the loop from immediately re-enabling it if the frontend hasn't updated yet
+    if !interactive {
+        if let Ok(mut menus) = get_open_pet_menus().lock() {
+            menus.clear();
+        }
+    }
 
     if let Some(window) = app_handle.get_window(SCENE_WINDOW_LABEL) {
         if let Err(e) = window.set_ignore_cursor_events(!interactive) {
@@ -41,6 +59,33 @@ pub fn update_scene_interactive(interactive: bool) {
 #[tauri::command]
 pub fn set_scene_interactive(interactive: bool) {
     update_scene_interactive(interactive);
+}
+
+#[tauri::command]
+pub fn set_pet_menu_state(id: String, open: bool) {
+    let menus_arc = get_open_pet_menus();
+    let should_update = {
+        if let Ok(mut menus) = menus_arc.lock() {
+            if open {
+                menus.insert(id);
+            } else {
+                menus.remove(&id);
+            }
+            !menus.is_empty()
+        } else {
+            false
+        }
+    };
+
+    // After updating state, re-evaluate interactivity immediately
+    // We don't have direct access to key state here easily without recalculating everything,
+    // but the loop will pick it up shortly.
+    // HOWEVER, if we just closed the last menu and keys aren't held, we might want to ensure it closes fast.
+    // For now, let the loop handle it to avoid race conditions with key states.
+    // But if we just OPENED a menu, we definitely want to ensure interactive is TRUE.
+    if should_update {
+        update_scene_interactive(true);
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -96,11 +141,22 @@ fn start_scene_modifier_listener() {
             loop {
                 let keys = device_state.get_keys();
                 // Check for Alt key (Option on Mac)
-                let interactive = (keys.contains(&Keycode::LAlt) || keys.contains(&Keycode::RAlt)) || keys.contains(&Keycode::Command);
+                let keys_interactive = (keys.contains(&Keycode::LAlt) || keys.contains(&Keycode::RAlt)) || keys.contains(&Keycode::Command);
+
+                // Check if any pet menus are open
+                let menus_open = {
+                    if let Ok(menus) = get_open_pet_menus().lock() {
+                        !menus.is_empty()
+                    } else {
+                        false
+                    }
+                };
+
+                let interactive = keys_interactive || menus_open;
 
                 if interactive != last_interactive {
                     // State changed
-                    info!("Key down state chanegd!");
+                    info!("Interactive state changed to: {}", interactive);
                     let previous = state.swap(interactive, Ordering::SeqCst);
                     if previous != interactive {
                         update_scene_interactive(interactive);
