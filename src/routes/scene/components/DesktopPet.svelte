@@ -4,14 +4,15 @@
   import { usePetState } from "$lib/composables/usePetState";
   import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
   import PetSprite from "$lib/components/PetSprite.svelte";
-  import onekoGif from "../../assets/oneko/oneko.gif";
+  import onekoGif from "../../../assets/oneko/oneko.gif";
+  import PetMenu from "./PetMenu.svelte";
+  import type { DollConfigurationDto } from "../../../types/bindings/DollConfigurationDto";
 
   export let id = "";
   export let targetX = 0;
   export let targetY = 0;
   export let name = "";
-  export let bodyColor: string | undefined = undefined;
-  export let outlineColor: string | undefined = undefined;
+  export let config: DollConfigurationDto | undefined = undefined;
   export let isInteractive = false;
 
   const { position, currentSprite, updatePosition, setPosition } = usePetState(
@@ -26,7 +27,7 @@
   let isPetMenuOpen = false;
 
   // Watch for color changes to regenerate sprite
-  $: updateSprite(bodyColor, outlineColor);
+  $: updateSprite(config?.colorScheme.body, config?.colorScheme.outline);
 
   $: (isInteractive, (isPetMenuOpen = false));
 
@@ -86,11 +87,15 @@
 >
   {#if isPetMenuOpen}
     <div
-      class="absolute -translate-y-44 w-30 h-40 bg-neutral-500 rounded-md"
+      class="absolute -translate-y-44 w-30 h-40 *:size-full"
       role="menu"
       tabindex="0"
       aria-label="Pet Menu"
-    ></div>
+    >
+      {#if config}
+        <PetMenu {config} />
+      {/if}
+    </div>
   {/if}
   <button
     onclick={() => {

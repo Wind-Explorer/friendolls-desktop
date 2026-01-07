@@ -9,7 +9,7 @@
 
   import { invoke } from "@tauri-apps/api/core";
 
-  import DesktopPet from "./DesktopPet.svelte";
+  import DesktopPet from "./components/DesktopPet.svelte";
 
   let innerWidth = 0;
   let innerHeight = 0;
@@ -95,8 +95,7 @@
             targetX={position.mapped.x * innerWidth}
             targetY={position.mapped.y * innerHeight}
             name={getFriendName(userId)}
-            bodyColor={config?.colorScheme?.body}
-            outlineColor={config?.colorScheme?.outline}
+            {config}
             {isInteractive}
           />
         {/if}
