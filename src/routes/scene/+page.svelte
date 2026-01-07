@@ -21,13 +21,13 @@
     return friend ? friend.friend.name : userId.slice(0, 8) + "...";
   }
 
-  function getFriendDollConfig(userId: string) {
+  function getFriendDoll(userId: string) {
     if (userId in $friendsActiveDolls) {
-      return $friendsActiveDolls[userId]?.configuration;
+      return $friendsActiveDolls[userId];
     }
 
     const friend = $appData?.friends?.find((f) => f.friend.id === userId);
-    return friend?.friend.activeDoll?.configuration;
+    return friend?.friend.activeDoll;
   }
 </script>
 
@@ -67,7 +67,7 @@
         <div class="flex flex-col gap-2">
           <div>
             {#each Object.entries($friendsCursorPositions) as [userId, position]}
-              {@const dollConfig = getFriendDollConfig(userId)}
+              {@const dollConfig = getFriendDoll(userId)}
               <div class="badge py-3 text-xs text-left flex flex-row gap-2">
                 <span class="font-bold">{getFriendName(userId)}</span>
                 <div class="flex flex-col font-mono">
@@ -88,14 +88,14 @@
   <div class="absolute inset-0 size-full">
     {#if Object.keys($friendsCursorPositions).length > 0}
       {#each Object.entries($friendsCursorPositions) as [userId, position]}
-        {@const config = getFriendDollConfig(userId)}
-        {#if config}
+        {@const doll = getFriendDoll(userId)}
+        {#if doll}
           <DesktopPet
             id={userId}
             targetX={position.mapped.x * innerWidth}
             targetY={position.mapped.y * innerHeight}
             name={getFriendName(userId)}
-            {config}
+            {doll}
             {isInteractive}
           />
         {/if}

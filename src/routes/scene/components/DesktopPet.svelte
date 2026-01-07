@@ -6,13 +6,13 @@
   import PetSprite from "$lib/components/PetSprite.svelte";
   import onekoGif from "../../../assets/oneko/oneko.gif";
   import PetMenu from "./PetMenu.svelte";
-  import type { DollConfigurationDto } from "../../../types/bindings/DollConfigurationDto";
+  import type { DollDto } from "../../../types/bindings/DollDto";
 
   export let id = "";
   export let targetX = 0;
   export let targetY = 0;
   export let name = "";
-  export let config: DollConfigurationDto | undefined = undefined;
+  export let doll: DollDto | undefined = undefined;
   export let isInteractive = false;
 
   const { position, currentSprite, updatePosition, setPosition } = usePetState(
@@ -27,7 +27,7 @@
   let isPetMenuOpen = false;
 
   // Watch for color changes to regenerate sprite
-  $: updateSprite(config?.colorScheme.body, config?.colorScheme.outline);
+  $: updateSprite(doll?.configuration.colorScheme.body, doll?.configuration.colorScheme.outline);
 
   $: (isInteractive, (isPetMenuOpen = false));
 
@@ -92,8 +92,8 @@
       tabindex="0"
       aria-label="Pet Menu"
     >
-      {#if config}
-        <PetMenu {config} />
+      {#if doll}
+        <PetMenu {doll} />
       {/if}
     </div>
   {/if}
