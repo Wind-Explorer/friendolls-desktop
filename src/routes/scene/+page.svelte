@@ -37,8 +37,11 @@
   <button
     class="absolute inset-0 z-10 size-full"
     aria-label="Deactive scene interactive"
-    onclick={async () => {
-      await invoke("set_scene_interactive", { interactive: false });
+    onmousedown={async () => {
+      await invoke("set_scene_interactive", {
+        interactive: false,
+        shouldClick: true,
+      });
     }}>&nbsp;</button
   >
   <div

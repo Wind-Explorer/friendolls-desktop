@@ -32,7 +32,7 @@ fn scene_interactive_state() -> Arc<AtomicBool> {
         .clone()
 }
 
-pub fn update_scene_interactive(interactive: bool) {
+pub fn update_scene_interactive(interactive: bool, should_click: bool) {
     let app_handle = get_app_handle();
 
     // If we are forcing interactive to false (e.g. background click), clear any open menus
@@ -48,6 +48,27 @@ pub fn update_scene_interactive(interactive: bool) {
             error!("Failed to toggle scene cursor events: {}", e);
         }
 
+        if should_click {
+            // Get cursor position on screen and use Enigo to click
+            if let Some(pos) = crate::services::cursor::get_latest_cursor_position() {
+                use enigo::{Button, Direction, Enigo, Mouse, Settings};
+                // Initialize Enigo with default settings, handling potential failure
+                match Enigo::new(&Settings::default()) {
+                    Ok(mut enigo) => {
+                        // Perform a click (Press and Release)
+                        // We ignore the result of the click action itself for now as it usually succeeds if init did
+                        let _ = enigo.button(Button::Left, Direction::Click);
+                        info!("Simulated click at ({}, {})", pos.x, pos.y);
+                    }
+                    Err(e) => {
+                        error!("Failed to initialize Enigo for clicking: {}", e);
+                    }
+                }
+            } else {
+                warn!("Cannot click: No cursor position available yet");
+            }
+        }
+
         if let Err(e) = window.emit("scene-interactive", &interactive) {
             error!("Failed to emit scene interactive event: {}", e);
         }
@@ -57,8 +78,8 @@ pub fn update_scene_interactive(interactive: bool) {
 }
 
 #[tauri::command]
-pub fn set_scene_interactive(interactive: bool) {
-    update_scene_interactive(interactive);
+pub fn set_scene_interactive(interactive: bool, should_click: bool) {
+    update_scene_interactive(interactive, should_click);
 }
 
 #[tauri::command]
@@ -68,6 +89,11 @@ pub fn set_pet_menu_state(id: String, open: bool) {
         if let Ok(mut menus) = menus_arc.lock() {
             if open {
                 menus.insert(id);
+                get_app_handle()
+                    .get_window(SCENE_WINDOW_LABEL)
+                    .expect("Scene window should be present")
+                    .set_focus()
+                    .expect("Scene window should be focused");
             } else {
                 menus.remove(&id);
             }
@@ -84,7 +110,7 @@ pub fn set_pet_menu_state(id: String, open: bool) {
     // For now, let the loop handle it to avoid race conditions with key states.
     // But if we just OPENED a menu, we definitely want to ensure interactive is TRUE.
     if should_update {
-        update_scene_interactive(true);
+        update_scene_interactive(true, false);
     }
 }
 
@@ -97,7 +123,7 @@ extern "C" {
 fn start_scene_modifier_listener() {
     MODIFIER_LISTENER_INIT.get_or_init(|| {
         let state = scene_interactive_state();
-        update_scene_interactive(false);
+        update_scene_interactive(false, false);
 
         let app_handle = get_app_handle().clone();
 
@@ -159,7 +185,7 @@ fn start_scene_modifier_listener() {
                     info!("Interactive state changed to: {}", interactive);
                     let previous = state.swap(interactive, Ordering::SeqCst);
                     if previous != interactive {
-                        update_scene_interactive(interactive);
+                        update_scene_interactive(interactive, false);
                     }
                     last_interactive = interactive;
                 }

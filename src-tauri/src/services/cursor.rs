@@ -1,6 +1,7 @@
 use device_query::{DeviceEvents, DeviceEventsHandler};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::Emitter;
 use tokio::sync::mpsc;
@@ -26,6 +27,15 @@ pub struct CursorPositions {
 }
 
 static CURSOR_TRACKER: OnceCell<()> = OnceCell::new();
+static LATEST_CURSOR_POSITION: OnceCell<Arc<Mutex<Option<CursorPosition>>>> = OnceCell::new();
+
+/// Get the latest known cursor position (thread-safe)
+pub fn get_latest_cursor_position() -> Option<CursorPosition> {
+    LATEST_CURSOR_POSITION
+        .get()
+        .and_then(|mutex| mutex.lock().ok())
+        .and_then(|guard| guard.clone())
+}
 
 /// Convert absolute screen coordinates to normalized coordinates (0.0 - 1.0)
 pub fn absolute_to_normalized(pos: &CursorPosition) -> CursorPosition {
@@ -59,6 +69,9 @@ pub async fn start_cursor_tracking() -> Result<(), String> {
 
     // Use OnceCell to ensure this only runs once, even if called from multiple windows
     CURSOR_TRACKER.get_or_init(|| {
+        // Initialize the shared state
+        LATEST_CURSOR_POSITION.get_or_init(|| Arc::new(Mutex::new(None)));
+        
         info!("First call to start_cursor_tracking - spawning cursor tracking task");
         tauri::async_runtime::spawn(async {
             if let Err(e) = init_cursor_tracking().await {
@@ -133,6 +146,13 @@ async fn init_cursor_tracking() -> Result<(), String> {
             x: position.0 as f64,
             y: position.1 as f64,
         };
+
+        // Update global state
+        if let Some(mutex) = LATEST_CURSOR_POSITION.get() {
+             if let Ok(mut guard) = mutex.lock() {
+                 *guard = Some(raw.clone());
+             }
+        }
 
         let mapped = absolute_to_normalized(&raw);
 
