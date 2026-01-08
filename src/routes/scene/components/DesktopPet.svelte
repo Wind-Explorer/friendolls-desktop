@@ -7,11 +7,12 @@
   import onekoGif from "../../../assets/oneko/oneko.gif";
   import PetMenu from "./PetMenu.svelte";
   import type { DollDto } from "../../../types/bindings/DollDto";
+  import type { UserBasicDto } from "../../../types/bindings/UserBasicDto";
 
   export let id = "";
   export let targetX = 0;
   export let targetY = 0;
-  export let name = "";
+  export let user: UserBasicDto;
   export let doll: DollDto | undefined = undefined;
   export let isInteractive = false;
 
@@ -27,7 +28,10 @@
   let isPetMenuOpen = false;
 
   // Watch for color changes to regenerate sprite
-  $: updateSprite(doll?.configuration.colorScheme.body, doll?.configuration.colorScheme.outline);
+  $: updateSprite(
+    doll?.configuration.colorScheme.body,
+    doll?.configuration.colorScheme.outline,
+  );
 
   $: (isInteractive, (isPetMenuOpen = false));
 
@@ -87,13 +91,13 @@
 >
   {#if isPetMenuOpen}
     <div
-      class="absolute -translate-y-44 w-30 h-40 *:size-full"
+      class="absolute -translate-y-24 w-50 h-22 *:size-full shadow-md rounded"
       role="menu"
       tabindex="0"
       aria-label="Pet Menu"
     >
       {#if doll}
-        <PetMenu {doll} />
+        <PetMenu {doll} {user} />
       {/if}
     </div>
   {/if}
@@ -111,9 +115,9 @@
 
   <span
     class="absolute -bottom-5 width-full text-[10px] bg-black/50 text-white px-1 rounded backdrop-blur-sm mt-1 whitespace-nowrap opacity-0 transition-opacity"
-    class:opacity-100={isInteractive}
+    class:opacity-100={isInteractive && !isPetMenuOpen}
   >
-    {name}
+    {doll?.name}
   </span>
 </div>
 

@@ -16,9 +16,9 @@
 
   $: isInteractive = $sceneInteractive;
 
-  function getFriendName(userId: string) {
+  function getFriendById(userId: string) {
     const friend = $appData?.friends?.find((f) => f.friend.id === userId);
-    return friend ? friend.friend.name : userId.slice(0, 8) + "...";
+    return friend!.friend;
   }
 
   function getFriendDoll(userId: string) {
@@ -69,7 +69,7 @@
             {#each Object.entries($friendsCursorPositions) as [userId, position]}
               {@const dollConfig = getFriendDoll(userId)}
               <div class="badge py-3 text-xs text-left flex flex-row gap-2">
-                <span class="font-bold">{getFriendName(userId)}</span>
+                <span class="font-bold">{getFriendById(userId).name}</span>
                 <div class="flex flex-col font-mono">
                   <span>
                     ({position.mapped.x.toFixed(3)}, {position.mapped.y.toFixed(
@@ -94,7 +94,7 @@
             id={userId}
             targetX={position.mapped.x * innerWidth}
             targetY={position.mapped.y * innerHeight}
-            name={getFriendName(userId)}
+            user={getFriendById(userId)}
             {doll}
             {isInteractive}
           />
