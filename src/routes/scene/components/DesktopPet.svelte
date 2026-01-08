@@ -63,7 +63,9 @@
     // 100ms per frame for the animation loop
     if (timestamp - lastFrameTimestamp > 100) {
       lastFrameTimestamp = timestamp;
-      updatePosition(targetX, targetY, window.innerWidth, window.innerHeight);
+      if (!isPetMenuOpen) {
+        updatePosition(targetX, targetY, window.innerWidth, window.innerHeight);
+      }
     }
 
     animationFrameId = requestAnimationFrame(frame);
