@@ -11,6 +11,7 @@
   let dollId: string | null = null;
   let loading = true;
   let error: string | null = null;
+  let saving = false;
 
   let name = "";
   let bodyColor = "#FFFFFF";
@@ -49,6 +50,7 @@
   async function handleSave() {
     if (!name.trim()) return;
 
+    saving = true;
     try {
       if (mode === "create") {
         const dto: CreateDollDto = {
@@ -79,6 +81,8 @@
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
       console.error("Failed to save doll:", e);
+    } finally {
+      saving = false;
     }
   }
 
@@ -110,6 +114,7 @@
           placeholder="Doll Name"
           class="input input-bordered w-full"
           bind:value={name}
+          disabled={saving}
         />
       </div>
       <div class="flex justify-center mt-4">
@@ -124,11 +129,13 @@
             type="color"
             class="input input-bordered w-12 p-1 h-10"
             bind:value={bodyColor}
+            disabled={saving}
           />
           <input
             type="text"
             class="input input-bordered w-full"
             bind:value={bodyColor}
+            disabled={saving}
           />
         </div>
       </div>
@@ -141,22 +148,26 @@
             type="color"
             class="input input-bordered w-12 p-1 h-10"
             bind:value={outlineColor}
+            disabled={saving}
           />
           <input
             type="text"
             class="input input-bordered w-full"
             bind:value={outlineColor}
+            disabled={saving}
           />
         </div>
       </div>
       <div class="mt-auto pt-4 flex justify-end gap-2">
-        <button class="btn" on:click={handleCancel}>Cancel</button>
+        <button class="btn" on:click={handleCancel} disabled={saving}>Cancel</button>
         <button
           class="btn btn-primary"
           on:click={handleSave}
-          disabled={!name.trim()}
+          disabled={!name.trim() || saving}
         >
-          {#if mode === "create"}
+          {#if saving}
+            <span class="loading loading-spinner loading-sm"></span> Saving...
+          {:else if mode === "create"}
             Create
           {:else}
             Save
