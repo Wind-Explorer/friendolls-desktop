@@ -22,6 +22,7 @@ pub fn open_app_menu_window() {
     .title("Friendolls")
     .inner_size(400.0, 550.0)
     .resizable(true)
+    .maximizable(false)
     .decorations(true)
     .transparent(false)
     .shadow(true)

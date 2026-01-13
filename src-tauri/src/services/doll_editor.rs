@@ -109,6 +109,7 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
         .title("Doll Editor")
         .inner_size(300.0, 400.0)
         .resizable(false)
+        .maximizable(false)
         .decorations(true)
         .transparent(false)
         .shadow(true)

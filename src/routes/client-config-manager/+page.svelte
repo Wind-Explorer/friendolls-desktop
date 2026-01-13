@@ -60,7 +60,7 @@
         const parsed = new URL(
           form.api_base_url.trim().startsWith("http")
             ? form.api_base_url.trim()
-            : `https://${form.api_base_url.trim()}`
+            : `https://${form.api_base_url.trim()}`,
         );
         if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
           return "API base URL must start with http or https";
@@ -93,7 +93,7 @@
         },
       });
 
-      successMessage = "Configuration saved. Restart to apply changes.";
+      successMessage = "Success. Restart to apply changes.";
     } catch (err) {
       errorMessage = `Failed to save config: ${err}`;
     } finally {
@@ -113,42 +113,45 @@
   onMount(loadConfig);
 </script>
 
-<div class="p-6 flex flex-col gap-4">
-  <div class="flex flex-col gap-1">
-    <p class="text-xl font-semibold">Client Configuration</p>
-    <p class="opacity-70 text-sm">Set custom API and auth endpoints.</p>
+<div class="p-6 flex flex-col gap-4 w-full h-full justify-between">
+  <div class="flex flex-col gap-4 w-full">
+    <div class="flex flex-col gap-1">
+      <p class="text-xl font-semibold">Client Configuration</p>
+      <p class="opacity-70 text-sm">Set custom API and auth endpoints.</p>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <label class="flex flex-col gap-1">
+        <span class="text-sm">API Base URL</span>
+        <input
+          class="input input-bordered"
+          bind:value={form.api_base_url}
+          placeholder="https://api.fdolls.adamcv.com"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-sm">Auth URL</span>
+        <input class="input input-bordered" bind:value={form.auth.auth_url} />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-sm">JWT Audience</span>
+        <input class="input input-bordered" bind:value={form.auth.audience} />
+      </label>
+    </div>
+
+    {#if errorMessage}
+      <p class="text-sm text-error">{errorMessage}</p>
+    {/if}
+    {#if successMessage}
+      <p class="text-sm text-success">{successMessage}</p>
+    {/if}
+    {#if restartError}
+      <p class="text-sm text-error">{restartError}</p>
+    {/if}
   </div>
 
-  <div class="flex flex-col gap-3">
-    <label class="flex flex-col gap-1">
-      <span class="text-sm">API Base URL</span>
-      <input
-        class="input input-bordered"
-        bind:value={form.api_base_url}
-        placeholder="https://api.fdolls.adamcv.com"
-      />
-    </label>
-    <label class="flex flex-col gap-1">
-      <span class="text-sm">Auth URL</span>
-      <input class="input input-bordered" bind:value={form.auth.auth_url} />
-    </label>
-    <label class="flex flex-col gap-1">
-      <span class="text-sm">JWT Audience</span>
-      <input class="input input-bordered" bind:value={form.auth.audience} />
-    </label>
-  </div>
-
-  {#if errorMessage}
-    <p class="text-sm text-error">{errorMessage}</p>
-  {/if}
-  {#if successMessage}
-    <p class="text-sm text-success">{successMessage}</p>
-  {/if}
-  {#if restartError}
-    <p class="text-sm text-error">{restartError}</p>
-  {/if}
- 
-  <div class="flex flex-row gap-2">
+  <div class="flex flex-row gap-2 w-full justify-end">
+    <button class="btn btn-outline" on:click={restart}> Restart app </button>
     <button
       class="btn"
       class:btn-disabled={saving}
@@ -157,9 +160,5 @@
     >
       {saving ? "Saving..." : "Save"}
     </button>
-    <button class="btn btn-outline" on:click={restart}>
-      Restart app
-    </button>
   </div>
 </div>
-

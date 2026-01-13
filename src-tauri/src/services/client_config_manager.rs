@@ -187,8 +187,10 @@ fn open_config_manager_window_inner(
         CLIENT_CONFIG_MANAGER_WINDOW_LABEL,
         tauri::WebviewUrl::App("/client-config-manager".into()),
     )
-    .title("Friendolls Client Config Manager")
-    .inner_size(600.0, 500.0)
+    .title("Advanced Configuration")
+    .inner_size(300.0, 420.0)
+    .resizable(false)
+    .maximizable(false)
     .visible(false)
     .build()
     {

@@ -27,11 +27,13 @@
   };
 </script>
 
-<div class="size-full relative bg-linear-to-br from-base-100 to-[#b7f2ff77]">
+<div
+  class="size-full max-w-full max-h-full overflow-hidden relative bg-linear-to-br from-base-100 to-[#b7f2ff77]"
+>
   <div class="flex flex-row gap-2 justify-between size-full p-6">
     <div class="flex flex-col justify-between">
-      <div class="flex flex-col gap-2 h-full pt-4">
-        <div class="flex flex-col gap-8 mb-18">
+      <div class="flex flex-col gap-2 h-full">
+        <div class="flex flex-col gap-6">
           <div class="flex flex-col gap-2">
             <div class="flex flex-row gap-2">
               <p class="text-xl font-light">meow? nyaaa!!</p>
@@ -40,25 +42,28 @@
               a cute passive socialization layer!
             </p>
           </div>
-           <div class="flex flex-col gap-2">
-             <button
-               class="btn btn-primary"
-               onclick={handleContinue}
-               disabled={isContinuing}
-             >
-               {#if isContinuing}
-                 Loading...
-               {:else}
-                 <div class="scale-70">
-                   <ExternalLink />
-                 </div>
-                 Sign in with browser
-               {/if}
-             </button>
-             <button class="btn btn-outline" onclick={openClientConfigManager}>
-               Advanced options
-             </button>
-           </div>
+          <div class="flex flex-col gap-4 *:w-max">
+            <button
+              class="btn btn-primary btn-xl"
+              onclick={handleContinue}
+              disabled={isContinuing}
+            >
+              {#if isContinuing}
+                Loading...
+              {:else}
+                <div class="scale-70">
+                  <ExternalLink />
+                </div>
+                Sign in
+              {/if}
+            </button>
+            <button
+              class="btn btn-link p-0 btn-sm text-base-content"
+              onclick={openClientConfigManager}
+            >
+              Advanced options
+            </button>
+          </div>
 
           <p class="text-xs opacity-50 max-w-60">
             An account is needed to identify you for connecting with friends.
@@ -70,7 +75,9 @@
       </div>
     </div>
   </div>
-  <div class="absolute bottom-6 right-6 flex flex-col gap-1 justify-between">
+  <div
+    class="absolute pointer-events-none bottom-6 right-6 flex flex-col gap-1 justify-between"
+  >
     <div></div>
     <div class="flex flex-col scale-200 origin-bottom-right">
       <DollPreview bodyColor="b7f2ff" outlineColor="496065" />

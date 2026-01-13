@@ -104,12 +104,16 @@
       <button class="btn btn-sm mt-4" on:click={handleCancel}>Close</button>
     </div>
   {:else}
-    <div class="h-full w-full p-4 flex flex-col">
+    <div class="h-full w-full p-4 gap-4 flex flex-col">
+      <div class="flex justify-center mt-4">
+        <DollPreview {bodyColor} {outlineColor} />
+      </div>
       <div class="form-control w-full">
-        <label class="label">
+        <label class="label" for="name-input">
           <span class="label-text">Name</span>
         </label>
         <input
+          id="name-input"
           type="text"
           placeholder="Doll Name"
           class="input input-bordered w-full"
@@ -117,17 +121,15 @@
           disabled={saving}
         />
       </div>
-      <div class="flex justify-center mt-4">
-        <DollPreview {bodyColor} {outlineColor} />
-      </div>
-      <div class="form-control w-full mt-2">
-        <label class="label">
+      <div class="form-control w-full">
+        <label class="label" for="body-color-input">
           <span class="label-text">Body Color</span>
         </label>
         <div class="flex gap-2">
           <input
+            id="body-color-input"
             type="color"
-            class="input input-bordered w-12 p-1 h-10"
+            class="input input-bordered w-10 p-0"
             bind:value={bodyColor}
             disabled={saving}
           />
@@ -139,14 +141,15 @@
           />
         </div>
       </div>
-      <div class="form-control w-full mt-2">
-        <label class="label">
+      <div class="form-control w-full">
+        <label class="label" for="outline-color-input">
           <span class="label-text">Outline Color</span>
         </label>
         <div class="flex gap-2">
           <input
+            id="outline-color-input"
             type="color"
-            class="input input-bordered w-12 p-1 h-10"
+            class="input input-bordered w-10 p-0"
             bind:value={outlineColor}
             disabled={saving}
           />
@@ -158,8 +161,10 @@
           />
         </div>
       </div>
-      <div class="mt-auto pt-4 flex justify-end gap-2">
-        <button class="btn" on:click={handleCancel} disabled={saving}>Cancel</button>
+      <div class="mt-auto flex justify-end gap-2">
+        <button class="btn" on:click={handleCancel} disabled={saving}
+          >Cancel</button
+        >
         <button
           class="btn btn-primary"
           on:click={handleSave}

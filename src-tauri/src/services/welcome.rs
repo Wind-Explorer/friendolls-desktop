@@ -32,6 +32,7 @@ pub fn open_welcome_window() {
     .title("Welcome to Friendolls")
     .inner_size(420.0, 420.0)
     .resizable(false)
+    .maximizable(false)
     .decorations(true)
     .transparent(false)
     .shadow(true)
