@@ -5,6 +5,10 @@
   import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
   import PetSprite from "$lib/components/PetSprite.svelte";
   import onekoGif from "../../../assets/oneko/oneko.gif";
+  import {
+    receivedInteractions,
+    clearInteraction,
+  } from "$lib/stores/interaction-store";
   import PetMenu from "./PetMenu.svelte";
   import type { DollDto } from "../../../types/bindings/DollDto";
   import type { UserBasicDto } from "../../../types/bindings/UserBasicDto";
@@ -26,6 +30,40 @@
   let spriteSheetUrl = onekoGif;
 
   let isPetMenuOpen = false;
+  let receivedMessage: string | undefined = undefined;
+  let messageTimer: number | undefined = undefined;
+
+  // Watch for received interactions for this user
+  $: {
+    const interaction = $receivedInteractions.get(user.id);
+    if (interaction && interaction.content !== receivedMessage) {
+      console.log(`Received interaction for ${user.id}: ${interaction.content}`);
+      receivedMessage = interaction.content;
+      isPetMenuOpen = true;
+      
+      // Make scene interactive so user can see it
+      invoke("set_scene_interactive", {
+        interactive: true,
+        shouldClick: false,
+      });
+
+      // Clear existing timer if any
+      if (messageTimer) clearTimeout(messageTimer);
+
+      // Auto-close and clear after 8 seconds
+      messageTimer = setTimeout(() => {
+        isPetMenuOpen = false;
+        receivedMessage = undefined;
+        clearInteraction(user.id);
+        // We probably shouldn't disable interactivity globally here as other pets might be active,
+        // but 'set_pet_menu_state' in backend handles the window transparency logic per pet/menu.
+        // However, we did explicitly call set_scene_interactive(true).
+        // It might be safer to let the mouse-leave or other logic handle setting it back to false,
+        // or just leave it as is since the user might want to interact.
+        // For now, focusing on the message lifecycle.
+      }, 8000) as unknown as number;
+    }
+  }
 
   // Watch for color changes to regenerate sprite
   $: updateSprite(
@@ -33,10 +71,22 @@
     doll?.configuration.colorScheme.outline,
   );
 
-  $: (isInteractive, (isPetMenuOpen = false));
+  // This reactive statement forces the menu closed whenever `isInteractive` changes.
+  // This conflicts with our message logic because we explicitly set interactive=true when opening the menu for a message.
+  // We should remove this or condition it.
+  // The original intent was likely to close the menu if the user moves the mouse away (interactive becomes false),
+  // but `isInteractive` is driven by mouse hover usually.
+  // When we force it via invoke("set_scene_interactive", { interactive: true }), it might not reflect back into `isInteractive` prop immediately or correctly depending on how the parent passes it.
+  // Actually, `isInteractive` is a prop passed from +page.svelte probably based on hover state.
+  // If we want the menu to stay open during the message, we should probably ignore this auto-close behavior if a message is present.
+  
+  $: if (!receivedMessage && !isInteractive) {
+      isPetMenuOpen = false;
+  }
 
   $: {
     if (id) {
+      console.log(`Setting pet menu state for ${id}: ${isPetMenuOpen}`);
       invoke("set_pet_menu_state", { id, open: isPetMenuOpen });
     }
   }
@@ -99,13 +149,19 @@
       aria-label="Pet Menu"
     >
       {#if doll}
-        <PetMenu {doll} {user} />
+        <PetMenu {doll} {user} {receivedMessage} />
       {/if}
     </div>
   {/if}
   <button
     onclick={() => {
       isPetMenuOpen = !isPetMenuOpen;
+      if (!isPetMenuOpen) {
+        // Clear message when closing menu manually
+        receivedMessage = undefined;
+        clearInteraction(user.id);
+        if (messageTimer) clearTimeout(messageTimer);
+      }
     }}
   >
     <PetSprite

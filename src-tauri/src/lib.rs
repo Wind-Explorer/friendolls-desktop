@@ -1,5 +1,6 @@
 use crate::{
     models::app_data::AppData,
+    models::interaction::SendInteractionDto,
     remotes::{
         dolls::{CreateDollDto, DollDto, DollsRemote, UpdateDollDto},
         friends::{
@@ -14,6 +15,7 @@ use crate::{
         },
         cursor::start_cursor_tracking,
         doll_editor::open_doll_editor_window,
+        interaction::send_interaction,
         scene::{open_splash_window, set_pet_menu_state, set_scene_interactive},
     },
     state::{init_app_data, init_app_data_scoped, AppDataRefreshScope, FDOLL},
@@ -376,6 +378,11 @@ async fn logout_and_restart() -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn send_interaction_cmd(dto: SendInteractionDto) -> Result<(), String> {
+    send_interaction(dto).await
+}
+
+#[tauri::command]
 fn start_auth_flow() -> Result<(), String> {
     // Cancel any in-flight auth listener/state before starting a new one
     crate::services::auth::cancel_auth_flow();
@@ -427,7 +434,8 @@ pub fn run() {
             set_scene_interactive,
             set_pet_menu_state,
             start_auth_flow,
-            logout_and_restart
+            logout_and_restart,
+            send_interaction_cmd
         ])
         .setup(|app| {
             APP_HANDLE

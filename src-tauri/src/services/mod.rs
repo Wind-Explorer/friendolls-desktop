@@ -4,6 +4,7 @@ pub mod client_config_manager;
 pub mod cursor;
 pub mod doll_editor;
 pub mod health_manager;
+pub mod interaction;
 pub mod scene;
 pub mod sprite_recolor;
 pub mod welcome;

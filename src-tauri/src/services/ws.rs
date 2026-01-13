@@ -5,6 +5,7 @@ use tracing::{error, info};
 
 use crate::{
     get_app_handle, lock_r, lock_w,
+    models::interaction::{InteractionDeliveryFailedDto, InteractionPayloadDto},
     services::{
         client_config_manager::AppConfig,
         cursor::{normalized_to_absolute, CursorPosition, CursorPositions},
@@ -49,6 +50,9 @@ impl WS_EVENT {
     pub const DOLL_DELETED: &str = "doll_deleted";
     pub const CLIENT_INITIALIZE: &str = "client-initialize";
     pub const INITIALIZED: &str = "initialized";
+    pub const INTERACTION_RECEIVED: &str = "interaction-received";
+    pub const INTERACTION_DELIVERY_FAILED: &str = "interaction-delivery-failed";
+    pub const CLIENT_SEND_INTERACTION: &str = "client-send-interaction";
 }
 
 fn emit_initialize(socket: &RawClient) {
@@ -364,6 +368,60 @@ fn on_doll_deleted(payload: Payload, _socket: RawClient) {
     }
 }
 
+fn on_interaction_received(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                info!("Received interaction-received event: {:?}", first_value);
+                
+                let interaction_data: Result<InteractionPayloadDto, _> =
+                    serde_json::from_value(first_value.clone());
+
+                match interaction_data {
+                    Ok(data) => {
+                        if let Err(e) = get_app_handle().emit(WS_EVENT::INTERACTION_RECEIVED, data) {
+                            error!("Failed to emit interaction-received event: {:?}", e);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to parse interaction payload: {}", e);
+                    }
+                }
+            } else {
+                info!("Received interaction-received event with empty payload");
+            }
+        }
+        _ => error!("Received unexpected payload format for interaction-received"),
+    }
+}
+
+fn on_interaction_delivery_failed(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                info!("Received interaction-delivery-failed event: {:?}", first_value);
+
+                let failure_data: Result<InteractionDeliveryFailedDto, _> =
+                    serde_json::from_value(first_value.clone());
+
+                match failure_data {
+                    Ok(data) => {
+                        if let Err(e) = get_app_handle().emit(WS_EVENT::INTERACTION_DELIVERY_FAILED, data) {
+                            error!("Failed to emit interaction-delivery-failed event: {:?}", e);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to parse interaction failure payload: {}", e);
+                    }
+                }
+            } else {
+                info!("Received interaction-delivery-failed event with empty payload");
+            }
+        }
+        _ => error!("Received unexpected payload format for interaction-delivery-failed"),
+    }
+}
+
 pub async fn report_cursor_data(cursor_position: CursorPosition) {
     // Only attempt to get clients if lock_r succeeds (it should, but safety first)
     // and if clients are actually initialized.
@@ -471,6 +529,11 @@ pub async fn build_ws_client(
             .on(WS_EVENT::DOLL_UPDATED, on_doll_updated)
             .on(WS_EVENT::DOLL_DELETED, on_doll_deleted)
             .on(WS_EVENT::INITIALIZED, on_initialized)
+            .on(WS_EVENT::INTERACTION_RECEIVED, on_interaction_received)
+            .on(
+                WS_EVENT::INTERACTION_DELIVERY_FAILED,
+                on_interaction_delivery_failed,
+            )
             // rust-socketio fires Event::Connect on initial connect AND reconnects
             // so we resend initialization there instead of a dedicated reconnect event.
             .on(Event::Connect, on_connected)
