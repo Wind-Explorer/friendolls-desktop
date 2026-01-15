@@ -2,10 +2,7 @@ use serde_json::json;
 use tracing::{error, info};
 
 use crate::{
-    lock_r,
-    models::interaction::SendInteractionDto,
-    services::ws::WS_EVENT,
-    state::FDOLL,
+    lock_r, models::interaction::SendInteractionDto, services::ws::WS_EVENT, state::FDOLL,
 };
 
 pub async fn send_interaction(dto: SendInteractionDto) -> Result<(), String> {
@@ -27,7 +24,7 @@ pub async fn send_interaction(dto: SendInteractionDto) -> Result<(), String> {
         // Prepare payload for client-send-interaction event
         // The DTO structure matches what the server expects:
         // { recipientUserId, content, type } (handled by serde rename_all="camelCase")
-        
+
         // Note: The `type` field in DTO is mapped to `type_` in Rust struct but serialized as `type`
         // due to camelCase renaming (if we rely on TS-RS output) or manual renaming.
         // Wait, `type` is a reserved keyword in Rust so we used `type_`.
@@ -36,7 +33,7 @@ pub async fn send_interaction(dto: SendInteractionDto) -> Result<(), String> {
         // It does NOT automatically handle `type_` -> `type`.
         // We should add `#[serde(rename = "type")]` to the `type_` field in the model.
         // I will fix the model first to ensure correct serialization.
-        
+
         let payload = json!({
             "recipientUserId": dto.recipient_user_id,
             "content": dto.content,
@@ -49,7 +46,8 @@ pub async fn send_interaction(dto: SendInteractionDto) -> Result<(), String> {
         // but we are in an async context. Ideally we spawn_blocking.
         let spawn_result = tauri::async_runtime::spawn_blocking(move || {
             socket.emit(WS_EVENT::CLIENT_SEND_INTERACTION, payload)
-        }).await;
+        })
+        .await;
 
         match spawn_result {
             Ok(emit_result) => match emit_result {

@@ -1,9 +1,9 @@
 use crate::{
+    lock_w,
     services::client_config_manager::{
         load_app_config, open_config_manager_window, save_app_config, AppConfig,
     },
     state::FDOLL,
-    lock_w,
 };
 
 #[tauri::command]

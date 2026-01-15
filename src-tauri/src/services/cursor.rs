@@ -71,7 +71,7 @@ pub async fn start_cursor_tracking() -> Result<(), String> {
     CURSOR_TRACKER.get_or_init(|| {
         // Initialize the shared state
         LATEST_CURSOR_POSITION.get_or_init(|| Arc::new(Mutex::new(None)));
-        
+
         info!("First call to start_cursor_tracking - spawning cursor tracking task");
         tauri::async_runtime::spawn(async {
             if let Err(e) = init_cursor_tracking().await {
@@ -149,9 +149,9 @@ async fn init_cursor_tracking() -> Result<(), String> {
 
         // Update global state
         if let Some(mutex) = LATEST_CURSOR_POSITION.get() {
-             if let Ok(mut guard) = mutex.lock() {
-                 *guard = Some(raw.clone());
-             }
+            if let Ok(mut guard) = mutex.lock() {
+                *guard = Some(raw.clone());
+            }
         }
 
         let mapped = absolute_to_normalized(&raw);
