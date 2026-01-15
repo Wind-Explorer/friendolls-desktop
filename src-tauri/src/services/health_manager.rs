@@ -1,4 +1,5 @@
 use crate::get_app_handle;
+use crate::{lock_r, state::FDOLL, system_tray::update_system_tray};
 use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogBuilder, MessageDialogKind};
 use tauri_plugin_positioner::WindowExt;
@@ -28,6 +29,8 @@ pub fn show_health_manager_with_error(error_message: Option<String>) {
     close_window_if_exists(crate::services::scene::SPLASH_WINDOW_LABEL);
     close_window_if_exists(crate::services::scene::SCENE_WINDOW_LABEL);
     close_window_if_exists(crate::services::app_menu::APP_MENU_WINDOW_LABEL);
+
+    update_system_tray(false);
 
     let existing_webview_window = app_handle.get_window(HEALTH_MANAGER_WINDOW_LABEL);
 
@@ -113,6 +116,10 @@ pub fn close_health_manager_window() {
             error!("Failed to close health manager window: {}", e);
         } else {
             info!("Health manager window closed");
+            let guard = lock_r!(FDOLL);
+            let is_logged_in = guard.app_data.user.is_some();
+            drop(guard);
+            update_system_tray(is_logged_in);
         }
     }
 }

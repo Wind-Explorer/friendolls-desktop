@@ -4,6 +4,7 @@ use tokio::time::{sleep, Instant};
 use tracing::{info, warn};
 
 use crate::{
+    lock_w,
     remotes::health::{HealthError, HealthRemote},
     services::{
         auth::{get_access_token, get_tokens},
@@ -13,11 +14,16 @@ use crate::{
         ws::init_ws_client,
     },
     state::init_app_data,
-    system_tray::init_system_tray,
+    system_tray::{init_system_tray, update_system_tray},
+    FDOLL,
 };
 
 pub async fn start_fdoll() {
-    init_system_tray();
+    let tray = init_system_tray();
+    {
+        let mut guard = lock_w!(FDOLL);
+        guard.tray = Some(tray);
+    }
     if let Err(err) = init_startup_sequence().await {
         tracing::error!("startup sequence failed: {err}");
         show_health_manager_with_error(Some(err.to_string()));
@@ -66,11 +72,13 @@ pub async fn bootstrap() {
         Some(_tokens) => {
             info!("Tokens found in keyring - restoring user session");
             construct_app().await;
+            update_system_tray(true);
         }
         None => {
             info!("No active session found - showing welcome first");
             open_welcome_window();
             close_splash_window();
+            update_system_tray(false);
         }
     }
 }

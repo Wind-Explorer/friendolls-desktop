@@ -37,6 +37,7 @@ pub struct AppState {
     pub auth_pass: Option<AuthPass>,
     pub oauth_flow: OAuthFlowTracker,
     pub tracing_guard: Option<tracing_appender::non_blocking::WorkerGuard>,
+    pub tray: Option<tauri::tray::TrayIcon>,
 
     // exposed to the frontend
     pub app_data: AppData,
