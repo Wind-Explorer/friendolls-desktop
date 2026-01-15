@@ -32,9 +32,8 @@ pub fn open_app_menu_window() {
     .visible_on_all_workspaces(false)
     .build()
     {
-        Ok(window) => {
+        Ok(_) => {
             info!("{} window builder succeeded", APP_MENU_WINDOW_LABEL);
-            window
         }
         Err(e) => {
             error!("Failed to build {} window: {}", APP_MENU_WINDOW_LABEL, e);
