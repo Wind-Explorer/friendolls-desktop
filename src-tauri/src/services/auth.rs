@@ -108,7 +108,7 @@ fn generate_code_challenge(code_verifier: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(code_verifier.as_bytes());
     let result = hasher.finalize();
-    URL_SAFE_NO_PAD.encode(&result)
+    URL_SAFE_NO_PAD.encode(result)
 }
 
 /// Returns the auth pass object, including
@@ -609,7 +609,7 @@ where
     let bind_addr = "localhost:0";
 
     info!("Attempting to bind to: {}", bind_addr);
-    let std_listener = match std::net::TcpListener::bind(&bind_addr) {
+    let std_listener = match std::net::TcpListener::bind(bind_addr) {
         Ok(s) => {
             s.set_nonblocking(true).unwrap();
             s
@@ -695,10 +695,10 @@ where
 
     if let Err(e) = app_handle.opener().open_url(url, None::<&str>) {
         error!("Failed to open auth portal: {}", e);
-        return Err(OAuthError::OpenPortalFailed(e));
+        Err(OAuthError::OpenPortalFailed(e))
     } else {
         info!("Successfully called open_url for auth portal");
-        return Ok(());
+        Ok(())
     }
 }
 

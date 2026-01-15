@@ -7,7 +7,7 @@ use crate::{
 #[tauri::command]
 pub fn get_app_data() -> Result<AppData, String> {
     let guard = lock_r!(FDOLL);
-    return Ok(guard.app_data.clone());
+    Ok(guard.app_data.clone())
 }
 
 #[tauri::command]

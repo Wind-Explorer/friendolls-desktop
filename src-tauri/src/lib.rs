@@ -91,15 +91,12 @@ fn setup_fdoll() -> Result<(), tauri::Error> {
 }
 
 fn register_app_events(event: tauri::RunEvent) {
-    match event {
-        tauri::RunEvent::ExitRequested { api, code, .. } => {
-            if code.is_none() {
-                api.prevent_exit();
-            } else {
-                println!("exit code: {:?}", code);
-            }
+    if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+        if code.is_none() {
+            api.prevent_exit();
+        } else {
+            println!("exit code: {:?}", code);
         }
-        _ => {}
     }
 }
 

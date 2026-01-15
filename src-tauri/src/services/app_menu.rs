@@ -38,7 +38,6 @@ pub fn open_app_menu_window() {
         }
         Err(e) => {
             error!("Failed to build {} window: {}", APP_MENU_WINDOW_LABEL, e);
-            return;
         }
-    };
+    }
 }

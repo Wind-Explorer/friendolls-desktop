@@ -86,10 +86,8 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
                 if let Err(e) = window.emit("edit-doll", id) {
                     error!("Failed to emit edit-doll event: {}", e);
                 }
-            } else {
-                if let Err(e) = window.emit("create-doll", ()) {
-                    error!("Failed to emit create-doll event: {}", e);
-                }
+            } else if let Err(e) = window.emit("create-doll", ()) {
+                error!("Failed to emit create-doll event: {}", e);
             }
 
             return;
