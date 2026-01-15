@@ -60,7 +60,6 @@
           onkeydown={handleKeydown}
           placeholder="Type message..."
           class="input input-xs input-bordered w-full"
-          autofocus
         />
         <div class="flex gap-1">
           <button class="btn btn-xs btn-primary flex-1" onclick={sendMessage}
