@@ -11,8 +11,6 @@ pub enum RemoteError {
     Http(#[from] reqwest::Error),
     #[error("JSON parse error: {0}")]
     Json(#[from] serde_json::Error),
-    #[error("{0}")]
-    Api(String),
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]

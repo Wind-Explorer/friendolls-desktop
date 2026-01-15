@@ -21,13 +21,6 @@ pub struct UserProfile {
     pub active_doll_id: Option<String>,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export)]
-pub struct UpdateUserDto {
-    // Empty as per API schema
-}
-
 pub struct UserRemote {
     pub base_url: String,
     pub client: Client,
@@ -57,28 +50,6 @@ impl UserRemote {
         let resp = with_auth(self.client.get(url)).await.send().await?;
         let user = resp.json().await?;
         Ok(user)
-    }
-
-    pub async fn update_user(
-        &self,
-        user_id: Option<&str>,
-        update: UpdateUserDto,
-    ) -> Result<UserProfile, Error> {
-        let url = format!("{}/users/{}", self.base_url, user_id.unwrap_or("me"));
-        let resp = with_auth(self.client.put(url))
-            .await
-            .json(&update)
-            .send()
-            .await?;
-        let user = resp.json().await?;
-        Ok(user)
-    }
-
-    pub async fn delete_user(&self, user_id: Option<&str>) -> Result<(), Error> {
-        let url = format!("{}/users/{}", self.base_url, user_id.unwrap_or("me"));
-        let resp = with_auth(self.client.delete(url)).await.send().await?;
-        resp.error_for_status()?;
-        Ok(())
     }
 
     pub async fn set_active_doll(&self, doll_id: &str) -> Result<(), Error> {

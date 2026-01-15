@@ -66,11 +66,6 @@ fn on_connected(_payload: Payload, socket: RawClient) {
     emit_initialize(&socket);
 }
 
-fn on_reconnect(_payload: Payload, socket: RawClient) {
-    info!("WebSocket reconnected. Re-sending initialization request.");
-    emit_initialize(&socket);
-}
-
 fn on_initialized(payload: Payload, _socket: RawClient) {
     match payload {
         Payload::Text(values) => {

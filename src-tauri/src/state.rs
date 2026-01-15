@@ -5,7 +5,7 @@ use crate::{
     remotes::{dolls::DollsRemote, friends::FriendRemote, user::UserRemote},
     services::{
         auth::{load_auth_pass, AuthPass},
-        client_config_manager::{load_app_config, AppConfig, AuthConfig},
+        client_config_manager::{load_app_config, AppConfig},
     },
 };
 use std::{

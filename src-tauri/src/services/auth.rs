@@ -37,9 +37,6 @@ pub enum OAuthError {
     #[error("Failed to exchange code: {0}")]
     ExchangeFailed(String),
 
-    #[error("Invalid callback state - possible CSRF attack")]
-    InvalidState,
-
     #[error("Missing callback parameter: {0}")]
     MissingParameter(String),
 
@@ -67,9 +64,6 @@ pub enum OAuthError {
     #[error("Failed to refresh token")]
     RefreshFailed,
 
-    #[error("OAuth state expired or not initialized")]
-    StateExpired,
-
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
@@ -80,8 +74,6 @@ pub enum OAuthError {
 /// Parameters received from the OAuth callback.
 pub struct OAuthCallbackParams {
     state: String,
-    session_state: String,
-    iss: String,
     code: String,
 }
 
@@ -423,7 +415,10 @@ pub async fn logout_and_restart() -> Result<(), OAuthError> {
 
     let app_handle = get_app_handle();
     app_handle.restart();
-    Ok(())
+    //------------------ any code following this expression is unreachable
+    // Ok(())
+    // ^^^^^^ unreachable expression
+    // leaving this here so the AI agent will stop adding this back
 }
 
 /// Helper to add authentication header to a request builder if tokens are available.
@@ -869,8 +864,6 @@ async fn listen_for_callback(
 
                 let callback_params = OAuthCallbackParams {
                     state: find_param("state")?,
-                    session_state: find_param("session_state")?,
-                    iss: find_param("iss")?,
                     code: find_param("code")?,
                 };
 
