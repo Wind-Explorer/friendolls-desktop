@@ -2,10 +2,10 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-  import type { DollDto } from "../../../../types/bindings/DollDto";
-  import type { CreateDollDto } from "../../../../types/bindings/CreateDollDto";
-  import type { UpdateDollDto } from "../../../../types/bindings/UpdateDollDto";
-  import DollPreview from "../../components/doll-preview.svelte";
+  import type { DollDto } from "../../types/bindings/DollDto";
+  import type { CreateDollDto } from "../../types/bindings/CreateDollDto";
+  import type { UpdateDollDto } from "../../types/bindings/UpdateDollDto";
+  import DollPreview from "../app-menu/components/doll-preview.svelte";
 
   let mode: "create" | "edit" = "create";
   let dollId: string | null = null;

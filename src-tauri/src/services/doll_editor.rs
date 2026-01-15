@@ -96,9 +96,9 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
         }
 
         let url_path = if let Some(id) = doll_id {
-            format!("/app-menu/tabs/your-dolls/doll-editor?id={}", id)
+            format!("/doll-editor?id={}", id)
         } else {
-            "/app-menu/tabs/your-dolls/doll-editor".to_string()
+            "/doll-editor".to_string()
         };
 
         let mut builder = tauri::WebviewWindowBuilder::new(
