@@ -13,9 +13,8 @@ use crate::{
         welcome::open_welcome_window,
         ws::init_ws_client,
     },
-    state::init_app_data,
+    state::{init_app_data, FDOLL},
     system_tray::{init_system_tray, update_system_tray},
-    FDOLL,
 };
 
 pub async fn start_fdoll() {
