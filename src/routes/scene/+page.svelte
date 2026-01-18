@@ -10,11 +10,14 @@
   import { invoke } from "@tauri-apps/api/core";
 
   import DesktopPet from "./components/DesktopPet.svelte";
+  import { listen } from "@tauri-apps/api/event";
+  import { onMount } from "svelte";
+  import type { AppMetadata } from "../../types/bindings/AppMetadata";
 
-  let innerWidth = 0;
-  let innerHeight = 0;
+  let innerWidth = $state(0);
+  let innerHeight = $state(0);
 
-  $: isInteractive = $sceneInteractive;
+  let isInteractive = $derived($sceneInteractive);
 
   function getFriendById(userId: string) {
     const friend = $appData?.friends?.find((f) => f.friend.id === userId);
@@ -29,6 +32,18 @@
     const friend = $appData?.friends?.find((f) => f.friend.id === userId);
     return friend?.friend.activeDoll;
   }
+
+  let appMetadata: AppMetadata | null = $state(null);
+
+  onMount(() => {
+    const unlisten = listen<AppMetadata>("active-app-changed", (event) => {
+      appMetadata = event.payload;
+    });
+
+    return () => {
+      unlisten.then((u) => u());
+    };
+  });
 </script>
 
 <svelte:window bind:innerWidth bind:innerHeight />
@@ -63,11 +78,14 @@
         )})
       </span>
 
+      <span class="font-mono text-xs badge py-3">
+        {appMetadata?.localized}
+      </span>
+
       {#if Object.keys($friendsCursorPositions).length > 0}
         <div class="flex flex-col gap-2">
           <div>
             {#each Object.entries($friendsCursorPositions) as [userId, position]}
-              {@const dollConfig = getFriendDoll(userId)}
               <div class="badge py-3 text-xs text-left flex flex-row gap-2">
                 <span class="font-bold">{getFriendById(userId).name}</span>
                 <div class="flex flex-col font-mono">

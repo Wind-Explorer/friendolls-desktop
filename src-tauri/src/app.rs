@@ -7,6 +7,7 @@ use crate::{
     lock_w,
     remotes::health::{HealthError, HealthRemote},
     services::{
+        active_app::init_active_app_changes_listener,
         auth::{get_access_token, get_tokens},
         health_manager::show_health_manager_with_error,
         scene::{close_splash_window, open_scene_window, open_splash_window},
@@ -23,6 +24,10 @@ pub async fn start_fdoll() {
         let mut guard = lock_w!(FDOLL);
         guard.tray = Some(tray);
     }
+
+    // Begin listening for foreground app changes
+    init_active_app_changes_listener();
+
     if let Err(err) = init_startup_sequence().await {
         tracing::error!("startup sequence failed: {err}");
         show_health_manager_with_error(Some(err.to_string()));
