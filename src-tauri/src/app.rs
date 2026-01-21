@@ -5,7 +5,8 @@ use tracing::{info, warn};
 
 use crate::{
     lock_w,
-    remotes::health::{HealthError, HealthRemote},
+    models::health::HealthError,
+    remotes::health::HealthRemote,
     services::{
         active_app::init_active_app_changes_listener,
         auth::{get_access_token, get_tokens},

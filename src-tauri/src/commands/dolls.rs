@@ -1,7 +1,8 @@
 use crate::{
     lock_r,
+    models::dolls::{CreateDollDto, DollDto, UpdateDollDto},
     remotes::{
-        dolls::{CreateDollDto, DollDto, DollsRemote, UpdateDollDto},
+        dolls::DollsRemote,
         user::UserRemote,
     },
     state::{init_app_data_scoped, AppDataRefreshScope, FDOLL},

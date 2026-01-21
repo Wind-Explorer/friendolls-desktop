@@ -1,6 +1,6 @@
-use crate::remotes::friends::{
-    FriendRemote, FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto,
-    UserBasicDto,
+use crate::remotes::friends::FriendRemote;
+use crate::models::friends::{
+    FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto, UserBasicDto,
 };
 
 #[tauri::command]
