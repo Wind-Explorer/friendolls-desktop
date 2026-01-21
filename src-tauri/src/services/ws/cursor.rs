@@ -15,7 +15,7 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
     // and if clients are actually initialized.
     let (client_opt, is_initialized) = {
         let guard = lock_r!(FDOLL);
-        if let Some(clients) = &guard.clients {
+        if let Some(clients) = &guard.network.clients {
             (
                 clients.ws_client.as_ref().cloned(),
                 clients.is_ws_initialized,

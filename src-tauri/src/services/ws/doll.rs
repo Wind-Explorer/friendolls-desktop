@@ -36,6 +36,7 @@ pub fn on_doll_updated(payload: Payload, _socket: RawClient) {
                 let is_active_doll = if let Some(id) = doll_id {
                     let guard = lock_r!(FDOLL);
                     guard
+                        .ui
                         .app_data
                         .user
                         .as_ref()
@@ -74,6 +75,7 @@ pub fn on_doll_deleted(payload: Payload, _socket: RawClient) {
                 let is_active_doll = if let Some(id) = doll_id {
                     let guard = lock_r!(FDOLL);
                     guard
+                        .ui
                         .app_data
                         .user
                         .as_ref()

@@ -25,10 +25,10 @@ const SERVICE_NAME: &str = "friendolls";
 
 pub fn cancel_auth_flow() {
     let mut guard = lock_w!(FDOLL);
-    if let Some(token) = guard.oauth_flow.cancel_token.take() {
+    if let Some(token) = guard.auth.oauth_flow.cancel_token.take() {
         token.cancel();
     }
-    guard.oauth_flow = Default::default();
+    guard.auth.oauth_flow = Default::default();
 }
 
 /// Errors that can occur during OAuth authentication flow.
@@ -116,13 +116,13 @@ fn generate_code_challenge(code_verifier: &str) -> String {
 /// Automatically refreshes if expired.
 pub async fn get_tokens() -> Option<AuthPass> {
     info!("Retrieving tokens");
-    let Some(auth_pass) = ({ lock_r!(FDOLL).auth_pass.clone() }) else {
+    let Some(auth_pass) = ({ lock_r!(FDOLL).auth.auth_pass.clone() }) else {
         return None;
     };
 
     let Some(issued_at) = auth_pass.issued_at else {
         warn!("Auth pass missing issued_at timestamp, clearing");
-        lock_w!(FDOLL).auth_pass = None;
+        lock_w!(FDOLL).auth.auth_pass = None;
         return None;
     };
 
@@ -137,7 +137,7 @@ pub async fn get_tokens() -> Option<AuthPass> {
 
     if refresh_expired {
         info!("Refresh token expired, clearing auth state");
-        lock_w!(FDOLL).auth_pass = None;
+        lock_w!(FDOLL).auth.auth_pass = None;
         if let Err(e) = clear_auth_pass() {
             error!("Failed to clear expired auth pass: {}", e);
         }
@@ -148,7 +148,7 @@ pub async fn get_tokens() -> Option<AuthPass> {
     let _guard = REFRESH_LOCK.lock().await;
 
     // Double-check after acquiring lock
-    let auth_pass = lock_r!(FDOLL).auth_pass.clone()?;
+    let auth_pass = lock_r!(FDOLL).auth.auth_pass.clone()?;
     let current_time = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
     let expired = current_time - auth_pass.issued_at? >= auth_pass.expires_in;
 
@@ -162,7 +162,7 @@ pub async fn get_tokens() -> Option<AuthPass> {
         Ok(new_pass) => Some(new_pass),
         Err(e) => {
             error!("Failed to refresh token: {}", e);
-            lock_w!(FDOLL).auth_pass = None;
+            lock_w!(FDOLL).auth.auth_pass = None;
             if let Err(e) = clear_auth_pass() {
                 error!("Failed to clear auth pass after refresh failure: {}", e);
             }
@@ -367,11 +367,11 @@ pub fn clear_auth_pass() -> Result<(), OAuthError> {
 /// ```
 pub fn logout() -> Result<(), OAuthError> {
     info!("Logging out user");
-    lock_w!(FDOLL).auth_pass = None;
+        lock_w!(FDOLL).auth.auth_pass = None;
     clear_auth_pass()?;
 
     // Clear OAuth flow state as well
-    lock_w!(FDOLL).oauth_flow = Default::default();
+    lock_w!(FDOLL).auth.oauth_flow = Default::default();
 
     // TODO: Call OAuth provider's revocation endpoint
     // This would require adding a revoke_token() function that calls:
@@ -386,8 +386,8 @@ pub async fn logout_and_restart() -> Result<(), OAuthError> {
     let (refresh_token, session_state, base_url) = {
         let guard = lock_r!(FDOLL);
         (
-            guard.auth_pass.as_ref().map(|p| p.refresh_token.clone()),
-            guard.auth_pass.as_ref().map(|p| p.session_state.clone()),
+            guard.auth.auth_pass.as_ref().map(|p| p.refresh_token.clone()),
+            guard.auth.auth_pass.as_ref().map(|p| p.session_state.clone()),
             guard
                 .app_config
                 .api_base_url
@@ -460,7 +460,7 @@ pub async fn exchange_code_for_auth_pass(
 ) -> Result<AuthPass, OAuthError> {
     let (app_config, http_client) = {
         let guard = lock_r!(FDOLL);
-        let clients = guard.clients.as_ref();
+        let clients = guard.network.clients.as_ref();
         if clients.is_none() {
             error!("Clients not initialized yet!");
             return Err(OAuthError::InvalidConfig);
@@ -581,10 +581,10 @@ where
 
     {
         let mut guard = lock_w!(FDOLL);
-        guard.oauth_flow.state = Some(state.clone());
-        guard.oauth_flow.code_verifier = Some(code_verifier.clone());
-        guard.oauth_flow.initiated_at = Some(current_time);
-        guard.oauth_flow.cancel_token = Some(cancel_token.clone());
+        guard.auth.oauth_flow.state = Some(state.clone());
+        guard.auth.oauth_flow.code_verifier = Some(code_verifier.clone());
+        guard.auth.oauth_flow.initiated_at = Some(current_time);
+        guard.auth.oauth_flow.cancel_token = Some(cancel_token.clone());
     }
 
     let mut url = match url::Url::parse(&format!("{}/auth", &app_config.auth.auth_url)) {
@@ -655,8 +655,8 @@ where
                 let (stored_state, stored_verifier) = {
                     let guard = lock_r!(FDOLL);
                     (
-                        guard.oauth_flow.state.clone(),
-                        guard.oauth_flow.code_verifier.clone(),
+                        guard.auth.oauth_flow.state.clone(),
+                        guard.auth.oauth_flow.code_verifier.clone(),
                     )
                 };
 
@@ -675,8 +675,8 @@ where
                     Ok(auth_pass) => {
                         {
                             let mut guard = lock_w!(FDOLL);
-                            guard.auth_pass = Some(auth_pass.clone());
-                            guard.oauth_flow = Default::default();
+                            guard.auth.auth_pass = Some(auth_pass.clone());
+    guard.auth.oauth_flow = Default::default();
                         }
                         if let Err(e) = save_auth_pass(&auth_pass) {
                             error!("Failed to save auth pass: {}", e);
@@ -720,7 +720,7 @@ pub async fn refresh_token(refresh_token: &str) -> Result<AuthPass, OAuthError> 
         (
             guard.app_config.clone(),
             guard
-                .clients
+                .network.clients
                 .as_ref()
                 .expect("clients present")
                 .http_client
@@ -765,7 +765,7 @@ pub async fn refresh_token(refresh_token: &str) -> Result<AuthPass, OAuthError> 
     );
 
     // Update state and storage
-    lock_w!(FDOLL).auth_pass = Some(auth_pass.clone());
+    lock_w!(FDOLL).auth.auth_pass = Some(auth_pass.clone());
     if let Err(e) = save_auth_pass(&auth_pass) {
         error!("Failed to save refreshed auth pass: {}", e);
     } else {

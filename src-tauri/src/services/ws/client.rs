@@ -33,7 +33,7 @@ fn on_initialized(payload: Payload, _socket: RawClient) {
 
                 // Mark WebSocket as initialized and reset backoff timer
                 let mut guard = lock_w!(FDOLL);
-                if let Some(clients) = guard.clients.as_mut() {
+                if let Some(clients) = guard.network.clients.as_mut() {
                     clients.is_ws_initialized = true;
                 }
 
@@ -57,7 +57,7 @@ pub async fn init_ws_client() {
     match build_ws_client(&app_config).await {
         Ok(ws_client) => {
             let mut guard = lock_w!(FDOLL);
-            if let Some(clients) = guard.clients.as_mut() {
+            if let Some(clients) = guard.network.clients.as_mut() {
                 clients.ws_client = Some(ws_client);
                 clients.is_ws_initialized = false; // wait for initialized event
             }
@@ -66,7 +66,7 @@ pub async fn init_ws_client() {
             error!("Failed to initialize WebSocket client: {}", e);
             // If we failed because no token, clear the WS client to avoid stale retries
             let mut guard = lock_w!(FDOLL);
-            if let Some(clients) = guard.clients.as_mut() {
+            if let Some(clients) = guard.network.clients.as_mut() {
                 clients.ws_client = None;
                 clients.is_ws_initialized = false;
             }

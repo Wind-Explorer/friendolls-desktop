@@ -51,6 +51,7 @@ pub async fn update_doll(id: String, dto: UpdateDollDto) -> Result<DollDto, Stri
     let is_active_doll = {
         let guard = lock_r!(FDOLL);
         guard
+            .ui
             .app_data
             .user
             .as_ref()
@@ -82,6 +83,7 @@ pub async fn delete_doll(id: String) -> Result<(), String> {
     let is_active_doll = {
         let guard = lock_r!(FDOLL);
         guard
+            .ui
             .app_data
             .user
             .as_ref()

@@ -18,7 +18,7 @@ impl HealthRemote {
             .ok_or(HealthError::ConfigMissing("api_base_url"))?;
 
         let client = guard
-            .clients
+            .network.clients
             .as_ref()
             .map(|c| c.http_client.clone())
             .ok_or(HealthError::ConfigMissing("http_client"))?;

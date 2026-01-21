@@ -40,8 +40,8 @@ pub fn get_latest_cursor_position() -> Option<CursorPosition> {
 /// Convert absolute screen coordinates to normalized coordinates (0.0 - 1.0)
 pub fn absolute_to_normalized(pos: &CursorPosition) -> CursorPosition {
     let guard = lock_r!(FDOLL);
-    let screen_w = guard.app_data.scene.display.screen_width as f64;
-    let screen_h = guard.app_data.scene.display.screen_height as f64;
+    let screen_w = guard.ui.app_data.scene.display.screen_width as f64;
+    let screen_h = guard.ui.app_data.scene.display.screen_height as f64;
 
     CursorPosition {
         x: (pos.x / screen_w).clamp(0.0, 1.0),
@@ -52,8 +52,8 @@ pub fn absolute_to_normalized(pos: &CursorPosition) -> CursorPosition {
 /// Convert normalized coordinates to absolute screen coordinates
 pub fn normalized_to_absolute(normalized: &CursorPosition) -> CursorPosition {
     let guard = lock_r!(FDOLL);
-    let screen_w = guard.app_data.scene.display.screen_width as f64;
-    let screen_h = guard.app_data.scene.display.screen_height as f64;
+    let screen_w = guard.ui.app_data.scene.display.screen_width as f64;
+    let screen_h = guard.ui.app_data.scene.display.screen_height as f64;
 
     CursorPosition {
         x: (normalized.x * screen_w).round(),
@@ -124,7 +124,7 @@ async fn init_cursor_tracking() -> Result<(), String> {
     #[cfg(target_os = "windows")]
     let scale_factor = {
         let guard = lock_r!(FDOLL);
-        guard.app_data.scene.display.monitor_scale_factor
+        guard.ui.app_data.scene.display.monitor_scale_factor
     };
 
     // The producer closure moves `tx` into it.

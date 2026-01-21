@@ -18,7 +18,7 @@ impl FriendRemote {
                 .expect("App configuration error")
                 .clone(),
             client: guard
-                .clients
+                .network.clients
                 .as_ref()
                 .expect("App configuration error")
                 .http_client

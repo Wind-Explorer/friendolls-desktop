@@ -117,7 +117,7 @@ pub fn close_health_manager_window() {
         } else {
             info!("Health manager window closed");
             let guard = lock_r!(FDOLL);
-            let is_logged_in = guard.app_data.user.is_some();
+            let is_logged_in = guard.ui.app_data.user.is_some();
             drop(guard);
             update_system_tray(is_logged_in);
         }

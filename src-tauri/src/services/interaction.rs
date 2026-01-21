@@ -9,7 +9,7 @@ pub async fn send_interaction(dto: SendInteractionDto) -> Result<(), String> {
     // Check if WS is initialized
     let client = {
         let guard = lock_r!(FDOLL);
-        if let Some(clients) = &guard.clients {
+        if let Some(clients) = &guard.network.clients {
             if clients.is_ws_initialized {
                 clients.ws_client.clone()
             } else {
