@@ -1,18 +1,7 @@
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 use ts_rs::TS;
 
 use super::dolls::DollDto;
-
-#[derive(Error, Debug)]
-pub enum RemoteError {
-    #[error("HTTP error: {0}")]
-    Http(#[from] reqwest::Error),
-    #[error("JSON parse error: {0}")]
-    Json(#[from] serde_json::Error),
-    #[error("{0}")]
-    Api(String),
-}
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
 #[serde(rename_all = "camelCase")]

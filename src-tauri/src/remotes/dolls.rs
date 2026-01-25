@@ -1,6 +1,7 @@
 use reqwest::Client;
 
 use crate::{lock_r, services::auth::with_auth, state::FDOLL, models::dolls::*};
+use crate::models::remote_error::RemoteError;
 
 pub struct DollsRemote {
     pub base_url: String,
