@@ -123,43 +123,28 @@ pub fn on_friend_disconnected(payload: Payload, _socket: RawClient) {
 }
 
 pub fn on_friend_doll_created(payload: Payload, _socket: RawClient) {
-    match payload {
-        Payload::Text(values) => {
-            // Log raw JSON for now, as requested
-            if let Some(first_value) = values.first() {
-                info!("Received friend-doll-created event: {:?}", first_value);
-                // Future: Trigger re-fetch or emit to frontend
-            } else {
-                info!("Received friend-doll-created event with empty payload");
-            }
-        }
-        _ => error!("Received unexpected payload format for friend-doll-created"),
-    }
+    handle_friend_doll_change(WS_EVENT::FRIEND_DOLL_CREATED, payload);
 }
 
 pub fn on_friend_doll_updated(payload: Payload, _socket: RawClient) {
-    match payload {
-        Payload::Text(values) => {
-            if let Some(first_value) = values.first() {
-                info!("Received friend-doll-updated event: {:?}", first_value);
-            } else {
-                info!("Received friend-doll-updated event with empty payload");
-            }
-        }
-        _ => error!("Received unexpected payload format for friend-doll-updated"),
-    }
+    handle_friend_doll_change(WS_EVENT::FRIEND_DOLL_UPDATED, payload);
 }
 
 pub fn on_friend_doll_deleted(payload: Payload, _socket: RawClient) {
+    handle_friend_doll_change(WS_EVENT::FRIEND_DOLL_DELETED, payload);
+}
+
+fn handle_friend_doll_change(event_name: &str, payload: Payload) {
     match payload {
         Payload::Text(values) => {
             if let Some(first_value) = values.first() {
-                info!("Received friend-doll-deleted event: {:?}", first_value);
+                info!("Received {} event: {:?}", event_name, first_value);
+                // Future: Trigger re-fetch or emit to frontend
             } else {
-                info!("Received friend-doll-deleted event with empty payload");
+                info!("Received {} event with empty payload", event_name);
             }
         }
-        _ => error!("Received unexpected payload format for friend-doll-deleted"),
+        _ => error!("Received unexpected payload format for {}", event_name),
     }
 }
 

@@ -40,9 +40,11 @@ impl WS_EVENT {
 }
 
 mod client;
+mod connection;
 mod cursor;
 mod doll;
 mod friend;
+mod handlers;
 mod interaction;
 
 pub use client::init_ws_client;
