@@ -2,6 +2,8 @@ use crate::remotes::friends::FriendRemote;
 use crate::models::friends::{
     FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto, UserBasicDto,
 };
+use crate::state::AppDataRefreshScope;
+use crate::commands::refresh_app_data;
 
 #[tauri::command]
 pub async fn list_friends() -> Result<Vec<FriendshipResponseDto>, String> {
@@ -31,10 +33,14 @@ pub async fn search_users(username: Option<String>) -> Result<Vec<UserBasicDto>,
 pub async fn send_friend_request(
     request: SendFriendRequestDto,
 ) -> Result<FriendRequestResponseDto, String> {
-    FriendRemote::new()
+    let result = FriendRemote::new()
         .send_friend_request(request)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    refresh_app_data(&[AppDataRefreshScope::Friends]).await;
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -55,18 +61,26 @@ pub async fn sent_friend_requests() -> Result<Vec<FriendRequestResponseDto>, Str
 
 #[tauri::command]
 pub async fn accept_friend_request(request_id: String) -> Result<FriendRequestResponseDto, String> {
-    FriendRemote::new()
+    let result = FriendRemote::new()
         .accept_friend_request(&request_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    refresh_app_data(&[AppDataRefreshScope::Friends]).await;
+
+    Ok(result)
 }
 
 #[tauri::command]
 pub async fn deny_friend_request(request_id: String) -> Result<FriendRequestResponseDto, String> {
-    FriendRemote::new()
+    let result = FriendRemote::new()
         .deny_friend_request(&request_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    refresh_app_data(&[AppDataRefreshScope::Friends]).await;
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -74,5 +88,9 @@ pub async fn unfriend(friend_id: String) -> Result<(), String> {
     FriendRemote::new()
         .unfriend(&friend_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    refresh_app_data(&[AppDataRefreshScope::Friends]).await;
+
+    Ok(())
 }

@@ -1,13 +1,12 @@
 use crate::{
-    lock_r,
     models::dolls::{CreateDollDto, DollDto, UpdateDollDto},
     remotes::{
         dolls::DollsRemote,
         user::UserRemote,
     },
-    state::{init_app_data_scoped, AppDataRefreshScope, FDOLL},
+    state::AppDataRefreshScope,
+    commands::{refresh_app_data, refresh_app_data_conditionally, is_active_doll},
 };
-use tauri::async_runtime;
 
 #[tauri::command]
 pub async fn get_dolls() -> Result<Vec<DollDto>, String> {
@@ -32,10 +31,7 @@ pub async fn create_doll(dto: CreateDollDto) -> Result<DollDto, String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    // Refresh dolls list in background (deduped inside init_app_data_scoped)
-    async_runtime::spawn(async {
-        init_app_data_scoped(AppDataRefreshScope::Dolls).await;
-    });
+    refresh_app_data(&[AppDataRefreshScope::Dolls]).await;
 
     Ok(result)
 }
@@ -48,60 +44,32 @@ pub async fn update_doll(id: String, dto: UpdateDollDto) -> Result<DollDto, Stri
         .map_err(|e| e.to_string())?;
 
     // Check if this was the active doll (after update completes to avoid stale reads)
-    let is_active_doll = {
-        let guard = lock_r!(FDOLL);
-        guard
-            .ui
-            .app_data
-            .user
-            .as_ref()
-            .and_then(|u| u.active_doll_id.as_ref())
-            .map(|active_id| active_id == &id)
-            .unwrap_or(false)
-    };
+    let is_active = is_active_doll(&id);
 
-    // Refresh dolls list + User/Friends if this was the active doll
-    async_runtime::spawn(async move {
-        init_app_data_scoped(AppDataRefreshScope::Dolls).await;
-        if is_active_doll {
-            init_app_data_scoped(AppDataRefreshScope::User).await;
-            init_app_data_scoped(AppDataRefreshScope::Friends).await;
-        }
-    });
+    refresh_app_data_conditionally(
+        &[AppDataRefreshScope::Dolls],
+        is_active.then_some(&[AppDataRefreshScope::User, AppDataRefreshScope::Friends]),
+    ).await;
 
     Ok(result)
 }
 
 #[tauri::command]
 pub async fn delete_doll(id: String) -> Result<(), String> {
-    DollsRemote::new()
+    let result = DollsRemote::new()
         .delete_doll(&id)
         .await
         .map_err(|e| e.to_string())?;
 
     // Check if this was the active doll (after delete completes to avoid stale reads)
-    let is_active_doll = {
-        let guard = lock_r!(FDOLL);
-        guard
-            .ui
-            .app_data
-            .user
-            .as_ref()
-            .and_then(|u| u.active_doll_id.as_ref())
-            .map(|active_id| active_id == &id)
-            .unwrap_or(false)
-    };
+    let is_active = is_active_doll(&id);
 
-    // Refresh dolls list + User/Friends if the deleted doll was active
-    async_runtime::spawn(async move {
-        init_app_data_scoped(AppDataRefreshScope::Dolls).await;
-        if is_active_doll {
-            init_app_data_scoped(AppDataRefreshScope::User).await;
-            init_app_data_scoped(AppDataRefreshScope::Friends).await;
-        }
-    });
+    refresh_app_data_conditionally(
+        &[AppDataRefreshScope::Dolls],
+        is_active.then_some(&[AppDataRefreshScope::User, AppDataRefreshScope::Friends]),
+    ).await;
 
-    Ok(())
+    Ok(result)
 }
 
 #[tauri::command]
@@ -111,12 +79,7 @@ pub async fn set_active_doll(doll_id: String) -> Result<(), String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    // Refresh User (for active_doll_id) + Friends (so friends see your active doll)
-    // We don't need to refresh Dolls since the doll itself hasn't changed
-    async_runtime::spawn(async {
-        init_app_data_scoped(AppDataRefreshScope::User).await;
-        init_app_data_scoped(AppDataRefreshScope::Friends).await;
-    });
+    refresh_app_data(&[AppDataRefreshScope::User, AppDataRefreshScope::Friends]).await;
 
     Ok(())
 }
@@ -128,11 +91,7 @@ pub async fn remove_active_doll() -> Result<(), String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    // Refresh User (for active_doll_id) + Friends (so friends see your doll is gone)
-    async_runtime::spawn(async {
-        init_app_data_scoped(AppDataRefreshScope::User).await;
-        init_app_data_scoped(AppDataRefreshScope::Friends).await;
-    });
+    refresh_app_data(&[AppDataRefreshScope::User, AppDataRefreshScope::Friends]).await;
 
     Ok(())
 }
