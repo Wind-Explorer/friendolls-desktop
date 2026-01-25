@@ -4,36 +4,17 @@ use tokio::time::{sleep, Instant};
 use tracing::{info, warn};
 
 use crate::{
-    lock_w,
     models::health::HealthError,
     remotes::health::HealthRemote,
     services::{
-        active_app::init_active_app_changes_listener,
         auth::{get_access_token, get_tokens},
-        health_manager::show_health_manager_with_error,
         scene::{close_splash_window, open_scene_window, open_splash_window},
         welcome::open_welcome_window,
         ws::init_ws_client,
     },
-    state::{init_app_data, FDOLL},
-    system_tray::{init_system_tray, update_system_tray},
+    state::init_app_data,
+    system_tray::update_system_tray,
 };
-
-pub async fn start_fdoll() {
-    let tray = init_system_tray();
-    {
-        let mut guard = lock_w!(FDOLL);
-        guard.tray = Some(tray);
-    }
-
-    // Begin listening for foreground app changes
-    init_active_app_changes_listener();
-
-    if let Err(err) = init_startup_sequence().await {
-        tracing::error!("startup sequence failed: {err}");
-        show_health_manager_with_error(Some(err.to_string()));
-    }
-}
 
 async fn init_ws_after_auth() {
     const MAX_ATTEMPTS: u8 = 5;
@@ -90,7 +71,7 @@ pub async fn bootstrap() {
 
 /// Perform checks for environment, network condition
 /// and handle situations where startup would not be appropriate.
-async fn init_startup_sequence() -> Result<(), HealthError> {
+pub async fn init_startup_sequence() -> Result<(), HealthError> {
     let health_remote = HealthRemote::try_new()?;
 
     // simple retry loop to smooth transient network issues

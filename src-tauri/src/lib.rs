@@ -22,11 +22,12 @@ use tracing_subscriber::{self, util::SubscriberInitExt};
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
 
-mod app;
 mod commands;
+mod lifecycle;
 mod models;
 mod remotes;
 mod services;
+mod startup;
 mod state;
 mod system_tray;
 mod utilities;
@@ -86,7 +87,7 @@ fn setup_fdoll() -> Result<(), tauri::Error> {
     open_splash_window();
 
     state::init_fdoll_state(Some(_guard));
-    async_runtime::spawn(async move { app::start_fdoll().await });
+    async_runtime::spawn(async move { lifecycle::start_fdoll().await });
     Ok(())
 }
 

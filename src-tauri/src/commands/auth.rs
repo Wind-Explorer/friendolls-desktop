@@ -18,7 +18,7 @@ pub fn start_auth_flow() -> Result<(), String> {
         // Close welcome window if it's still open
         crate::services::welcome::close_welcome_window();
         tauri::async_runtime::spawn(async {
-            crate::app::bootstrap().await;
+            crate::startup::bootstrap().await;
         });
     })
     .map_err(|e| e.to_string())
