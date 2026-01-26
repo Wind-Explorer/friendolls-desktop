@@ -8,6 +8,7 @@
     initSceneInteractiveListener,
     stopSceneInteractiveListener,
   } from "../events/scene-interactive";
+  import { initUserStatusListeners, stopUserStatusListeners } from "../events/user-status";
 
   let { children } = $props();
   if (browser) {
@@ -17,6 +18,7 @@
         await initAppDataListener();
         await initSceneInteractiveListener();
         await initInteractionListeners();
+        await initUserStatusListeners();
       } catch (err) {
         console.error("Failed to initialize event listeners:", err);
       }
@@ -26,6 +28,7 @@
       stopCursorTracking();
       stopSceneInteractiveListener();
       stopInteractionListeners();
+      stopUserStatusListeners();
     });
   }
 </script>

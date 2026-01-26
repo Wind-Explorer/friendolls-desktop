@@ -6,6 +6,7 @@
   } from "../../events/cursor";
   import { appData } from "../../events/app-data";
   import { sceneInteractive } from "../../events/scene-interactive";
+  import { friendsUserStatuses } from "../../events/user-status";
 
   import { invoke } from "@tauri-apps/api/core";
 
@@ -33,11 +34,25 @@
     return friend?.friend.activeDoll;
   }
 
+  function getFriendStatus(userId: string) {
+    return $friendsUserStatuses[userId];
+  }
+
   let appMetadata: AppMetadata | null = $state(null);
 
   onMount(() => {
     const unlisten = listen<AppMetadata>("active-app-changed", (event) => {
       appMetadata = event.payload;
+      const activeAppValue =
+        appMetadata?.localized ?? appMetadata?.unlocalized ?? "";
+      if (activeAppValue.trim()) {
+        invoke("send_user_status_cmd", {
+          activeApp: activeAppValue,
+          state: "idle",
+        }).catch((error) => {
+          console.error("Failed to send user status", error);
+        });
+      }
     });
 
     return () => {
@@ -86,14 +101,20 @@
         <div class="flex flex-col gap-2">
           <div>
             {#each Object.entries($friendsCursorPositions) as [userId, position]}
+              {@const status = getFriendStatus(userId)}
               <div class="badge py-3 text-xs text-left flex flex-row gap-2">
                 <span class="font-bold">{getFriendById(userId).name}</span>
-                <div class="flex flex-col font-mono">
+                <div class="flex flex-row font-mono gap-2">
                   <span>
                     ({position.mapped.x.toFixed(3)}, {position.mapped.y.toFixed(
                       3,
                     )})
                   </span>
+                  {#if status}
+                    <span>
+                      {status.state} in {status.activeApp}
+                    </span>
+                  {/if}
                 </div>
               </div>
             {/each}

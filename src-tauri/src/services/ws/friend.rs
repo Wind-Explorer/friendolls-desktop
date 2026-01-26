@@ -174,3 +174,18 @@ pub fn on_friend_active_doll_changed(payload: Payload, _socket: RawClient) {
         _ => error!("Received unexpected payload format for friend-active-doll-changed"),
     }
 }
+
+pub fn on_friend_user_status(payload: Payload, _socket: RawClient) {
+    match payload {
+        Payload::Text(values) => {
+            if let Some(first_value) = values.first() {
+                if let Err(e) = get_app_handle().emit(WS_EVENT::FRIEND_USER_STATUS, first_value) {
+                    error!("Failed to emit friend-user-status event: {:?}", e);
+                }
+            } else {
+                info!("Received friend-user-status event with empty payload");
+            }
+        }
+        _ => error!("Received unexpected payload format for friend-user-status"),
+    }
+}

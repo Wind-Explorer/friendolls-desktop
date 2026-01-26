@@ -41,6 +41,7 @@ pub fn register_event_handlers(builder: ClientBuilder) -> ClientBuilder {
             WS_EVENT::FRIEND_ACTIVE_DOLL_CHANGED,
             super::friend::on_friend_active_doll_changed,
         )
+        .on(WS_EVENT::FRIEND_USER_STATUS, super::friend::on_friend_user_status)
         .on(WS_EVENT::DOLL_CREATED, super::doll::on_doll_created)
         .on(WS_EVENT::DOLL_UPDATED, super::doll::on_doll_updated)
         .on(WS_EVENT::DOLL_DELETED, super::doll::on_doll_deleted)

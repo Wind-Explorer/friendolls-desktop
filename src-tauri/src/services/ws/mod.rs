@@ -29,6 +29,8 @@ impl WS_EVENT {
     pub const FRIEND_DOLL_UPDATED: &str = "friend-doll-updated";
     pub const FRIEND_DOLL_DELETED: &str = "friend-doll-deleted";
     pub const FRIEND_ACTIVE_DOLL_CHANGED: &str = "friend-active-doll-changed";
+    pub const FRIEND_USER_STATUS: &str = "friend-user-status";
+    pub const CLIENT_REPORT_USER_STATUS: &str = "client-report-user-status";
     pub const DOLL_CREATED: &str = "doll_created";
     pub const DOLL_UPDATED: &str = "doll_updated";
     pub const DOLL_DELETED: &str = "doll_deleted";
@@ -46,6 +48,8 @@ mod doll;
 mod friend;
 mod handlers;
 mod interaction;
+mod user_status;
 
 pub use client::init_ws_client;
 pub use cursor::report_cursor_data;
+pub use user_status::{report_user_status, UserStatusPayload};

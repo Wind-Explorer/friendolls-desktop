@@ -16,6 +16,7 @@ use commands::friends::{
 };
 use commands::interaction::send_interaction_cmd;
 use commands::sprite::recolor_gif_base64;
+use commands::user_status::send_user_status_cmd;
 use tauri::async_runtime;
 use tauri::Manager;
 use tracing_subscriber::{self, util::SubscriberInitExt};
@@ -31,6 +32,7 @@ mod startup;
 mod state;
 mod system_tray;
 mod utilities;
+
 
 /// Tauri app handle
 pub fn get_app_handle<'a>() -> &'a tauri::AppHandle<tauri::Wry> {
@@ -138,7 +140,8 @@ pub fn run() {
             set_pet_menu_state,
             start_auth_flow,
             logout_and_restart,
-            send_interaction_cmd
+            send_interaction_cmd,
+            send_user_status_cmd
         ])
         .setup(|app| {
             APP_HANDLE
