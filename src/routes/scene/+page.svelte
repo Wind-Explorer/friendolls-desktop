@@ -93,7 +93,14 @@
         )})
       </span>
 
-      <span class="font-mono text-xs badge py-3">
+      <span class="font-mono text-xs badge py-3 flex items-center gap-2">
+        {#if appMetadata?.appIconB64}
+          <img
+            src={`data:image/png;base64,${appMetadata.appIconB64}`}
+            alt="Active app icon"
+            class="size-4"
+          />
+        {/if}
         {appMetadata?.localized}
       </span>
 
