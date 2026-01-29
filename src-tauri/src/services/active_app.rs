@@ -7,6 +7,10 @@ use tracing::error;
 
 use crate::get_app_handle;
 
+const ICON_SIZE: u32 = 64;
+const ICON_CACHE_LIMIT: usize = 50;
+
+/// Metadata for the currently active application, including localized and unlocalized names, and an optional base64-encoded icon.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -16,6 +20,46 @@ pub struct AppMetadata {
     pub app_icon_b64: Option<String>,
 }
 
+/// Module for caching application icons as base64-encoded strings to improve performance.
+/// Uses an LRU-style cache with a fixed capacity.
+mod icon_cache {
+    use lazy_static::lazy_static;
+    use std::collections::VecDeque;
+    use std::sync::{Arc, Mutex};
+
+    lazy_static! {
+        static ref CACHE: Mutex<VecDeque<(Arc<str>, Arc<str>)>> = Mutex::new(VecDeque::new());
+    }
+
+    /// Retrieves a cached icon by path, moving it to the front of the cache if found.
+    pub fn get(path: &str) -> Option<String> {
+        let mut cache = CACHE.lock().unwrap();
+        if let Some(pos) = cache.iter().position(|(p, _)| p.as_ref() == path) {
+            let (_, value) = cache.remove(pos).expect("position exists");
+            cache.push_front((Arc::from(path), value.clone()));
+            Some(value.as_ref().to_string())
+        } else {
+            None
+        }
+    }
+
+    /// Stores an icon in the cache, evicting the oldest entry if the cache is full.
+    pub fn put(path: &str, value: String) {
+        let mut cache = CACHE.lock().unwrap();
+        let path_arc = Arc::from(path);
+        let value_arc = Arc::from(value.as_str());
+        if let Some(pos) = cache.iter().position(|(p, _)| p.as_ref() == path) {
+            cache.remove(pos);
+        }
+        cache.push_front((path_arc, value_arc));
+        if cache.len() > super::ICON_CACHE_LIMIT {
+            cache.pop_back();
+        }
+    }
+}
+
+/// Listens for changes in the active (foreground) application and calls the provided callback with metadata.
+/// The implementation varies by platform: macOS uses NSWorkspace notifications, Windows uses WinEventHook.
 pub fn listen_for_active_app_changes<F>(callback: F)
 where
     F: Fn(AppMetadata) + Send + 'static,
@@ -58,7 +102,6 @@ mod macos {
     use objc2_foundation::NSString;
     use std::ffi::CStr;
     use std::sync::{Mutex, Once};
-    use tracing::info;
 
     #[allow(unused_imports)] // for framework linking, not referenced in code
     use objc2_app_kit::NSWorkspace;
@@ -112,46 +155,30 @@ mod macos {
     }
 
     extern "C" fn app_activated(_self: *mut AnyObject, _cmd: Sel, _notif: *mut AnyObject) {
-        let info = unsafe { get_active_app_metadata_macos() };
+        let info = get_active_app_metadata_macos();
         if let Some(cb) = CALLBACK.lock().unwrap().as_ref() {
             cb(info);
         }
     }
 
-    const ICON_SIZE: f64 = 64.0;
-    const ICON_CACHE_LIMIT: usize = 50;
-
-    lazy_static! {
-        static ref ICON_CACHE: Mutex<std::collections::VecDeque<(String, String)>> =
-            Mutex::new(std::collections::VecDeque::new());
-    }
+    const ICON_SIZE: f64 = super::ICON_SIZE as f64;
 
     fn get_cached_icon(path: &str) -> Option<String> {
-        let mut cache = ICON_CACHE.lock().ok()?;
-        if let Some(pos) = cache.iter().position(|(p, _)| p == path) {
-            let (_, value) = cache.remove(pos)?;
-            cache.push_front((path.to_string(), value.clone()));
-            return Some(value);
-        }
-        None
+        super::icon_cache::get(path)
     }
 
     fn put_cached_icon(path: &str, value: String) {
-        if let Ok(mut cache) = ICON_CACHE.lock() {
-            if let Some(pos) = cache.iter().position(|(p, _)| p == path) {
-                cache.remove(pos);
-            }
-            cache.push_front((path.to_string(), value));
-            if cache.len() > ICON_CACHE_LIMIT {
-                cache.pop_back();
-            }
-        }
+        super::icon_cache::put(path, value);
     }
 
-    pub unsafe fn get_active_app_metadata_macos() -> AppMetadata {
-        let ws: *mut AnyObject = msg_send![class!(NSWorkspace), sharedWorkspace];
-        let front_app: *mut AnyObject = msg_send![ws, frontmostApplication];
+    /// Retrieves metadata for the currently active application on macOS, including names and icon.
+    pub fn get_active_app_metadata_macos() -> AppMetadata {
+        use tracing::warn;
+
+        let ws: *mut AnyObject = unsafe { msg_send![class!(NSWorkspace), sharedWorkspace] };
+        let front_app: *mut AnyObject = unsafe { msg_send![ws, frontmostApplication] };
         if front_app.is_null() {
+            warn!("No frontmost application found");
             return AppMetadata {
                 localized: None,
                 unlocalized: None,
@@ -159,8 +186,9 @@ mod macos {
             };
         }
 
-        let name: *mut NSString = msg_send![front_app, localizedName];
+        let name: *mut NSString = unsafe { msg_send![front_app, localizedName] };
         let localized = if name.is_null() {
+            warn!("Localized name is null for frontmost application");
             None
         } else {
             Some(unsafe {
@@ -170,12 +198,14 @@ mod macos {
             })
         };
 
-        let exe_url: *mut AnyObject = msg_send![front_app, executableURL];
+        let exe_url: *mut AnyObject = unsafe { msg_send![front_app, executableURL] };
         let unlocalized = if exe_url.is_null() {
+            warn!("Executable URL is null for frontmost application");
             None
         } else {
-            let exe_name: *mut NSString = msg_send![exe_url, lastPathComponent];
+            let exe_name: *mut NSString = unsafe { msg_send![exe_url, lastPathComponent] };
             if exe_name.is_null() {
+                warn!("Executable name is null");
                 None
             } else {
                 Some(unsafe {
@@ -330,6 +360,8 @@ mod windows_impl {
         });
     }
 
+    // RefCell is safe here because the callback is stored and accessed only within the dedicated event loop thread.
+    // No concurrent access occurs since WinEventHook runs on a single background thread.
     thread_local! {
         static CALLBACK: std::cell::RefCell<Option<Box<dyn Fn(AppMetadata) + Send + 'static>>> =
             std::cell::RefCell::new(None);
@@ -354,10 +386,14 @@ mod windows_impl {
         }
     }
 
+    /// Retrieves metadata for the active application on Windows, optionally using a provided window handle.
     pub fn get_active_app_metadata_windows(hwnd_override: Option<HWND>) -> AppMetadata {
+        use tracing::warn;
+
         unsafe {
             let hwnd = hwnd_override.unwrap_or_else(|| GetForegroundWindow());
             if hwnd.0 == std::ptr::null_mut() {
+                warn!("No foreground window found");
                 return AppMetadata {
                     localized: None,
                     unlocalized: None,
@@ -367,6 +403,7 @@ mod windows_impl {
             let mut pid: u32 = 0;
             GetWindowThreadProcessId(hwnd, Some(&mut pid));
             if pid == 0 {
+                warn!("Failed to get process ID for foreground window");
                 return AppMetadata {
                     localized: None,
                     unlocalized: None,
@@ -376,6 +413,7 @@ mod windows_impl {
             let process_handle = match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
                 Ok(h) if !h.is_invalid() => h,
                 _ => {
+                    warn!("Failed to open process {} for querying", pid);
                     return AppMetadata {
                         localized: None,
                         unlocalized: None,
@@ -389,6 +427,7 @@ mod windows_impl {
             let exe_path = if size > 0 {
                 OsString::from_wide(&buffer[..size as usize])
             } else {
+                warn!("Failed to get module file name for process {}", pid);
                 return AppMetadata {
                     localized: None,
                     unlocalized: None,
@@ -543,31 +582,22 @@ mod windows_impl {
     }
 
     const ICON_SIZE: u32 = 64;
-    const ICON_CACHE_LIMIT: usize = 50;
-
-    lazy_static::lazy_static! {
-        static ref ICON_CACHE: std::sync::Mutex<std::collections::VecDeque<(String, String)>> =
-            std::sync::Mutex::new(std::collections::VecDeque::new());
-    }
 
     fn get_cached_icon(path: &str) -> Option<String> {
-        let mut cache = ICON_CACHE.lock().ok()?;
-        if let Some(pos) = cache.iter().position(|(p, _)| p == path) {
-            let (_, value) = cache.remove(pos)?;
-            cache.push_front((path.to_string(), value.clone()));
-            return Some(value);
-        }
-        None
+        super::icon_cache::get(path)
     }
 
     fn put_cached_icon(path: &str, value: String) {
-        if let Ok(mut cache) = ICON_CACHE.lock() {
-            if let Some(pos) = cache.iter().position(|(p, _)| p == path) {
-                cache.remove(pos);
-            }
-            cache.push_front((path.to_string(), value));
-            if cache.len() > ICON_CACHE_LIMIT {
-                cache.pop_back();
+        super::icon_cache::put(path, value);
+    }
+
+    /// RAII wrapper for Windows HICON handles to ensure proper cleanup.
+    struct IconHandle(windows::Win32::UI::WindowsAndMessaging::HICON);
+
+    impl Drop for IconHandle {
+        fn drop(&mut self) {
+            unsafe {
+                windows::Win32::UI::WindowsAndMessaging::DestroyIcon(self.0);
             }
         }
     }
@@ -607,12 +637,11 @@ mod windows_impl {
                 return None;
             }
 
-            let hicon = file_info.hIcon;
+            let icon_handle = IconHandle(file_info.hIcon);
 
             // Get icon info to extract bitmap
             let mut icon_info: ICONINFO = std::mem::zeroed();
-            if GetIconInfo(hicon, &mut icon_info).is_err() {
-                let _ = DestroyIcon(hicon);
+            if GetIconInfo(icon_handle.0, &mut icon_info).is_err() {
                 warn!("Failed to get icon info for {}", exe_path);
                 return None;
             }
@@ -627,7 +656,6 @@ mod windows_impl {
             {
                 let _ = DeleteObject(icon_info.hbmColor);
                 let _ = DeleteObject(icon_info.hbmMask);
-                let _ = DestroyIcon(hicon);
                 warn!("Failed to get bitmap object for {}", exe_path);
                 return None;
             }
@@ -638,7 +666,11 @@ mod windows_impl {
             // Create device contexts
             let hdc_screen = windows::Win32::Graphics::Gdi::GetDC(HWND(ptr::null_mut()));
             let hdc_mem = CreateCompatibleDC(hdc_screen);
-            let hbm_new = CreateCompatibleBitmap(hdc_screen, ICON_SIZE as i32, ICON_SIZE as i32);
+            let hbm_new = CreateCompatibleBitmap(
+                hdc_screen,
+                super::ICON_SIZE as i32,
+                super::ICON_SIZE as i32,
+            );
             let hbm_old = SelectObject(hdc_mem, hbm_new);
 
             // Draw icon
@@ -646,9 +678,9 @@ mod windows_impl {
                 hdc_mem,
                 0,
                 0,
-                hicon,
-                ICON_SIZE as i32,
-                ICON_SIZE as i32,
+                icon_handle.0,
+                super::ICON_SIZE as i32,
+                super::ICON_SIZE as i32,
                 0,
                 None,
                 windows::Win32::UI::WindowsAndMessaging::DI_NORMAL,
@@ -657,14 +689,14 @@ mod windows_impl {
             // Prepare BITMAPINFO for GetDIBits
             let mut bmi: BITMAPINFO = std::mem::zeroed();
             bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
-            bmi.bmiHeader.biWidth = ICON_SIZE as i32;
-            bmi.bmiHeader.biHeight = -(ICON_SIZE as i32); // Top-down
+            bmi.bmiHeader.biWidth = super::ICON_SIZE as i32;
+            bmi.bmiHeader.biHeight = -(super::ICON_SIZE as i32); // Top-down
             bmi.bmiHeader.biPlanes = 1;
             bmi.bmiHeader.biBitCount = 32;
             bmi.bmiHeader.biCompression = BI_RGB.0 as u32;
 
             // Allocate buffer for pixel data
-            let buffer_size = (ICON_SIZE * ICON_SIZE * 4) as usize;
+            let buffer_size = (super::ICON_SIZE * super::ICON_SIZE * 4) as usize;
             let mut buffer: Vec<u8> = vec![0; buffer_size];
 
             // Get bitmap bits
@@ -672,7 +704,7 @@ mod windows_impl {
                 hdc_mem,
                 hbm_new,
                 0,
-                ICON_SIZE,
+                super::ICON_SIZE,
                 Some(buffer.as_mut_ptr() as *mut _),
                 &mut bmi,
                 DIB_RGB_COLORS,
@@ -685,7 +717,6 @@ mod windows_impl {
             let _ = windows::Win32::Graphics::Gdi::ReleaseDC(HWND(ptr::null_mut()), hdc_screen);
             let _ = DeleteObject(icon_info.hbmColor);
             let _ = DeleteObject(icon_info.hbmMask);
-            let _ = DestroyIcon(hicon);
 
             if result == 0 {
                 warn!("Failed to get bitmap bits for {}", exe_path);
@@ -725,6 +756,7 @@ mod windows_impl {
 
 pub static ACTIVE_APP_CHANGED: &str = "active-app-changed";
 
+/// Initializes the active app change listener and emits events to the Tauri app on changes.
 pub fn init_active_app_changes_listener() {
     let app_handle = get_app_handle();
     listen_for_active_app_changes(|app_names: AppMetadata| {
