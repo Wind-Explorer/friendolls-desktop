@@ -301,7 +301,7 @@ mod windows_impl {
     where
         F: Fn(AppMetadata) + Send + 'static,
     {
-        // Run the hook on a background thread so we don’t block the caller.
+        // Run the hook on a background thread so we don't block the caller.
         std::thread::spawn(move || unsafe {
             let hook = SetWinEventHook(
                 EVENT_SYSTEM_FOREGROUND,
@@ -414,10 +414,13 @@ mod windows_impl {
                 let localized = get_file_description(&exe_path_str).or_else(|| unlocalized.clone());
                 (localized, unlocalized)
             };
+
+            let app_icon_b64 = get_active_app_icon_b64(&exe_path_str);
+
             AppMetadata {
                 localized,
                 unlocalized,
-                app_icon_b64: None, // TODO: Implement icon fetching for Windows
+                app_icon_b64,
             }
         }
     }
@@ -536,6 +539,186 @@ mod windows_impl {
             } else {
                 None
             }
+        }
+    }
+
+    const ICON_SIZE: u32 = 64;
+    const ICON_CACHE_LIMIT: usize = 50;
+
+    lazy_static::lazy_static! {
+        static ref ICON_CACHE: std::sync::Mutex<std::collections::VecDeque<(String, String)>> =
+            std::sync::Mutex::new(std::collections::VecDeque::new());
+    }
+
+    fn get_cached_icon(path: &str) -> Option<String> {
+        let mut cache = ICON_CACHE.lock().ok()?;
+        if let Some(pos) = cache.iter().position(|(p, _)| p == path) {
+            let (_, value) = cache.remove(pos)?;
+            cache.push_front((path.to_string(), value.clone()));
+            return Some(value);
+        }
+        None
+    }
+
+    fn put_cached_icon(path: &str, value: String) {
+        if let Ok(mut cache) = ICON_CACHE.lock() {
+            if let Some(pos) = cache.iter().position(|(p, _)| p == path) {
+                cache.remove(pos);
+            }
+            cache.push_front((path.to_string(), value));
+            if cache.len() > ICON_CACHE_LIMIT {
+                cache.pop_back();
+            }
+        }
+    }
+
+    fn get_active_app_icon_b64(exe_path: &str) -> Option<String> {
+        use base64::engine::general_purpose::STANDARD;
+        use base64::Engine;
+        use tracing::warn;
+        use windows::Win32::Graphics::Gdi::{
+            CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDIBits,
+            GetObjectW, SelectObject, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
+        };
+        use windows::Win32::UI::Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON};
+        use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, GetIconInfo, ICONINFO};
+
+        // Check cache first
+        if let Some(cached) = get_cached_icon(exe_path) {
+            return Some(cached);
+        }
+
+        unsafe {
+            let wide_path: Vec<u16> = exe_path.encode_utf16().chain(iter::once(0)).collect();
+            let mut file_info: SHFILEINFOW = std::mem::zeroed();
+
+            use windows::Win32::Storage::FileSystem::FILE_FLAGS_AND_ATTRIBUTES;
+
+            let result = SHGetFileInfoW(
+                PCWSTR(wide_path.as_ptr()),
+                FILE_FLAGS_AND_ATTRIBUTES(0),
+                Some(&mut file_info),
+                std::mem::size_of::<SHFILEINFOW>() as u32,
+                SHGFI_ICON | SHGFI_LARGEICON,
+            );
+
+            if result == 0 || file_info.hIcon.is_invalid() {
+                warn!("Failed to get icon for {}", exe_path);
+                return None;
+            }
+
+            let hicon = file_info.hIcon;
+
+            // Get icon info to extract bitmap
+            let mut icon_info: ICONINFO = std::mem::zeroed();
+            if GetIconInfo(hicon, &mut icon_info).is_err() {
+                let _ = DestroyIcon(hicon);
+                warn!("Failed to get icon info for {}", exe_path);
+                return None;
+            }
+
+            // Get bitmap dimensions
+            let mut bitmap: BITMAP = std::mem::zeroed();
+            if GetObjectW(
+                icon_info.hbmColor,
+                std::mem::size_of::<BITMAP>() as i32,
+                Some(&mut bitmap as *mut _ as *mut _),
+            ) == 0
+            {
+                let _ = DeleteObject(icon_info.hbmColor);
+                let _ = DeleteObject(icon_info.hbmMask);
+                let _ = DestroyIcon(hicon);
+                warn!("Failed to get bitmap object for {}", exe_path);
+                return None;
+            }
+
+            let width = bitmap.bmWidth;
+            let height = bitmap.bmHeight;
+
+            // Create device contexts
+            let hdc_screen = windows::Win32::Graphics::Gdi::GetDC(HWND(ptr::null_mut()));
+            let hdc_mem = CreateCompatibleDC(hdc_screen);
+            let hbm_new = CreateCompatibleBitmap(hdc_screen, ICON_SIZE as i32, ICON_SIZE as i32);
+            let hbm_old = SelectObject(hdc_mem, hbm_new);
+
+            // Draw icon
+            let _ = windows::Win32::UI::WindowsAndMessaging::DrawIconEx(
+                hdc_mem,
+                0,
+                0,
+                hicon,
+                ICON_SIZE as i32,
+                ICON_SIZE as i32,
+                0,
+                None,
+                windows::Win32::UI::WindowsAndMessaging::DI_NORMAL,
+            );
+
+            // Prepare BITMAPINFO for GetDIBits
+            let mut bmi: BITMAPINFO = std::mem::zeroed();
+            bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
+            bmi.bmiHeader.biWidth = ICON_SIZE as i32;
+            bmi.bmiHeader.biHeight = -(ICON_SIZE as i32); // Top-down
+            bmi.bmiHeader.biPlanes = 1;
+            bmi.bmiHeader.biBitCount = 32;
+            bmi.bmiHeader.biCompression = BI_RGB.0 as u32;
+
+            // Allocate buffer for pixel data
+            let buffer_size = (ICON_SIZE * ICON_SIZE * 4) as usize;
+            let mut buffer: Vec<u8> = vec![0; buffer_size];
+
+            // Get bitmap bits
+            let result = GetDIBits(
+                hdc_mem,
+                hbm_new,
+                0,
+                ICON_SIZE,
+                Some(buffer.as_mut_ptr() as *mut _),
+                &mut bmi,
+                DIB_RGB_COLORS,
+            );
+
+            // Clean up
+            let _ = SelectObject(hdc_mem, hbm_old);
+            let _ = DeleteObject(hbm_new);
+            let _ = DeleteDC(hdc_mem);
+            let _ = windows::Win32::Graphics::Gdi::ReleaseDC(HWND(ptr::null_mut()), hdc_screen);
+            let _ = DeleteObject(icon_info.hbmColor);
+            let _ = DeleteObject(icon_info.hbmMask);
+            let _ = DestroyIcon(hicon);
+
+            if result == 0 {
+                warn!("Failed to get bitmap bits for {}", exe_path);
+                return None;
+            }
+
+            // Convert BGRA to RGBA
+            for i in (0..buffer.len()).step_by(4) {
+                buffer.swap(i, i + 2); // Swap B and R
+            }
+
+            // Encode as PNG using image crate
+            let img = match image::RgbaImage::from_raw(ICON_SIZE, ICON_SIZE, buffer) {
+                Some(img) => img,
+                None => {
+                    warn!("Failed to create image from buffer for {}", exe_path);
+                    return None;
+                }
+            };
+
+            let mut png_buffer = Vec::new();
+            if let Err(e) = img.write_to(
+                &mut std::io::Cursor::new(&mut png_buffer),
+                image::ImageFormat::Png,
+            ) {
+                warn!("Failed to encode PNG for {}: {}", exe_path, e);
+                return None;
+            }
+
+            let encoded = STANDARD.encode(&png_buffer);
+            put_cached_icon(exe_path, encoded.clone());
+
+            Some(encoded)
         }
     }
 }
