@@ -1,6 +1,8 @@
 use tauri;
 use tracing;
 
+use crate::init::lifecycle;
+
 #[tauri::command]
 pub async fn logout_and_restart() -> Result<(), String> {
     crate::services::auth::logout_and_restart()
@@ -18,7 +20,7 @@ pub fn start_auth_flow() -> Result<(), String> {
         // Close welcome window if it's still open
         crate::services::welcome::close_welcome_window();
         tauri::async_runtime::spawn(async {
-            crate::startup::bootstrap().await;
+            lifecycle::handle_authentication_flow().await;
         });
     })
     .map_err(|e| e.to_string())

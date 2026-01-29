@@ -1,7 +1,10 @@
-use crate::services::{
-    cursor::start_cursor_tracking,
-    doll_editor::open_doll_editor_window,
-    scene::{open_splash_window, set_pet_menu_state, set_scene_interactive},
+use crate::{
+    init::tracing::setup_logging,
+    services::{
+        cursor::start_cursor_tracking,
+        doll_editor::open_doll_editor_window,
+        scene::{open_splash_window, set_pet_menu_state, set_scene_interactive},
+    },
 };
 use commands::app::{quit_app, restart_app};
 use commands::app_data::{get_app_data, refresh_app_data};
@@ -18,21 +21,17 @@ use commands::interaction::send_interaction_cmd;
 use commands::sprite::recolor_gif_base64;
 use commands::user_status::send_user_status_cmd;
 use tauri::async_runtime;
-use tauri::Manager;
-use tracing_subscriber::{self, util::SubscriberInitExt};
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
 
 mod commands;
-mod lifecycle;
+mod init;
 mod models;
 mod remotes;
 mod services;
-mod startup;
 mod state;
 mod system_tray;
 mod utilities;
-
 
 /// Tauri app handle
 pub fn get_app_handle<'a>() -> &'a tauri::AppHandle<tauri::Wry> {
@@ -41,55 +40,11 @@ pub fn get_app_handle<'a>() -> &'a tauri::AppHandle<tauri::Wry> {
         .expect("get_app_handle called but app is still not initialized")
 }
 
-fn setup_fdoll() -> Result<(), tauri::Error> {
-    // Initialize tracing subscriber for logging
-
-    // Set up file appender
-    let app_handle = get_app_handle();
-    let app_log_dir = app_handle
-        .path()
-        .app_log_dir()
-        .expect("Could not determine app log dir");
-
-    // Create the directory if it doesn't exist
-    if let Err(e) = std::fs::create_dir_all(&app_log_dir) {
-        eprintln!("Failed to create log directory: {}", e);
-    }
-
-    let file_appender = tracing_appender::rolling::daily(&app_log_dir, "friendolls.log");
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-
-    // Create a filter - adjust the level as needed (trace, debug, info, warn, error)
-    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
-
-    // Create a layer that writes to the file
-    let file_layer = tracing_subscriber::fmt::layer()
-        .with_target(false)
-        .with_thread_ids(false)
-        .with_file(true)
-        .with_line_number(true)
-        .with_writer(non_blocking);
-
-    // Create a layer that writes to stdout (console)
-    let console_layer = tracing_subscriber::fmt::layer()
-        .with_target(false)
-        .with_thread_ids(false)
-        .with_file(true)
-        .with_line_number(true);
-
-    // Combine both layers with filter
-    use tracing_subscriber::layer::SubscriberExt;
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(file_layer)
-        .with(console_layer)
-        .init();
-
+fn initialize_app_environment() -> Result<(), tauri::Error> {
+    setup_logging();
     open_splash_window();
-
-    state::init_fdoll_state(Some(_guard));
-    async_runtime::spawn(async move { lifecycle::start_fdoll().await });
+    state::init_fdoll_state();
+    async_runtime::spawn(async move { init::lifecycle::launch_core_services().await });
     Ok(())
 }
 
@@ -147,7 +102,7 @@ pub fn run() {
             APP_HANDLE
                 .set(app.handle().to_owned())
                 .expect("Failed to init app handle.");
-            setup_fdoll().expect("Failed to setup app.");
+            initialize_app_environment().expect("Failed to setup app.");
             Ok(())
         })
         .build(tauri::generate_context!())
