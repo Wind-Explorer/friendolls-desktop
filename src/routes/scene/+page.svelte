@@ -7,9 +7,7 @@
   import { appData } from "../../events/app-data";
   import { sceneInteractive } from "../../events/scene-interactive";
   import { friendsUserStatuses } from "../../events/user-status";
-
   import { invoke } from "@tauri-apps/api/core";
-
   import DesktopPet from "./components/DesktopPet.svelte";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
@@ -43,16 +41,6 @@
   onMount(() => {
     const unlisten = listen<AppMetadata>("active-app-changed", (event) => {
       appMetadata = event.payload;
-      const activeAppValue =
-        appMetadata?.localized ?? appMetadata?.unlocalized ?? "";
-      if (activeAppValue.trim()) {
-        invoke("send_user_status_cmd", {
-          activeApp: activeAppValue,
-          state: "idle",
-        }).catch((error) => {
-          console.error("Failed to send user status", error);
-        });
-      }
     });
 
     return () => {

@@ -2,7 +2,6 @@
   import Friends from "./tabs/friends.svelte";
   import Preferences from "./tabs/preferences.svelte";
   import YourDolls from "./tabs/your-dolls/index.svelte";
-  import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
 

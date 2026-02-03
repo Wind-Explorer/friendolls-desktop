@@ -6,6 +6,7 @@ use tauri::Emitter;
 use tracing::error;
 
 use crate::get_app_handle;
+use crate::{lock_r, state::FDOLL};
 
 const ICON_SIZE: u32 = 64;
 const ICON_CACHE_LIMIT: usize = 50;
@@ -762,8 +763,34 @@ pub static ACTIVE_APP_CHANGED: &str = "active-app-changed";
 pub fn init_foreground_app_change_listener() {
     let app_handle = get_app_handle();
     listen_for_active_app_changes(|app_names: AppMetadata| {
+        {
+            let guard = lock_r!(FDOLL);
+            if guard
+                .network
+                .clients
+                .as_ref()
+                .map(|c| c.is_ws_initialized)
+                .unwrap_or(false)
+            {
+                let active_app_value = app_names
+                    .localized
+                    .as_ref()
+                    .or(app_names.unlocalized.as_ref())
+                    .unwrap_or(&String::new())
+                    .clone();
+                if !active_app_value.trim().is_empty() {
+                    let payload = crate::services::ws::UserStatusPayload {
+                        active_app: active_app_value,
+                        state: "idle".to_string(),
+                    };
+                    tauri::async_runtime::spawn(async move {
+                        crate::services::ws::report_user_status(payload).await;
+                    });
+                }
+            }
+        };
         if let Err(e) = app_handle.emit(ACTIVE_APP_CHANGED, app_names) {
             error!("Failed to emit active app changed event: {}", e);
-        }
+        };
     });
 }
