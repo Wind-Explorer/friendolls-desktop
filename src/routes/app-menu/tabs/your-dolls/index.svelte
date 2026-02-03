@@ -48,7 +48,7 @@
   }
 </script>
 
-<div class="dolls-page flex flex-col gap-4">
+<div class="dolls-page flex flex-col gap-4 max-h-full h-full">
   <div class="flex justify-between items-center">
     <h2 class="text-lg font-bold">Your Nekos</h2>
     <button class="btn btn-primary btn-sm" on:click={openCreateModal}>
@@ -56,13 +56,15 @@
     </button>
   </div>
 
-  <DollsList
-    {dolls}
-    {user}
-    loading={loading || initialLoading}
-    {error}
-    onEditDoll={openEditModal}
-    onSetActiveDoll={handleSetActiveDoll}
-    onRemoveActiveDoll={handleRemoveActiveDoll}
-  />
+  <div class="overflow-y-auto rounded p-2 h-full border-base-200 border">
+    <DollsList
+      {dolls}
+      {user}
+      loading={loading || initialLoading}
+      {error}
+      onEditDoll={openEditModal}
+      onSetActiveDoll={handleSetActiveDoll}
+      onRemoveActiveDoll={handleRemoveActiveDoll}
+    />
+  </div>
 </div>

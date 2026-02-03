@@ -33,7 +33,7 @@
       <p>No dolls found. Create your first doll!</p>
     </div>
   {:else}
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
       {#each dolls as doll (doll.id)}
         <div
           class="card border border-base-200 bg-linear-to-b from-base-100 to-base-300 relative"
