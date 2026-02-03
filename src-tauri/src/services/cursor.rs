@@ -40,8 +40,8 @@ pub fn get_latest_cursor_position() -> Option<CursorPosition> {
 /// Convert absolute screen coordinates to normalized coordinates (0.0 - 1.0)
 pub fn absolute_to_normalized(pos: &CursorPosition) -> CursorPosition {
     let guard = lock_r!(FDOLL);
-    let screen_w = guard.ui.app_data.scene.display.screen_width as f64;
-    let screen_h = guard.ui.app_data.scene.display.screen_height as f64;
+    let screen_w = guard.user_data.scene.display.screen_width as f64;
+    let screen_h = guard.user_data.scene.display.screen_height as f64;
 
     CursorPosition {
         x: (pos.x / screen_w).clamp(0.0, 1.0),
@@ -52,8 +52,8 @@ pub fn absolute_to_normalized(pos: &CursorPosition) -> CursorPosition {
 /// Convert normalized coordinates to absolute screen coordinates
 pub fn normalized_to_absolute(normalized: &CursorPosition) -> CursorPosition {
     let guard = lock_r!(FDOLL);
-    let screen_w = guard.ui.app_data.scene.display.screen_width as f64;
-    let screen_h = guard.ui.app_data.scene.display.screen_height as f64;
+    let screen_w = guard.user_data.scene.display.screen_width as f64;
+    let screen_h = guard.user_data.scene.display.screen_height as f64;
 
     CursorPosition {
         x: (normalized.x * screen_w).round(),
@@ -61,10 +61,9 @@ pub fn normalized_to_absolute(normalized: &CursorPosition) -> CursorPosition {
     }
 }
 
-/// Initialize cursor tracking - can be called multiple times safely from any window
-/// Only the first call will actually start tracking, subsequent calls are no-ops
-#[tauri::command]
-pub async fn start_cursor_tracking() -> Result<(), String> {
+/// Initialize cursor tracking. Broadcasts cursor
+/// position changes via `cursor-position` event.
+pub async fn init_cursor_tracking() {
     info!("start_cursor_tracking called");
 
     // Use OnceCell to ensure this only runs once, even if called from multiple windows
@@ -74,17 +73,16 @@ pub async fn start_cursor_tracking() -> Result<(), String> {
 
         info!("First call to start_cursor_tracking - spawning cursor tracking task");
         tauri::async_runtime::spawn(async {
-            if let Err(e) = init_cursor_tracking().await {
+            if let Err(e) = init_cursor_tracking_i().await {
                 error!("Failed to initialize cursor tracking: {}", e);
             }
         });
     });
 
     info!("Cursor tracking initialization registered");
-    Ok(())
 }
 
-async fn init_cursor_tracking() -> Result<(), String> {
+async fn init_cursor_tracking_i() -> Result<(), String> {
     info!("Initializing cursor tracking...");
 
     // Create a channel to decouple event generation (producer) from processing (consumer).
@@ -124,7 +122,7 @@ async fn init_cursor_tracking() -> Result<(), String> {
     #[cfg(target_os = "windows")]
     let scale_factor = {
         let guard = lock_r!(FDOLL);
-        guard.ui.app_data.scene.display.monitor_scale_factor
+        guard.user_data.scene.display.monitor_scale_factor
     };
 
     // The producer closure moves `tx` into it.

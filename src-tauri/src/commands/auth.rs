@@ -1,7 +1,7 @@
 use tauri;
 use tracing;
 
-use crate::init::lifecycle;
+use crate::{init::lifecycle::construct_user_session, services::scene::close_splash_window};
 
 #[tauri::command]
 pub async fn logout_and_restart() -> Result<(), String> {
@@ -16,11 +16,11 @@ pub fn start_auth_flow() -> Result<(), String> {
     crate::services::auth::cancel_auth_flow();
 
     crate::services::auth::init_auth_code_retrieval(|| {
-        tracing::info!("Authentication successful, creating scene...");
-        // Close welcome window if it's still open
+        tracing::info!("Authentication successful, constructing user session...");
         crate::services::welcome::close_welcome_window();
         tauri::async_runtime::spawn(async {
-            lifecycle::handle_authentication_flow().await;
+            construct_user_session().await;
+            close_splash_window();
         });
     })
     .map_err(|e| e.to_string())

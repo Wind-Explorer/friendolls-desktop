@@ -1,36 +1,19 @@
 use crate::{
     get_app_handle, lock_r, lock_w,
-    models::app_data::AppData,
     remotes::{dolls::DollsRemote, friends::FriendRemote, user::UserRemote},
+    state::FDOLL,
 };
-use std::{
-    collections::HashSet,
-    sync::{LazyLock},
-};
+use std::{collections::HashSet, sync::LazyLock};
 use tauri::Emitter;
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 
-pub struct UiState {
-    pub app_data: AppData,
-}
-
-impl Default for UiState {
-    fn default() -> Self {
-        Self {
-            app_data: AppData::default(),
-        }
-    }
-}
-
-pub fn init_ui_state() -> UiState {
-    let mut ui_state = UiState::default();
-
-    // Initialize screen dimensions
+pub fn update_display_dimensions_for_scene_state() {
     let app_handle = get_app_handle();
 
+    let mut guard = lock_w!(FDOLL);
+
     // Get primary monitor with retries
-    // Note: This duplicates logic from init_cursor_tracking, but we need it here for global state
     let primary_monitor = {
         let mut retry_count = 0;
         let max_retries = 3;
@@ -77,23 +60,21 @@ pub fn init_ui_state() -> UiState {
         let logical_monitor_dimensions: tauri::LogicalSize<i32> =
             monitor_dimensions.to_logical(monitor_scale_factor);
 
-        ui_state.app_data.scene.display.screen_width = logical_monitor_dimensions.width;
-        ui_state.app_data.scene.display.screen_height = logical_monitor_dimensions.height;
-        ui_state.app_data.scene.display.monitor_scale_factor = monitor_scale_factor;
-        ui_state.app_data.scene.grid_size = 600; // Hardcoded grid size
+        guard.user_data.scene.display.screen_width = logical_monitor_dimensions.width;
+        guard.user_data.scene.display.screen_height = logical_monitor_dimensions.height;
+        guard.user_data.scene.display.monitor_scale_factor = monitor_scale_factor;
+        guard.user_data.scene.grid_size = 600; // Hardcoded grid size
 
         info!(
             "Initialized global AppData with screen dimensions: {}x{}, scale: {}, grid: {}",
             logical_monitor_dimensions.width,
             logical_monitor_dimensions.height,
             monitor_scale_factor,
-            ui_state.app_data.scene.grid_size
+            guard.user_data.scene.grid_size
         );
     } else {
         warn!("Could not initialize screen dimensions in global state - no monitor found");
     }
-
-    ui_state
 }
 
 /// Defines which parts of AppData should be refreshed from the server
@@ -107,15 +88,6 @@ pub enum AppDataRefreshScope {
     Friends,
     /// Refresh only dolls list
     Dolls,
-}
-
-/// To be called in init state or need to refresh data.
-/// Populate user data in app state from the server.
-///
-/// This is a convenience wrapper that refreshes all data.
-/// For more control, use `init_app_data_scoped`.
-pub async fn init_app_data() {
-    init_app_data_scoped(AppDataRefreshScope::All).await;
 }
 
 static REFRESH_IN_FLIGHT: LazyLock<Mutex<HashSet<AppDataRefreshScope>>> =
@@ -159,7 +131,7 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
                 match user_remote.get_user(None).await {
                     Ok(user) => {
                         let mut guard = lock_w!(crate::state::FDOLL);
-                        guard.ui.app_data.user = Some(user);
+                        guard.user_data.user = Some(user);
                     }
                     Err(e) => {
                         warn!("Failed to fetch user profile: {}", e);
@@ -187,7 +159,7 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
                 match friend_remote.get_friends().await {
                     Ok(friends) => {
                         let mut guard = lock_w!(crate::state::FDOLL);
-                        guard.ui.app_data.friends = Some(friends);
+                        guard.user_data.friends = Some(friends);
                     }
                     Err(e) => {
                         warn!("Failed to fetch friends list: {}", e);
@@ -212,7 +184,7 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
                 match dolls_remote.get_dolls().await {
                     Ok(dolls) => {
                         let mut guard = lock_w!(crate::state::FDOLL);
-                        guard.ui.app_data.dolls = Some(dolls);
+                        guard.user_data.dolls = Some(dolls);
                     }
                     Err(e) => {
                         warn!("Failed to fetch dolls list: {}", e);
@@ -235,7 +207,7 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
             // Emit event regardless of partial success, frontend should handle nulls/empty states
             {
                 let guard = lock_r!(crate::state::FDOLL); // Use read lock to get data
-                let app_data_clone = guard.ui.app_data.clone();
+                let app_data_clone = guard.user_data.clone();
                 drop(guard); // Drop lock before emitting to prevent potential deadlocks
 
                 if let Err(e) = get_app_handle().emit("app-data-refreshed", &app_data_clone) {
@@ -280,4 +252,11 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
 
         break;
     }
+}
+
+pub fn clear_app_data() {
+    let mut guard = lock_w!(FDOLL);
+    guard.user_data.dolls = None;
+    guard.user_data.user = None;
+    guard.user_data.friends = None;
 }

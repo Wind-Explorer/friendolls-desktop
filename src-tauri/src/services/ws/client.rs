@@ -1,14 +1,31 @@
+use std::time::Duration;
+
 use rust_socketio::ClientBuilder;
 use tauri::async_runtime;
+use tokio::time::sleep;
 use tracing::{error, info};
 
 use crate::{
     lock_r, lock_w,
-    services::client_config_manager::AppConfig,
+    services::{auth::get_access_token, client_config_manager::AppConfig},
     state::FDOLL,
 };
 
 use super::handlers;
+
+pub async fn establish_websocket_connection() {
+    const MAX_ATTEMPTS: u8 = 5;
+    const BACKOFF: Duration = Duration::from_millis(300);
+
+    for _attempt in 1..=MAX_ATTEMPTS {
+        if get_access_token().await.is_some() {
+            init_ws_client().await;
+            return;
+        }
+
+        sleep(BACKOFF).await;
+    }
+}
 
 pub async fn init_ws_client() {
     let app_config = {
@@ -26,13 +43,16 @@ pub async fn init_ws_client() {
         }
         Err(e) => {
             error!("Failed to initialize WebSocket client: {}", e);
-            // If we failed because no token, clear the WS client to avoid stale retries
-            let mut guard = lock_w!(FDOLL);
-            if let Some(clients) = guard.network.clients.as_mut() {
-                clients.ws_client = None;
-                clients.is_ws_initialized = false;
-            }
+            clear_ws_client().await;
         }
+    }
+}
+
+pub async fn clear_ws_client() {
+    let mut guard = lock_w!(FDOLL);
+    if let Some(clients) = guard.network.clients.as_mut() {
+        clients.ws_client = None;
+        clients.is_ws_initialized = false;
     }
 }
 

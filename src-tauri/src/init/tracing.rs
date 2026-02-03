@@ -4,7 +4,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use crate::get_app_handle;
 
 /// Initialize `tracing_subscriber` for logging to file & console
-pub fn setup_logging() {
+pub fn init_logging() {
     // Set up file appender
     let app_handle = get_app_handle();
     let app_log_dir = app_handle

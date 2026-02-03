@@ -1,10 +1,6 @@
-use crate::{
-    init::tracing::setup_logging,
-    services::{
-        cursor::start_cursor_tracking,
-        doll_editor::open_doll_editor_window,
-        scene::{open_splash_window, set_pet_menu_state, set_scene_interactive},
-    },
+use crate::services::{
+    doll_editor::open_doll_editor_window,
+    scene::{set_pet_menu_state, set_scene_interactive},
 };
 use commands::app::{quit_app, restart_app};
 use commands::app_data::{get_app_data, refresh_app_data};
@@ -40,14 +36,6 @@ pub fn get_app_handle<'a>() -> &'a tauri::AppHandle<tauri::Wry> {
         .expect("get_app_handle called but app is still not initialized")
 }
 
-fn initialize_app_environment() -> Result<(), tauri::Error> {
-    setup_logging();
-    open_splash_window();
-    state::init_fdoll_state();
-    async_runtime::spawn(async move { init::lifecycle::launch_core_services().await });
-    Ok(())
-}
-
 fn register_app_events(event: tauri::RunEvent) {
     if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
         if code.is_none() {
@@ -66,7 +54,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
-            start_cursor_tracking,
             get_app_data,
             refresh_app_data,
             list_friends,
@@ -102,7 +89,7 @@ pub fn run() {
             APP_HANDLE
                 .set(app.handle().to_owned())
                 .expect("Failed to init app handle.");
-            initialize_app_environment().expect("Failed to setup app.");
+            async_runtime::spawn(async move { init::launch_app().await });
             Ok(())
         })
         .build(tauri::generate_context!())

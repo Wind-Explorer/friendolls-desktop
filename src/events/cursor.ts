@@ -50,9 +50,6 @@ export async function initCursorTracking() {
   }
 
   try {
-    // Start tracking
-    await invoke("start_cursor_tracking");
-
     // Listen to cursor position events (each window subscribes independently)
     unlistenCursor = await listen<CursorPositions>(
       "cursor-position",

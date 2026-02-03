@@ -41,7 +41,7 @@ impl WS_EVENT {
     pub const CLIENT_SEND_INTERACTION: &str = "client-send-interaction";
 }
 
-mod client;
+pub mod client;
 mod connection;
 mod cursor;
 mod doll;
@@ -50,6 +50,5 @@ mod handlers;
 mod interaction;
 mod user_status;
 
-pub use client::init_ws_client;
 pub use cursor::report_cursor_data;
 pub use user_status::{report_user_status, UserStatusPayload};

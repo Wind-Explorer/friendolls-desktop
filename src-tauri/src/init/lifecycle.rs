@@ -1,59 +1,58 @@
 use reqwest::StatusCode;
 use std::time::Duration;
 use tokio::time::sleep;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::{
-    init::startup::{initialize_app_data_and_connections, transition_to_main_interface},
-    lock_w,
     models::health::HealthError,
     remotes::health::HealthRemote,
     services::{
-        active_app::init_active_app_changes_listener,
-        auth::get_tokens,
-        health_manager::show_health_manager_with_error,
-        scene::close_splash_window,
-        welcome::open_welcome_window,
+        close_all_windows,
+        health_manager::open_health_manager_window,
+        scene::open_scene_window,
+        ws::client::{clear_ws_client, establish_websocket_connection},
     },
-    state::FDOLL,
-    system_tray::{init_system_tray, update_system_tray},
+    state::{clear_app_data, init_app_data_scoped, AppDataRefreshScope},
+    system_tray::update_system_tray,
 };
 
-/// Initializes and starts the core app lifecycle after initial setup.
-///
-/// This function handles:
-/// - System tray initialization and storage in app state
-/// - Active app change listener setup
-/// - Startup sequence execution with error handling
-///
-/// # Errors
-/// If the startup sequence fails, displays a health manager dialog
-/// with the error details.
-///
-/// # Example
-/// ```
-/// // Called automatically during app setup in initialize_app_environment()
-/// lifecycle::launch_core_services().await;
-/// ```
-pub async fn launch_core_services() {
-    let tray = init_system_tray();
-    {
-        let mut guard = lock_w!(FDOLL);
-        guard.tray = Some(tray);
-    }
-
-    // Begin listening for foreground app changes
-    init_active_app_changes_listener();
-
-    if let Err(err) = validate_environment_and_start_app().await {
-        tracing::warn!("Startup sequence encountered an error: {}", err);
-        show_health_manager_with_error(Some(err.to_string()));
-    }
+/// Connects the user profile and opens the scene window.
+pub async fn construct_user_session() {
+    connect_user_profile().await;
+    open_scene_window();
+    update_system_tray(true);
 }
 
-/// Perform checks for environment, network condition
-/// and handle situations where startup would not be appropriate.
-pub async fn validate_environment_and_start_app() -> Result<(), HealthError> {
+/// Disconnects the user profile and closes the scene window.
+pub async fn destruct_user_session() {
+    disconnect_user_profile().await;
+    close_all_windows();
+    update_system_tray(false);
+}
+
+/// Initializes the user profile and establishes a WebSocket connection.
+async fn connect_user_profile() {
+    init_app_data_scoped(AppDataRefreshScope::All).await;
+    establish_websocket_connection().await;
+}
+
+/// Clears the user profile and WebSocket connection.
+async fn disconnect_user_profile() {
+    clear_app_data();
+    clear_ws_client().await;
+}
+
+/// Destructs the user session and show health manager window
+/// with error message, offering troubleshooting options.
+pub async fn handle_disasterous_failure(error_message: Option<String>) {
+    destruct_user_session().await;
+    open_health_manager_window(error_message);
+}
+
+/// Pings the server's health endpoint a maximum of
+/// three times with a backoff of 500ms between
+/// attempts. Return health error if no success.
+pub async fn validate_server_health() -> Result<(), HealthError> {
     let health_remote = HealthRemote::try_new()?;
 
     // simple retry loop to smooth transient network issues
@@ -63,7 +62,6 @@ pub async fn validate_environment_and_start_app() -> Result<(), HealthError> {
     for attempt in 1..=MAX_ATTEMPTS {
         match health_remote.get_health().await {
             Ok(_) => {
-                handle_authentication_flow().await;
                 return Ok(());
             }
             Err(HealthError::NonOkStatus(status)) => {
@@ -87,25 +85,9 @@ pub async fn validate_environment_and_start_app() -> Result<(), HealthError> {
         }
     }
 
+    warn!("Server is unavailable!");
+
     Err(HealthError::UnexpectedStatus(
         StatusCode::SERVICE_UNAVAILABLE,
     ))
-}
-
-/// Handles authentication flow: checks for tokens and either restores session or shows welcome.
-pub async fn handle_authentication_flow() {
-    match get_tokens().await {
-        Some(_tokens) => {
-            info!("Tokens found in keyring - restoring user session");
-            let start = initialize_app_data_and_connections().await;
-            transition_to_main_interface(start).await;
-            update_system_tray(true);
-        }
-        None => {
-            info!("No active session found - showing welcome first");
-            open_welcome_window();
-            close_splash_window();
-            update_system_tray(false);
-        }
-    }
 }

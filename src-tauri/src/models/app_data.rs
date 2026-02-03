@@ -43,5 +43,5 @@ pub struct AppData {
     pub user: Option<UserProfile>,
     pub friends: Option<Vec<FriendshipResponseDto>>,
     pub dolls: Option<Vec<DollDto>>,
-    pub scene: SceneData,
+    pub scene: SceneData, // TODO: move this out of app data
 }

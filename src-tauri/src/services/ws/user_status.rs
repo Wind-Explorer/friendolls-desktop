@@ -1,12 +1,12 @@
 use once_cell::sync::Lazy;
 use rust_socketio::Payload;
-use tauri::async_runtime;
+use tauri::async_runtime::{self};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
 use tracing::error;
 
-use crate::{lock_r, services::health_manager::show_health_manager_with_error, state::FDOLL};
+use crate::{init::lifecycle::handle_disasterous_failure, lock_r, state::FDOLL};
 
 use super::WS_EVENT;
 
@@ -66,20 +66,16 @@ pub async fn report_user_status(status: UserStatusPayload) {
                     Ok(Ok(_)) => (),
                     Ok(Err(e)) => {
                         error!("Failed to emit user status report: {}", e);
-                        show_health_manager_with_error(Some(format!(
-                            "WebSocket emit failed: {}",
-                            e
-                        )));
+                        handle_disasterous_failure(Some(format!("WebSocket emit failed: {}", e)))
+                            .await;
                     }
                     Err(e) => {
                         error!(
                             "Failed to execute blocking task for user status report: {}",
                             e
                         );
-                        show_health_manager_with_error(Some(format!(
-                            "WebSocket task failed: {}",
-                            e
-                        )));
+                        handle_disasterous_failure(Some(format!("WebSocket task failed: {}", e)))
+                            .await;
                     }
                 }
             }

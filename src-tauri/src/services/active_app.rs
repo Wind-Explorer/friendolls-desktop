@@ -756,8 +756,10 @@ mod windows_impl {
 
 pub static ACTIVE_APP_CHANGED: &str = "active-app-changed";
 
-/// Initializes the active app change listener and emits events to the Tauri app on changes.
-pub fn init_active_app_changes_listener() {
+/// Initializes the foreground app change listener
+/// and emits events to the Tauri app on changes.
+/// Used for app to emit user foreground app to peers.
+pub fn init_foreground_app_change_listener() {
     let app_handle = get_app_handle();
     listen_for_active_app_changes(|app_names: AppMetadata| {
         if let Err(e) = app_handle.emit(ACTIVE_APP_CHANGED, app_names) {

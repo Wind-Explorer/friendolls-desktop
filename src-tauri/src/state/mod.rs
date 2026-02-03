@@ -1,5 +1,5 @@
 // in app-core/src/state.rs
-use crate::lock_w;
+use crate::{lock_w, models::app_data::AppData};
 use std::sync::{Arc, LazyLock, RwLock};
 use tauri::tray::TrayIcon;
 use tracing::info;
@@ -17,7 +17,7 @@ pub struct AppState {
     pub app_config: crate::services::client_config_manager::AppConfig,
     pub network: NetworkState,
     pub auth: AuthState,
-    pub ui: UiState,
+    pub user_data: AppData,
     pub tray: Option<TrayIcon>,
 }
 
@@ -26,15 +26,17 @@ pub struct AppState {
 pub static FDOLL: LazyLock<Arc<RwLock<AppState>>> =
     LazyLock::new(|| Arc::new(RwLock::new(AppState::default())));
 
-pub fn init_fdoll_state() {
+/// Populate app state with initial
+/// values and necesary client instances.
+pub fn init_app_state() {
+    dotenvy::dotenv().ok();
     {
         let mut guard = lock_w!(FDOLL);
-        dotenvy::dotenv().ok();
         guard.app_config = crate::services::client_config_manager::load_app_config();
         guard.network = init_network_state();
         guard.auth = init_auth_state();
-        guard.ui = init_ui_state();
+        guard.user_data = AppData::default();
     }
-
+    update_display_dimensions_for_scene_state();
     info!("Initialized FDOLL state (WebSocket client & user data initializing asynchronously)");
 }

@@ -114,7 +114,7 @@ fn generate_code_challenge(code_verifier: &str) -> String {
 /// Returns the auth pass object, including
 /// access token, refresh token, expire time etc.
 /// Automatically refreshes if expired.
-pub async fn get_tokens() -> Option<AuthPass> {
+pub async fn get_session_token() -> Option<AuthPass> {
     info!("Retrieving tokens");
     let Some(auth_pass) = ({ lock_r!(FDOLL).auth.auth_pass.clone() }) else {
         return None;
@@ -173,7 +173,7 @@ pub async fn get_tokens() -> Option<AuthPass> {
 
 /// Helper function to get the current access token.
 pub async fn get_access_token() -> Option<String> {
-    get_tokens().await.map(|pass| pass.access_token)
+    get_session_token().await.map(|pass| pass.access_token)
 }
 
 /// Save auth_pass to secure storage (keyring) and update app state.
@@ -367,7 +367,7 @@ pub fn clear_auth_pass() -> Result<(), OAuthError> {
 /// ```
 pub fn logout() -> Result<(), OAuthError> {
     info!("Logging out user");
-        lock_w!(FDOLL).auth.auth_pass = None;
+    lock_w!(FDOLL).auth.auth_pass = None;
     clear_auth_pass()?;
 
     // Clear OAuth flow state as well
@@ -386,8 +386,16 @@ pub async fn logout_and_restart() -> Result<(), OAuthError> {
     let (refresh_token, session_state, base_url) = {
         let guard = lock_r!(FDOLL);
         (
-            guard.auth.auth_pass.as_ref().map(|p| p.refresh_token.clone()),
-            guard.auth.auth_pass.as_ref().map(|p| p.session_state.clone()),
+            guard
+                .auth
+                .auth_pass
+                .as_ref()
+                .map(|p| p.refresh_token.clone()),
+            guard
+                .auth
+                .auth_pass
+                .as_ref()
+                .map(|p| p.session_state.clone()),
             guard
                 .app_config
                 .api_base_url
@@ -676,7 +684,7 @@ where
                         {
                             let mut guard = lock_w!(FDOLL);
                             guard.auth.auth_pass = Some(auth_pass.clone());
-    guard.auth.oauth_flow = Default::default();
+                            guard.auth.oauth_flow = Default::default();
                         }
                         if let Err(e) = save_auth_pass(&auth_pass) {
                             error!("Failed to save auth pass: {}", e);
@@ -720,7 +728,8 @@ pub async fn refresh_token(refresh_token: &str) -> Result<AuthPass, OAuthError> 
         (
             guard.app_config.clone(),
             guard
-                .network.clients
+                .network
+                .clients
                 .as_ref()
                 .expect("clients present")
                 .http_client

@@ -8,8 +8,8 @@ pub mod interaction;
 pub mod sprite;
 pub mod user_status;
 
-use crate::state::{init_app_data_scoped, AppDataRefreshScope, FDOLL};
 use crate::lock_r;
+use crate::state::{init_app_data_scoped, AppDataRefreshScope, FDOLL};
 use tauri::async_runtime;
 
 /// Helper to execute a mutation operation and refresh app data scopes in the background.
@@ -33,18 +33,21 @@ pub async fn refresh_app_data(scopes: &[AppDataRefreshScope]) {
 }
 
 /// Helper to execute a mutation operation with conditional refresh.
-/// 
+///
 /// # Example
 /// ```ignore
 /// pub async fn delete_doll(id: String) -> Result<(), String> {
 ///     let result = DollsRemote::new().delete_doll(&id).await.map_err(|e| e.to_string())?;
 ///     let is_active = is_active_doll(&id);
-///     refresh_app_data_conditionally(&[AppDataRefreshScope::Dolls], 
+///     refresh_app_data_conditionally(&[AppDataRefreshScope::Dolls],
 ///                                   is_active.then_some(&[AppDataRefreshScope::User, AppDataRefreshScope::Friends]));
 ///     Ok(result)
 /// }
 /// ```
-pub async fn refresh_app_data_conditionally(base_scopes: &[AppDataRefreshScope], conditional_scopes: Option<&[AppDataRefreshScope]>) {
+pub async fn refresh_app_data_conditionally(
+    base_scopes: &[AppDataRefreshScope],
+    conditional_scopes: Option<&[AppDataRefreshScope]>,
+) {
     let mut all_scopes = base_scopes.to_vec();
     if let Some(extra_scopes) = conditional_scopes {
         all_scopes.extend_from_slice(extra_scopes);
@@ -57,8 +60,7 @@ pub async fn refresh_app_data_conditionally(base_scopes: &[AppDataRefreshScope],
 pub fn is_active_doll(doll_id: &str) -> bool {
     let guard = lock_r!(FDOLL);
     guard
-        .ui
-        .app_data
+        .user_data
         .user
         .as_ref()
         .and_then(|u| u.active_doll_id.as_ref())

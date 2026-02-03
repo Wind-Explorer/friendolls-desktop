@@ -3,8 +3,7 @@ use tauri::async_runtime;
 use tracing::error;
 
 use crate::{
-    lock_r,
-    services::{cursor::CursorPosition, health_manager::show_health_manager_with_error},
+    init::lifecycle::handle_disasterous_failure, lock_r, services::cursor::CursorPosition,
     state::FDOLL,
 };
 
@@ -41,11 +40,11 @@ pub async fn report_cursor_data(cursor_position: CursorPosition) {
             Ok(Ok(_)) => (),
             Ok(Err(e)) => {
                 error!("Failed to emit cursor report: {}", e);
-                show_health_manager_with_error(Some(format!("WebSocket emit failed: {}", e)));
+                handle_disasterous_failure(Some(format!("WebSocket emit failed: {}", e))).await;
             }
             Err(e) => {
                 error!("Failed to execute blocking task for cursor report: {}", e);
-                show_health_manager_with_error(Some(format!("WebSocket task failed: {}", e)));
+                handle_disasterous_failure(Some(format!("WebSocket task failed: {}", e))).await;
             }
         }
     }
