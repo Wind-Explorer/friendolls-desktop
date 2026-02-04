@@ -52,7 +52,7 @@ pub static ACTIVE_APP_CHANGED: &str = "active-app-changed";
 /// Used for app to emit user foreground app to peers.
 pub fn init_foreground_app_change_listener() {
     let app_handle = get_app_handle();
-    listen_for_active_app_changes(|app_names: AppMetadata| {
+    listen_for_active_app_changes(|app_metadata: AppMetadata| {
         {
             let guard = lock_r!(FDOLL);
             if guard
@@ -62,15 +62,17 @@ pub fn init_foreground_app_change_listener() {
                 .map(|c| c.is_ws_initialized)
                 .unwrap_or(false)
             {
-                let active_app_value = app_names
+                // Check if app metadata has valid data
+                let has_valid_name = app_metadata
                     .localized
                     .as_ref()
-                    .or(app_names.unlocalized.as_ref())
-                    .unwrap_or(&String::new())
-                    .clone();
-                if !active_app_value.trim().is_empty() {
+                    .or(app_metadata.unlocalized.as_ref())
+                    .map(|s| !s.trim().is_empty())
+                    .unwrap_or(false);
+                
+                if has_valid_name {
                     let payload = crate::services::ws::UserStatusPayload {
-                        active_app: active_app_value,
+                        app_metadata: app_metadata.clone(),
                         state: "idle".to_string(),
                     };
                     tauri::async_runtime::spawn(async move {
@@ -79,7 +81,7 @@ pub fn init_foreground_app_change_listener() {
                 }
             }
         };
-        if let Err(e) = app_handle.emit(ACTIVE_APP_CHANGED, app_names) {
+        if let Err(e) = app_handle.emit(ACTIVE_APP_CHANGED, app_metadata) {
             error!("Failed to emit active app changed event: {}", e);
         };
     });

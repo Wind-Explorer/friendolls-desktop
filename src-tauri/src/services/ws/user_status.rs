@@ -7,13 +7,14 @@ use tokio::time::Duration;
 use tracing::error;
 
 use crate::{init::lifecycle::handle_disasterous_failure, lock_r, state::FDOLL};
+use crate::services::active_app::AppMetadata;
 
 use super::WS_EVENT;
 
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserStatusPayload {
-    pub active_app: String,
+    pub app_metadata: AppMetadata,
     pub state: String,
 }
 

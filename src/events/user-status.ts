@@ -1,8 +1,9 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
+import type { AppMetadata } from "../types/bindings/AppMetadata";
 
 export type FriendUserStatus = {
-  activeApp: string;
+  appMetadata: AppMetadata;
   state: "idle" | "resting";
 };
 
@@ -31,13 +32,20 @@ export async function initUserStatusListeners() {
       const status = payload?.status as FriendUserStatus | undefined;
 
       if (!userId || !status) return;
-      if (typeof status.activeApp !== "string" || status.activeApp.trim() === "") return;
+      if (!status.appMetadata) return;
+      
+      // Validate that appMetadata has at least one valid name
+      const hasValidName = 
+        (typeof status.appMetadata.localized === "string" && status.appMetadata.localized.trim() !== "") ||
+        (typeof status.appMetadata.unlocalized === "string" && status.appMetadata.unlocalized.trim() !== "");
+      if (!hasValidName) return;
+      
       if (status.state !== "idle" && status.state !== "resting") return;
 
       friendsUserStatuses.update((current) => ({
         ...current,
         [userId]: {
-          activeApp: status.activeApp,
+          appMetadata: status.appMetadata,
           state: status.state,
         },
       }));

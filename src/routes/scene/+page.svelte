@@ -106,8 +106,17 @@
                     )})
                   </span>
                   {#if status}
-                    <span>
-                      {status.state} in {status.activeApp}
+                    <span class="flex items-center gap-1">
+                      {status.state} in
+                      {#if status.appMetadata.appIconB64}
+                        <img
+                          src={`data:image/png;base64,${status.appMetadata.appIconB64}`}
+                          alt="Friend's active app icon"
+                          class="size-4"
+                        />
+                      {/if}
+                      {status.appMetadata.localized ||
+                        status.appMetadata.unlocalized}
                     </span>
                   {/if}
                 </div>
