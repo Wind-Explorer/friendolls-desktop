@@ -12,11 +12,14 @@
   import PetMenu from "./PetMenu.svelte";
   import type { DollDto } from "../../../types/bindings/DollDto";
   import type { UserBasicDto } from "../../../types/bindings/UserBasicDto";
+  import type { AppMetadata } from "../../../types/bindings/AppMetadata";
+  import type { FriendUserStatus } from "../../../events/user-status";
 
   export let id = "";
   export let targetX = 0;
   export let targetY = 0;
   export let user: UserBasicDto;
+  export let userStatus: FriendUserStatus | undefined = undefined;
   export let doll: DollDto | undefined = undefined;
   export let isInteractive = false;
 
@@ -37,10 +40,12 @@
   $: {
     const interaction = $receivedInteractions.get(user.id);
     if (interaction && interaction.content !== receivedMessage) {
-      console.log(`Received interaction for ${user.id}: ${interaction.content}`);
+      console.log(
+        `Received interaction for ${user.id}: ${interaction.content}`,
+      );
       receivedMessage = interaction.content;
       isPetMenuOpen = true;
-      
+
       // Make scene interactive so user can see it
       invoke("set_scene_interactive", {
         interactive: true,
@@ -79,9 +84,9 @@
   // When we force it via invoke("set_scene_interactive", { interactive: true }), it might not reflect back into `isInteractive` prop immediately or correctly depending on how the parent passes it.
   // Actually, `isInteractive` is a prop passed from +page.svelte probably based on hover state.
   // If we want the menu to stay open during the message, we should probably ignore this auto-close behavior if a message is present.
-  
+
   $: if (!receivedMessage && !isInteractive) {
-      isPetMenuOpen = false;
+    isPetMenuOpen = false;
   }
 
   $: {
@@ -143,13 +148,24 @@
 >
   {#if isPetMenuOpen}
     <div
-      class="absolute -translate-y-24 w-50 h-22 *:size-full shadow-md rounded"
+      class="z-10 absolute -translate-y-30 w-50 h-28 *:size-full shadow-md rounded"
       role="menu"
       tabindex="0"
       aria-label="Pet Menu"
     >
       {#if doll}
-        <PetMenu {doll} {user} {receivedMessage} />
+        <PetMenu {doll} {user} {userStatus} {receivedMessage} />
+      {/if}
+    </div>
+  {/if}
+  {#if userStatus}
+    <div class="absolute -top-5 left-0 right-0 w-max mx-auto">
+      {#if userStatus.appMetadata.appIconB64}
+        <img
+          src={`data:image/png;base64,${userStatus.appMetadata.appIconB64}`}
+          alt="Friend's active app icon"
+          class="size-4"
+        />
       {/if}
     </div>
   {/if}

@@ -3,9 +3,11 @@
   import { type DollDto } from "../../../types/bindings/DollDto";
   import type { UserBasicDto } from "../../../types/bindings/UserBasicDto";
   import type { SendInteractionDto } from "../../../types/bindings/SendInteractionDto";
+  import type { FriendUserStatus } from "../../../events/user-status";
 
   export let doll: DollDto;
   export let user: UserBasicDto;
+  export let userStatus: FriendUserStatus | undefined = undefined;
   export let receivedMessage: string | undefined = undefined;
 
   let showMessageInput = false;
@@ -45,6 +47,20 @@
       <p class="text-sm font-semibold">{doll.name}</p>
       <p class="text-[0.6rem] opacity-50">From {user.name}</p>
     </div>
+    {#if userStatus}
+      <div class="card bg-base-200 px-2 py-1 flex flex-row gap-2 items-center">
+        {#if userStatus.appMetadata.appIconB64}
+          <img
+            src={`data:image/png;base64,${userStatus.appMetadata.appIconB64}`}
+            alt="Friend's active app icon"
+            class="size-3"
+          />
+        {/if}
+        <p class="text-[0.6rem] font-mono text-ellipsis line-clamp-1">
+          {userStatus.appMetadata.localized}
+        </p>
+      </div>
+    {/if}
 
     {#if receivedMessage}
       <div class="">

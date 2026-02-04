@@ -138,6 +138,7 @@
             targetX={position.mapped.x * innerWidth}
             targetY={position.mapped.y * innerHeight}
             user={getFriendById(userId)}
+            userStatus={getFriendStatus(userId)}
             {doll}
             {isInteractive}
           />
