@@ -1,86 +1,39 @@
 use once_cell::sync::Lazy;
-use rust_socketio::Payload;
-use tauri::async_runtime::{self};
+use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
-use tracing::error;
 
-use crate::{init::lifecycle::handle_disasterous_failure, lock_r, state::FDOLL};
 use crate::services::active_app::AppMetadata;
 
-use super::WS_EVENT;
+use super::{emitter, types::WS_EVENT};
 
-#[derive(Clone, serde::Serialize)]
+/// User status payload sent to WebSocket server
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserStatusPayload {
     pub app_metadata: AppMetadata,
     pub state: String,
 }
 
+/// Debouncer for user status reports
 static USER_STATUS_REPORT_DEBOUNCE: Lazy<Mutex<Option<JoinHandle<()>>>> =
     Lazy::new(|| Mutex::new(None));
 
+/// Report user status to WebSocket server with debouncing
 pub async fn report_user_status(status: UserStatusPayload) {
-    let payload_value = match serde_json::to_value(&status) {
-        Ok(val) => val,
-        Err(e) => {
-            error!("Failed to serialize user status payload: {}", e);
-            return;
-        }
-    };
+    let mut debouncer = USER_STATUS_REPORT_DEBOUNCE.lock().await;
 
-    let (client_opt, is_initialized) = {
-        let guard = lock_r!(FDOLL);
-        if let Some(clients) = &guard.network.clients {
-            (
-                clients.ws_client.as_ref().cloned(),
-                clients.is_ws_initialized,
-            )
-        } else {
-            (None, false)
-        }
-    };
-
-    {
-        let mut debouncer = USER_STATUS_REPORT_DEBOUNCE.lock().await;
-        if let Some(handle) = debouncer.take() {
-            handle.abort();
-        }
-        let payload_value_clone = payload_value.clone();
-        let client_opt_clone = client_opt.clone();
-        let is_initialized_clone = is_initialized;
-        let handle = tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(500)).await;
-            if let Some(client) = client_opt_clone {
-                if !is_initialized_clone {
-                    return;
-                }
-                match async_runtime::spawn_blocking(move || {
-                    client.emit(
-                        WS_EVENT::CLIENT_REPORT_USER_STATUS,
-                        Payload::Text(vec![payload_value_clone]),
-                    )
-                })
-                .await
-                {
-                    Ok(Ok(_)) => (),
-                    Ok(Err(e)) => {
-                        error!("Failed to emit user status report: {}", e);
-                        handle_disasterous_failure(Some(format!("WebSocket emit failed: {}", e)))
-                            .await;
-                    }
-                    Err(e) => {
-                        error!(
-                            "Failed to execute blocking task for user status report: {}",
-                            e
-                        );
-                        handle_disasterous_failure(Some(format!("WebSocket task failed: {}", e)))
-                            .await;
-                    }
-                }
-            }
-        });
-        *debouncer = Some(handle);
+    // Cancel previous pending report
+    if let Some(handle) = debouncer.take() {
+        handle.abort();
     }
+
+    // Schedule new report after 500ms
+    let handle = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        let _ = emitter::ws_emit(WS_EVENT::CLIENT_REPORT_USER_STATUS, status).await;
+    });
+
+    *debouncer = Some(handle);
 }
