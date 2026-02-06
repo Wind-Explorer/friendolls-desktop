@@ -4,21 +4,21 @@
   import { page } from "$app/stores";
 
   let errorMessage = "";
-  let isRestarting = false;
+  let isRetrying = false;
 
   onMount(() => {
     errorMessage = $page.url.searchParams.get("err") || "";
   });
 
   const tryAgain = async () => {
-    if (isRestarting) return;
-    isRestarting = true;
+    if (isRetrying) return;
+    isRetrying = true;
     errorMessage = "";
     try {
-      await invoke("restart_app");
+      await invoke("retry_connection");
     } catch (err) {
-      errorMessage = `Restart failed: ${err}`;
-      isRestarting = false;
+      errorMessage = `${err}`;
+      isRetrying = false;
     }
   };
 </script>
@@ -41,11 +41,11 @@
     <div class="flex flex-row gap-2">
       <button
         class="btn"
-        class:btn-disabled={isRestarting}
-        disabled={isRestarting}
+        class:btn-disabled={isRetrying}
+        disabled={isRetrying}
         onclick={tryAgain}
       >
-        {#if isRestarting}
+        {#if isRetrying}
           Retrying…
         {:else}
           Try again

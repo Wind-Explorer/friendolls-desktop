@@ -4,7 +4,7 @@ use std::iter;
 use std::os::windows::ffi::OsStringExt;
 use std::path::Path;
 use std::ptr;
-use tracing::warn;
+use tracing::{info, warn};
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Globalization::GetUserDefaultLangID;
@@ -12,8 +12,8 @@ use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
 use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
 use windows::Win32::UI::WindowsAndMessaging::{
-    DispatchMessageW, GetForegroundWindow, GetMessageW, EVENT_SYSTEM_FOREGROUND, MSG, WINEVENT_OUTOFCONTEXT,
-    GetWindowTextW, GetWindowThreadProcessId,
+    DispatchMessageW, GetForegroundWindow, GetMessageW, GetWindowTextW, GetWindowThreadProcessId,
+    EVENT_SYSTEM_FOREGROUND, MSG, WINEVENT_OUTOFCONTEXT,
 };
 
 pub fn listen_for_active_app_changes<F>(callback: F)
@@ -434,6 +434,24 @@ fn get_active_app_icon_b64(exe_path: &str) -> Option<String> {
         }
 
         let encoded = STANDARD.encode(&png_buffer);
+
+        info!(
+            "App icon captured: {}, PNG bytes: {}, base64 size: {} bytes",
+            exe_path,
+            png_buffer.len(),
+            encoded.len()
+        );
+
+        if encoded.len() > super::types::MAX_ICON_B64_SIZE {
+            warn!(
+                "Icon for {} exceeds size limit ({} > {} bytes), skipping",
+                exe_path,
+                encoded.len(),
+                super::types::MAX_ICON_B64_SIZE
+            );
+            return None;
+        }
+
         put_cached_icon(exe_path, encoded.clone());
 
         Some(encoded)

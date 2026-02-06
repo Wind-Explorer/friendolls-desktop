@@ -1,6 +1,6 @@
 use rust_socketio::Payload;
 use serde::de::DeserializeOwned;
-use tracing::{error, info};
+use tracing::error;
 
 /// Result type for payload operations
 pub type PayloadResult<T> = Result<T, PayloadError>;
@@ -10,7 +10,7 @@ pub type PayloadResult<T> = Result<T, PayloadError>;
 pub enum PayloadError {
     InvalidFormat,
     EmptyPayload,
-    ParseError(String),
+    ParseError(()),
 }
 
 /// Extract the first value from a Text payload
@@ -37,7 +37,7 @@ pub fn parse_payload<T: DeserializeOwned>(
 ) -> PayloadResult<T> {
     serde_json::from_value(value).map_err(|e| {
         error!("Failed to parse {} payload: {}", event_name, e);
-        PayloadError::ParseError(e.to_string())
+        PayloadError::ParseError(())
     })
 }
 

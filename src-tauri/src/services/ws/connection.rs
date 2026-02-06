@@ -2,8 +2,10 @@ use rust_socketio::{Payload, RawClient};
 use tracing::info;
 
 use crate::{
-    lock_w, services::health_manager::close_health_manager_window,
-    services::scene::open_scene_window, state::FDOLL,
+    lock_w,
+    services::health_manager::close_health_manager_window,
+    services::scene::open_scene_window,
+    state::{init_app_data_scoped, AppDataRefreshScope, FDOLL},
 };
 
 use super::{types::WS_EVENT, utils};
@@ -24,17 +26,29 @@ pub fn on_connected(_payload: Payload, socket: RawClient) {
 /// Handler for initialized event
 pub fn on_initialized(payload: Payload, _socket: RawClient) {
     if utils::extract_text_value(payload, "initialized").is_ok() {
-        mark_ws_initialized();
+        let needs_data_refresh = check_and_mark_initialized();
         restore_connection_ui();
+
+        if needs_data_refresh {
+            info!("Reconnection detected: refreshing app data");
+            tauri::async_runtime::spawn(async {
+                init_app_data_scoped(AppDataRefreshScope::All).await;
+            });
+        }
     }
 }
 
-/// Mark WebSocket as initialized in app state
-fn mark_ws_initialized() {
+/// Mark WebSocket as initialized and check if app data needs refreshing
+///
+/// Returns true if user data is missing (indicating a reconnection
+/// after session teardown where app data was cleared).
+fn check_and_mark_initialized() -> bool {
     let mut guard = lock_w!(FDOLL);
     if let Some(clients) = guard.network.clients.as_mut() {
         clients.is_ws_initialized = true;
     }
+    // If user data is gone, we need to re-fetch everything
+    guard.user_data.user.is_none()
 }
 
 /// Restore UI after successful connection

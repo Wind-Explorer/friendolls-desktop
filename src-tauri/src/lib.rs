@@ -2,7 +2,7 @@ use crate::services::{
     doll_editor::open_doll_editor_window,
     scene::{set_pet_menu_state, set_scene_interactive},
 };
-use commands::app::{quit_app, restart_app};
+use commands::app::{quit_app, restart_app, retry_connection};
 use commands::app_data::{get_app_data, refresh_app_data};
 use commands::auth::{logout_and_restart, start_auth_flow};
 use commands::config::{get_client_config, open_client_config_manager, save_client_config};
@@ -74,6 +74,7 @@ pub fn run() {
             recolor_gif_base64,
             quit_app,
             restart_app,
+            retry_connection,
             get_client_config,
             save_client_config,
             open_client_config_manager,

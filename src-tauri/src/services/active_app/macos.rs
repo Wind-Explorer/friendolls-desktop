@@ -7,7 +7,7 @@ use objc2::{class, msg_send, sel};
 use objc2_foundation::NSString;
 use std::ffi::CStr;
 use std::sync::{Mutex, Once};
-use tracing::warn;
+use tracing::{info, warn};
 
 #[allow(unused_imports)] // for framework linking, not referenced in code
 use objc2_app_kit::NSWorkspace;
@@ -163,34 +163,73 @@ fn get_active_app_icon_b64(front_app: *mut AnyObject) -> Option<String> {
             return None;
         }
 
-        let _: () = msg_send![icon, setSize: objc2_foundation::NSSize::new(ICON_SIZE, ICON_SIZE)];
-
-        let tiff: *mut AnyObject = msg_send![icon, TIFFRepresentation];
-        if tiff.is_null() {
-            warn!(
-                "Failed to fetch icon for {}: TIFFRepresentation null",
-                path_str
-            );
+        // Render icon at exact pixel dimensions to avoid multi-representation bloat.
+        // NSImage.setSize only changes display size, not pixel data. On Retina Macs,
+        // TIFFRepresentation can include 2x/3x representations (512x512+), producing
+        // oversized base64 strings that crash WebSocket payloads.
+        // Instead: create a new bitmap at exactly ICON_SIZE x ICON_SIZE pixels and
+        // draw the icon into it, then export that single representation as PNG.
+        let size = ICON_SIZE as u64;
+        let bitmap: *mut AnyObject = msg_send![class!(NSBitmapImageRep), alloc];
+        let bitmap: *mut AnyObject = msg_send![
+            bitmap,
+            initWithBitmapDataPlanes: std::ptr::null::<*mut u8>(),
+            pixelsWide: size,
+            pixelsHigh: size,
+            bitsPerSample: 8u64,
+            samplesPerPixel: 4u64,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: &*NSString::from_str("NSCalibratedRGBColorSpace"),
+            bytesPerRow: 0u64,
+            bitsPerPixel: 0u64
+        ];
+        if bitmap.is_null() {
+            warn!("Failed to create bitmap rep for {}", path_str);
             return None;
         }
 
-        let rep: *mut AnyObject = msg_send![class!(NSBitmapImageRep), imageRepWithData: tiff];
-        if rep.is_null() {
-            warn!(
-                "Failed to fetch icon for {}: imageRepWithData null",
-                path_str
-            );
+        // Save/restore graphics context to draw icon into our bitmap
+        let _: () = msg_send![class!(NSGraphicsContext), saveGraphicsState];
+        let ctx: *mut AnyObject = msg_send![
+            class!(NSGraphicsContext),
+            graphicsContextWithBitmapImageRep: bitmap
+        ];
+        if ctx.is_null() {
+            let _: () = msg_send![class!(NSGraphicsContext), restoreGraphicsState];
+            warn!("Failed to create graphics context for {}", path_str);
             return None;
         }
+        let _: () = msg_send![class!(NSGraphicsContext), setCurrentContext: ctx];
 
-        // 4 = NSBitmapImageFileTypePNG
+        // Draw the icon into the bitmap at exact pixel size
+        let draw_rect = objc2_foundation::NSRect::new(
+            objc2_foundation::NSPoint::new(0.0, 0.0),
+            objc2_foundation::NSSize::new(ICON_SIZE, ICON_SIZE),
+        );
+        let from_rect = objc2_foundation::NSRect::new(
+            objc2_foundation::NSPoint::new(0.0, 0.0),
+            objc2_foundation::NSSize::new(0.0, 0.0), // zero = use full source
+        );
+        // 2 = NSCompositingOperationSourceOver
+        let _: () = msg_send![
+            icon,
+            drawInRect: draw_rect,
+            fromRect: from_rect,
+            operation: 2u64,
+            fraction: 1.0f64
+        ];
+
+        let _: () = msg_send![class!(NSGraphicsContext), restoreGraphicsState];
+
+        // Export bitmap as PNG (4 = NSBitmapImageFileTypePNG)
         let png_data: *mut AnyObject = msg_send![
-            rep,
+            bitmap,
             representationUsingType: 4u64,
             properties: std::ptr::null::<AnyObject>()
         ];
         if png_data.is_null() {
-            warn!("Failed to fetch icon for {}: PNG data null", path_str);
+            warn!("Failed to export icon as PNG for {}", path_str);
             return None;
         }
 
@@ -201,8 +240,27 @@ fn get_active_app_icon_b64(front_app: *mut AnyObject) -> Option<String> {
             return None;
         }
 
-        let slice = slice::from_raw_parts(bytes, len);
-        let encoded = STANDARD.encode(slice);
+        let data_slice = slice::from_raw_parts(bytes, len);
+        let encoded = STANDARD.encode(data_slice);
+
+        info!(
+            "App icon captured: {}, PNG bytes: {}, base64 size: {} bytes",
+            path_str,
+            len,
+            encoded.len()
+        );
+
+        // Cap icon size to prevent oversized WebSocket payloads
+        if encoded.len() > super::types::MAX_ICON_B64_SIZE {
+            warn!(
+                "Icon for {} exceeds size limit ({} > {} bytes), skipping",
+                path_str,
+                encoded.len(),
+                super::types::MAX_ICON_B64_SIZE
+            );
+            return None;
+        }
+
         put_cached_icon(&path_str, encoded.clone());
 
         Some(encoded)

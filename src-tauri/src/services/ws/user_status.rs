@@ -3,6 +3,7 @@ use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
+use tracing::warn;
 
 use crate::services::active_app::AppMetadata;
 
@@ -21,6 +22,9 @@ static USER_STATUS_REPORT_DEBOUNCE: Lazy<Mutex<Option<JoinHandle<()>>>> =
     Lazy::new(|| Mutex::new(None));
 
 /// Report user status to WebSocket server with debouncing
+///
+/// Uses soft emit to avoid triggering disaster recovery on failure,
+/// since user status is non-critical telemetry.
 pub async fn report_user_status(status: UserStatusPayload) {
     let mut debouncer = USER_STATUS_REPORT_DEBOUNCE.lock().await;
 
@@ -32,7 +36,9 @@ pub async fn report_user_status(status: UserStatusPayload) {
     // Schedule new report after 500ms
     let handle = tokio::spawn(async move {
         tokio::time::sleep(Duration::from_millis(500)).await;
-        let _ = emitter::ws_emit(WS_EVENT::CLIENT_REPORT_USER_STATUS, status).await;
+        if let Err(e) = emitter::ws_emit_soft(WS_EVENT::CLIENT_REPORT_USER_STATUS, status).await {
+            warn!("User status report failed: {}", e);
+        }
     });
 
     *debouncer = Some(handle);

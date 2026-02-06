@@ -1,29 +1,29 @@
 use rust_socketio::Payload;
 use serde::Serialize;
 use tauri::{async_runtime, Emitter};
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::{get_app_handle, init::lifecycle::handle_disasterous_failure, lock_r, state::FDOLL};
 
-/// Emit data to WebSocket server
-///
-/// Handles client acquisition, initialization checks, blocking emit, and error handling.
-/// Returns Ok(()) on success, Err with message on failure.
-pub async fn ws_emit<T: Serialize + Send + 'static>(
+/// Acquire WebSocket client and initialization state from app state
+fn get_ws_state() -> (Option<rust_socketio::client::Client>, bool) {
+    let guard = lock_r!(FDOLL);
+    if let Some(clients) = &guard.network.clients {
+        (
+            clients.ws_client.as_ref().cloned(),
+            clients.is_ws_initialized,
+        )
+    } else {
+        (None, false)
+    }
+}
+
+/// Serialize and emit a payload via the WebSocket client (blocking)
+async fn do_emit<T: Serialize + Send + 'static>(
     event: &'static str,
     payload: T,
 ) -> Result<(), String> {
-    let (client_opt, is_initialized) = {
-        let guard = lock_r!(FDOLL);
-        if let Some(clients) = &guard.network.clients {
-            (
-                clients.ws_client.as_ref().cloned(),
-                clients.is_ws_initialized,
-            )
-        } else {
-            (None, false)
-        }
-    };
+    let (client_opt, is_initialized) = get_ws_state();
 
     let Some(client) = client_opt else {
         return Ok(()); // Client not available, silent skip
@@ -42,16 +42,43 @@ pub async fn ws_emit<T: Serialize + Send + 'static>(
     .await
     {
         Ok(Ok(_)) => Ok(()),
-        Ok(Err(e)) => {
-            let err_msg = format!("WebSocket emit failed: {}", e);
-            error!("{}", err_msg);
+        Ok(Err(e)) => Err(format!("WebSocket emit failed: {}", e)),
+        Err(e) => Err(format!("WebSocket task failed: {}", e)),
+    }
+}
+
+/// Emit critical data to WebSocket server
+///
+/// On failure, triggers disaster recovery (session teardown + health manager).
+/// Use for essential operations where connection loss is unrecoverable.
+#[allow(dead_code)]
+pub async fn ws_emit<T: Serialize + Send + 'static>(
+    event: &'static str,
+    payload: T,
+) -> Result<(), String> {
+    match do_emit(event, payload).await {
+        Ok(_) => Ok(()),
+        Err(err_msg) => {
+            error!("[critical] {}", err_msg);
             handle_disasterous_failure(Some(err_msg.clone())).await;
             Err(err_msg)
         }
-        Err(e) => {
-            let err_msg = format!("WebSocket task failed: {}", e);
-            error!("Failed to execute blocking task for {}: {}", event, e);
-            handle_disasterous_failure(Some(err_msg.clone())).await;
+    }
+}
+
+/// Emit non-critical data to WebSocket server
+///
+/// On failure, logs a warning but does NOT trigger disaster recovery.
+/// Use for telemetry, status updates, and other non-essential operations
+/// where a failure should not tear down the user session.
+pub async fn ws_emit_soft<T: Serialize + Send + 'static>(
+    event: &'static str,
+    payload: T,
+) -> Result<(), String> {
+    match do_emit(event, payload).await {
+        Ok(_) => Ok(()),
+        Err(err_msg) => {
+            warn!("[non-critical] {}", err_msg);
             Err(err_msg)
         }
     }

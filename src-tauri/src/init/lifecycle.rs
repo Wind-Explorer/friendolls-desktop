@@ -19,6 +19,7 @@ use crate::{
 /// Connects the user profile and opens the scene window.
 pub async fn construct_user_session() {
     connect_user_profile().await;
+    close_all_windows();
     open_scene_window();
     update_system_tray(true);
 }
