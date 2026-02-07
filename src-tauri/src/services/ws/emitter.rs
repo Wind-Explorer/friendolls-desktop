@@ -3,7 +3,9 @@ use serde::Serialize;
 use tauri::{async_runtime, Emitter};
 use tracing::{error, warn};
 
-use crate::{get_app_handle, init::lifecycle::handle_disasterous_failure, lock_r, state::FDOLL};
+use crate::{
+    get_app_handle, init::lifecycle::handle_disasterous_failure, lock_r, lock_w, state::FDOLL,
+};
 
 /// Acquire WebSocket client and initialization state from app state
 fn get_ws_state() -> (Option<rust_socketio::client::Client>, bool) {
@@ -47,6 +49,27 @@ async fn do_emit<T: Serialize + Send + 'static>(
     }
 }
 
+async fn handle_soft_emit_failure(err_msg: &str) {
+    const MAX_FAILURES: u8 = 10;
+    let should_reinit = {
+        let mut guard = lock_w!(FDOLL);
+        if let Some(clients) = guard.network.clients.as_mut() {
+            clients.ws_emit_failures = clients.ws_emit_failures.saturating_add(1);
+            clients.ws_emit_failures >= MAX_FAILURES
+        } else {
+            false
+        }
+    };
+
+    if should_reinit {
+        warn!("WebSocket emit failed {} times, reinitializing connection", MAX_FAILURES);
+        let _ = crate::services::ws::client::clear_ws_client().await;
+        crate::services::ws::client::establish_websocket_connection().await;
+    } else {
+        warn!("[non-critical] {}", err_msg);
+    }
+}
+
 /// Emit critical data to WebSocket server
 ///
 /// On failure, triggers disaster recovery (session teardown + health manager).
@@ -78,7 +101,7 @@ pub async fn ws_emit_soft<T: Serialize + Send + 'static>(
     match do_emit(event, payload).await {
         Ok(_) => Ok(()),
         Err(err_msg) => {
-            warn!("[non-critical] {}", err_msg);
+            handle_soft_emit_failure(&err_msg).await;
             Err(err_msg)
         }
     }

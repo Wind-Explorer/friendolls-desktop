@@ -9,6 +9,7 @@ use crate::{
     services::{
         close_all_windows,
         health_manager::open_health_manager_window,
+        health_monitor::{start_health_monitor, stop_health_monitor},
         scene::open_scene_window,
         ws::client::{clear_ws_client, establish_websocket_connection},
     },
@@ -39,13 +40,15 @@ async fn connect_user_profile() {
     init_app_data_scoped(AppDataRefreshScope::All).await;
     establish_websocket_connection().await;
     start_background_token_refresh().await;
+    start_health_monitor().await;
 }
 
 /// Clears the user profile and WebSocket connection.
 async fn disconnect_user_profile() {
+    stop_health_monitor();
+    stop_background_token_refresh();
     clear_app_data();
     clear_ws_client().await;
-    stop_background_token_refresh();
 }
 
 /// Destructs the user session and show health manager window

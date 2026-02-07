@@ -1,19 +1,22 @@
-
-
 #[derive(Clone)]
 pub struct Clients {
     pub http_client: reqwest::Client,
     pub ws_client: Option<rust_socketio::client::Client>,
     pub is_ws_initialized: bool,
+    pub ws_emit_failures: u8,
 }
 
 pub struct NetworkState {
     pub clients: Option<Clients>,
+    pub health_monitor_token: Option<tokio_util::sync::CancellationToken>,
 }
 
 impl Default for NetworkState {
     fn default() -> Self {
-        Self { clients: None }
+        Self {
+            clients: None,
+            health_monitor_token: None,
+        }
     }
 }
 
@@ -30,6 +33,8 @@ pub fn init_network_state() -> NetworkState {
             http_client,
             ws_client: None,
             is_ws_initialized: false,
+            ws_emit_failures: 0,
         }),
+        health_monitor_token: None,
     }
 }

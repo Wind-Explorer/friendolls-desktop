@@ -2,10 +2,7 @@ use rust_socketio::{Payload, RawClient};
 use tracing::info;
 
 use crate::{
-    lock_w,
-    services::health_manager::close_health_manager_window,
-    services::scene::open_scene_window,
-    state::{init_app_data_scoped, AppDataRefreshScope, FDOLL},
+    init::lifecycle::construct_user_session, lock_w, services::health_manager::close_health_manager_window, state::FDOLL
 };
 
 use super::{types::WS_EVENT, utils};
@@ -26,33 +23,30 @@ pub fn on_connected(_payload: Payload, socket: RawClient) {
 /// Handler for initialized event
 pub fn on_initialized(payload: Payload, _socket: RawClient) {
     if utils::extract_text_value(payload, "initialized").is_ok() {
-        let needs_data_refresh = check_and_mark_initialized();
-        restore_connection_ui();
+        let is_reconnection = mark_ws_initialized();
 
-        if needs_data_refresh {
-            info!("Reconnection detected: refreshing app data");
+        if is_reconnection {
+            info!("Reconnection detected: reconstructing user session");
             tauri::async_runtime::spawn(async {
-                init_app_data_scoped(AppDataRefreshScope::All).await;
+                construct_user_session().await;
             });
+        } else {
+            // First-time initialization, just close health manager if open
+            close_health_manager_window();
         }
     }
 }
 
-/// Mark WebSocket as initialized and check if app data needs refreshing
+/// Mark WebSocket as initialized and check if this is a reconnection.
 ///
 /// Returns true if user data is missing (indicating a reconnection
 /// after session teardown where app data was cleared).
-fn check_and_mark_initialized() -> bool {
+fn mark_ws_initialized() -> bool {
     let mut guard = lock_w!(FDOLL);
     if let Some(clients) = guard.network.clients.as_mut() {
         clients.is_ws_initialized = true;
+        clients.ws_emit_failures = 0;
     }
-    // If user data is gone, we need to re-fetch everything
+    // If user data is gone, we need full session reconstruction
     guard.user_data.user.is_none()
-}
-
-/// Restore UI after successful connection
-fn restore_connection_ui() {
-    close_health_manager_window();
-    open_scene_window();
 }

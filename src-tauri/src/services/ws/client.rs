@@ -19,15 +19,27 @@ pub async fn establish_websocket_connection() {
 
     for _attempt in 1..=MAX_ATTEMPTS {
         if get_access_token().await.is_some() {
-            init_ws_client().await;
-            return;
+            if init_ws_client().await {
+                return; // Success
+            } else {
+                // Connection failed, trigger disaster recovery
+                crate::init::lifecycle::handle_disasterous_failure(
+                    Some("WebSocket connection failed. Please check your network and try again.".to_string())
+                ).await;
+                return;
+            }
         }
 
         sleep(BACKOFF).await;
     }
+    
+    // If we exhausted retries without valid token
+    crate::init::lifecycle::handle_disasterous_failure(
+        Some("Failed to authenticate. Please restart and sign in again.".to_string())
+    ).await;
 }
 
-pub async fn init_ws_client() {
+pub async fn init_ws_client() -> bool {
     let app_config = {
         let guard = lock_r!(FDOLL);
         guard.app_config.clone()
@@ -40,10 +52,12 @@ pub async fn init_ws_client() {
                 clients.ws_client = Some(ws_client);
                 clients.is_ws_initialized = false; // wait for initialized event
             }
+            true
         }
         Err(e) => {
             error!("Failed to initialize WebSocket client: {}", e);
             clear_ws_client().await;
+            false
         }
     }
 }
@@ -53,6 +67,7 @@ pub async fn clear_ws_client() {
     if let Some(clients) = guard.network.clients.as_mut() {
         clients.ws_client = None;
         clients.is_ws_initialized = false;
+        clients.ws_emit_failures = 0;
     }
 }
 
