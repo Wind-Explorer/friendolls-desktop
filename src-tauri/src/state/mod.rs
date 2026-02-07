@@ -4,7 +4,7 @@ use std::sync::{Arc, LazyLock, RwLock};
 use tauri::tray::TrayIcon;
 use tracing::info;
 
-mod auth;
+pub mod auth;
 mod network;
 mod ui;
 

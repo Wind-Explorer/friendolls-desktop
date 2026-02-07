@@ -12,7 +12,10 @@ use crate::{
         scene::open_scene_window,
         ws::client::{clear_ws_client, establish_websocket_connection},
     },
-    state::{clear_app_data, init_app_data_scoped, AppDataRefreshScope},
+    state::{
+        auth::{start_background_token_refresh, stop_background_token_refresh},
+        clear_app_data, init_app_data_scoped, AppDataRefreshScope,
+    },
     system_tray::update_system_tray,
 };
 
@@ -35,12 +38,14 @@ pub async fn destruct_user_session() {
 async fn connect_user_profile() {
     init_app_data_scoped(AppDataRefreshScope::All).await;
     establish_websocket_connection().await;
+    start_background_token_refresh().await;
 }
 
 /// Clears the user profile and WebSocket connection.
 async fn disconnect_user_profile() {
     clear_app_data();
     clear_ws_client().await;
+    stop_background_token_refresh();
 }
 
 /// Destructs the user session and show health manager window

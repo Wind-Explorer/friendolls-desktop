@@ -1,4 +1,5 @@
 use crate::get_app_handle;
+use crate::state::auth::get_auth_pass_with_refresh;
 use crate::{lock_r, lock_w, state::FDOLL};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
@@ -12,13 +13,9 @@ use tauri_plugin_opener::OpenerExt;
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use url::form_urlencoded;
-
-static REFRESH_LOCK: once_cell::sync::Lazy<Mutex<()>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(()));
 
 static AUTH_SUCCESS_HTML: &str = include_str!("../assets/auth-success.html");
 const SERVICE_NAME: &str = "friendolls";
@@ -115,60 +112,7 @@ fn generate_code_challenge(code_verifier: &str) -> String {
 /// access token, refresh token, expire time etc.
 /// Automatically refreshes if expired.
 pub async fn get_session_token() -> Option<AuthPass> {
-    info!("Retrieving tokens");
-    let Some(auth_pass) = ({ lock_r!(FDOLL).auth.auth_pass.clone() }) else {
-        return None;
-    };
-
-    let Some(issued_at) = auth_pass.issued_at else {
-        warn!("Auth pass missing issued_at timestamp, clearing");
-        lock_w!(FDOLL).auth.auth_pass = None;
-        return None;
-    };
-
-    let current_time = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
-
-    let expired = current_time - issued_at >= auth_pass.expires_in;
-    let refresh_expired = current_time - issued_at >= auth_pass.refresh_expires_in;
-
-    if !expired {
-        return Some(auth_pass);
-    }
-
-    if refresh_expired {
-        info!("Refresh token expired, clearing auth state");
-        lock_w!(FDOLL).auth.auth_pass = None;
-        if let Err(e) = clear_auth_pass() {
-            error!("Failed to clear expired auth pass: {}", e);
-        }
-        return None;
-    }
-
-    // Use mutex to prevent concurrent refresh
-    let _guard = REFRESH_LOCK.lock().await;
-
-    // Double-check after acquiring lock
-    let auth_pass = lock_r!(FDOLL).auth.auth_pass.clone()?;
-    let current_time = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
-    let expired = current_time - auth_pass.issued_at? >= auth_pass.expires_in;
-
-    if !expired {
-        // Another thread already refreshed
-        return Some(auth_pass);
-    }
-
-    info!("Access token expired, attempting refresh");
-    match refresh_token(&auth_pass.refresh_token).await {
-        Ok(new_pass) => Some(new_pass),
-        Err(e) => {
-            error!("Failed to refresh token: {}", e);
-            lock_w!(FDOLL).auth.auth_pass = None;
-            if let Err(e) = clear_auth_pass() {
-                error!("Failed to clear auth pass after refresh failure: {}", e);
-            }
-            None
-        }
-    }
+    get_auth_pass_with_refresh().await
 }
 
 /// Helper function to get the current access token.
