@@ -12,6 +12,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
   import type { AppMetadata } from "../../types/bindings/AppMetadata";
+  import type { DollDto } from "../../types/bindings/DollDto";
 
   let innerWidth = $state(0);
   let innerHeight = $state(0);
@@ -34,6 +35,12 @@
 
   function getFriendStatus(userId: string) {
     return $friendsUserStatuses[userId];
+  }
+
+  function getUserDoll(): DollDto | undefined {
+    const user = $appData?.user;
+    if (!user || !user.activeDollId) return undefined;
+    return $appData?.dolls?.find((d) => d.id === user.activeDollId);
   }
 
   let appMetadata: AppMetadata | null = $state(null);
@@ -144,6 +151,22 @@
           />
         {/if}
       {/each}
+    {/if}
+    {#if $appData?.user && getUserDoll()}
+      <DesktopPet
+        id={$appData.user.id}
+        targetX={$cursorPositionOnScreen.mapped.x * innerWidth}
+        targetY={$cursorPositionOnScreen.mapped.y * innerHeight}
+        user={{
+          id: $appData.user.id,
+          name: $appData.user.name,
+          username: $appData.user.username,
+          activeDoll: getUserDoll() ?? null,
+        }}
+        userStatus={undefined}
+        doll={getUserDoll()}
+        isInteractive={false}
+      />
     {/if}
   </div>
 </div>

@@ -170,7 +170,9 @@
     </div>
   {/if}
   <button
+    disabled={!isInteractive}
     onclick={() => {
+      if (!isInteractive) return;
       isPetMenuOpen = !isPetMenuOpen;
       if (!isPetMenuOpen) {
         // Clear message when closing menu manually
