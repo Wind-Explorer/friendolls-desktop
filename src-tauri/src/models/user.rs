@@ -6,7 +6,6 @@ use ts_rs::TS;
 #[ts(export)]
 pub struct UserProfile {
     pub id: String,
-    pub keycloak_sub: String,
     pub name: String,
     pub email: String,
     pub username: Option<String>,

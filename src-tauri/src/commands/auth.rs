@@ -1,27 +1,47 @@
-use tauri;
-use tracing;
-
-use crate::{init::lifecycle::construct_user_session, services::scene::close_splash_window};
+use crate::services::auth;
 
 #[tauri::command]
 pub async fn logout_and_restart() -> Result<(), String> {
-    crate::services::auth::logout_and_restart()
+    auth::logout_and_restart().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn login(email: String, password: String) -> Result<(), String> {
+    auth::login_and_init_session(&email, &password)
         .await
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn start_auth_flow() -> Result<(), String> {
-    // Cancel any in-flight auth listener/state before starting a new one
-    crate::services::auth::cancel_auth_flow();
-
-    crate::services::auth::init_auth_code_retrieval(|| {
-        tracing::info!("Authentication successful, constructing user session...");
-        crate::services::welcome::close_welcome_window();
-        tauri::async_runtime::spawn(async {
-            construct_user_session().await;
-            close_splash_window();
-        });
-    })
+pub async fn register(
+    email: String,
+    password: String,
+    name: Option<String>,
+    username: Option<String>,
+) -> Result<String, String> {
+    auth::register(
+        &email,
+        &password,
+        name.as_deref(),
+        username.as_deref(),
+    )
+    .await
     .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn change_password(
+    current_password: String,
+    new_password: String,
+) -> Result<(), String> {
+    auth::change_password(&current_password, &new_password)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn reset_password(old_password: String, new_password: String) -> Result<(), String> {
+    auth::reset_password(&old_password, &new_password)
+        .await
+        .map_err(|e| e.to_string())
 }

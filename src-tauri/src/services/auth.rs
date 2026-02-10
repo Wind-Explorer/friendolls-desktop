@@ -1,42 +1,22 @@
 use crate::get_app_handle;
+use crate::init::lifecycle::construct_user_session;
+use crate::services::scene::close_splash_window;
+use crate::services::welcome::close_welcome_window;
 use crate::state::auth::get_auth_pass_with_refresh;
 use crate::{lock_r, lock_w, state::FDOLL};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use keyring::Entry;
-use rand::{distr::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use tauri_plugin_opener::OpenerExt;
+use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio_util::sync::CancellationToken;
-use tracing::{error, info, warn};
-use url::form_urlencoded;
+use tracing::{error, info};
 
-static AUTH_SUCCESS_HTML: &str = include_str!("../assets/auth-success.html");
 const SERVICE_NAME: &str = "friendolls";
 
-pub fn cancel_auth_flow() {
-    let mut guard = lock_w!(FDOLL);
-    if let Some(token) = guard.auth.oauth_flow.cancel_token.take() {
-        token.cancel();
-    }
-    guard.auth.oauth_flow = Default::default();
-}
-
-/// Errors that can occur during OAuth authentication flow.
 #[derive(Debug, Error)]
-pub enum OAuthError {
-    #[error("Failed to exchange code: {0}")]
-    ExchangeFailed(String),
-
-    #[error("Missing callback parameter: {0}")]
-    MissingParameter(String),
-
+pub enum AuthError {
     #[error("Keyring error: {0}")]
     KeyringError(#[from] keyring::Error),
 
@@ -46,99 +26,104 @@ pub enum OAuthError {
     #[error("JSON serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
 
-    #[error("Server binding failed: {0}")]
-    ServerBindError(String),
-
-    #[error("Callback timeout - no response received")]
-    CallbackTimeout,
-
-    #[error("Authentication flow cancelled")]
-    Cancelled,
-
     #[error("Invalid app configuration")]
     InvalidConfig,
 
     #[error("Failed to refresh token")]
     RefreshFailed,
 
+    #[error("Request failed: {0}")]
+    RequestFailed(String),
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
-
-    #[error("Failed to open auth portal: {0}")]
-    OpenPortalFailed(tauri_plugin_opener::Error),
 }
 
-/// Parameters received from the OAuth callback.
-pub struct OAuthCallbackParams {
-    state: String,
-    code: String,
-}
-
-/// Authentication pass containing access token, refresh token, and metadata.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthPass {
     pub access_token: String,
     pub expires_in: u64,
-    pub refresh_expires_in: u64,
-    pub refresh_token: String,
-    pub token_type: String,
-    pub session_state: String,
-    pub scope: String,
     pub issued_at: Option<u64>,
 }
 
-/// Generate a random code verifier for PKCE.
-///
-/// Per PKCE spec (RFC 7636), the code verifier should be 43-128 characters.
-fn generate_code_verifier(length: usize) -> String {
-    rand::rng()
-        .sample_iter(&Alphanumeric)
-        .take(length)
-        .map(char::from)
-        .collect()
+#[derive(Debug, Deserialize)]
+struct LoginResponse {
+    #[serde(rename = "accessToken")]
+    access_token: String,
+    #[serde(rename = "expiresIn")]
+    expires_in: u64,
 }
 
-/// Generate code challenge from a code verifier using SHA-256.
-///
-/// This implements the S256 method as specified in RFC 7636.
-fn generate_code_challenge(code_verifier: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(code_verifier.as_bytes());
-    let result = hasher.finalize();
-    URL_SAFE_NO_PAD.encode(result)
+#[derive(Debug, Deserialize)]
+struct RegisterResponse {
+    id: String,
 }
 
-/// Returns the auth pass object, including
-/// access token, refresh token, expire time etc.
-/// Automatically refreshes if expired.
+#[derive(Debug, Serialize)]
+struct LoginRequest<'a> {
+    email: &'a str,
+    password: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct RegisterRequest<'a> {
+    email: &'a str,
+    password: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    username: Option<&'a str>,
+}
+
+#[derive(Debug, Serialize)]
+struct ChangePasswordRequest<'a> {
+    #[serde(rename = "currentPassword")]
+    current_password: &'a str,
+    #[serde(rename = "newPassword")]
+    new_password: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct ResetPasswordRequest<'a> {
+    #[serde(rename = "oldPassword")]
+    old_password: &'a str,
+    #[serde(rename = "newPassword")]
+    new_password: &'a str,
+}
+
+fn build_auth_pass(access_token: String, expires_in: u64) -> Result<AuthPass, AuthError> {
+    let issued_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| AuthError::RefreshFailed)?
+        .as_secs();
+    Ok(AuthPass {
+        access_token,
+        expires_in,
+        issued_at: Some(issued_at),
+    })
+}
+
 pub async fn get_session_token() -> Option<AuthPass> {
     get_auth_pass_with_refresh().await
 }
 
-/// Helper function to get the current access token.
 pub async fn get_access_token() -> Option<String> {
     get_session_token().await.map(|pass| pass.access_token)
 }
 
-/// Save auth_pass to secure storage (keyring) and update app state.
-pub fn save_auth_pass(auth_pass: &AuthPass) -> Result<(), OAuthError> {
+pub fn save_auth_pass(auth_pass: &AuthPass) -> Result<(), AuthError> {
     let json = serde_json::to_string(auth_pass)?;
-    info!("Original JSON length: {}", json.len());
     let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
     encoder
         .write_all(json.as_bytes())
-        .map_err(|e| OAuthError::SerializationError(serde_json::Error::io(e)))?;
+        .map_err(|e| AuthError::SerializationError(serde_json::Error::io(e)))?;
     let compressed = encoder
         .finish()
-        .map_err(|e| OAuthError::SerializationError(serde_json::Error::io(e)))?;
-    info!("Compressed length: {}", compressed.len());
+        .map_err(|e| AuthError::SerializationError(serde_json::Error::io(e)))?;
     let encoded = URL_SAFE_NO_PAD.encode(&compressed);
-    info!("Encoded length: {}", encoded.len());
 
     #[cfg(target_os = "windows")]
     {
-        // Windows keyring has a 2560-byte UTF-16 limit, which means 1280 chars max
-        // Split into chunks of 1200 chars to be safe
         const CHUNK_SIZE: usize = 1200;
         let chunks: Vec<&str> = encoded
             .as_bytes()
@@ -146,40 +131,27 @@ pub fn save_auth_pass(auth_pass: &AuthPass) -> Result<(), OAuthError> {
             .map(|chunk| std::str::from_utf8(chunk).unwrap())
             .collect();
 
-        info!("Splitting auth pass into {} chunks", chunks.len());
-
-        // Save chunk count
         let count_entry = Entry::new(SERVICE_NAME, "auth_pass_count")?;
         count_entry.set_password(&chunks.len().to_string())?;
 
-        // Save each chunk
         for (i, chunk) in chunks.iter().enumerate() {
             let entry = Entry::new(SERVICE_NAME, &format!("auth_pass_{}", i))?;
             entry.set_password(chunk)?;
         }
-
-        info!(
-            "Auth pass saved to keyring successfully in {} chunks",
-            chunks.len()
-        );
     }
 
     #[cfg(not(target_os = "windows"))]
     {
         let entry = Entry::new(SERVICE_NAME, "auth_pass")?;
         entry.set_password(&encoded)?;
-        info!("Auth pass saved to keyring successfully");
     }
+
     Ok(())
 }
 
-/// Load auth_pass from secure storage (keyring).
-pub fn load_auth_pass() -> Result<Option<AuthPass>, OAuthError> {
-    info!("Reading credentials from keyring");
-
+pub fn load_auth_pass() -> Result<Option<AuthPass>, AuthError> {
     #[cfg(target_os = "windows")]
     let encoded = {
-        // Get chunk count
         let count_entry = Entry::new(SERVICE_NAME, "auth_pass_count")?;
         let chunk_count = match count_entry.get_password() {
             Ok(count_str) => match count_str.parse::<usize>() {
@@ -195,13 +167,10 @@ pub fn load_auth_pass() -> Result<Option<AuthPass>, OAuthError> {
             }
             Err(e) => {
                 error!("Failed to load chunk count from keyring");
-                return Err(OAuthError::KeyringError(e));
+                return Err(AuthError::KeyringError(e));
             }
         };
 
-        info!("Loading {} auth pass chunks from keyring", chunk_count);
-
-        // Reassemble chunks
         let mut encoded = String::new();
         for i in 0..chunk_count {
             let entry = Entry::new(SERVICE_NAME, &format!("auth_pass_{}", i))?;
@@ -209,7 +178,7 @@ pub fn load_auth_pass() -> Result<Option<AuthPass>, OAuthError> {
                 Ok(chunk) => encoded.push_str(&chunk),
                 Err(e) => {
                     error!("Failed to load chunk {} from keyring", i);
-                    return Err(OAuthError::KeyringError(e));
+                    return Err(AuthError::KeyringError(e));
                 }
             }
         }
@@ -227,12 +196,10 @@ pub fn load_auth_pass() -> Result<Option<AuthPass>, OAuthError> {
             }
             Err(e) => {
                 error!("Failed to load auth pass from keyring");
-                return Err(OAuthError::KeyringError(e));
+                return Err(AuthError::KeyringError(e));
             }
         }
     };
-
-    info!("Reassembled encoded length: {}", encoded.len());
 
     let compressed = match URL_SAFE_NO_PAD.decode(&encoded) {
         Ok(c) => c,
@@ -250,38 +217,30 @@ pub fn load_auth_pass() -> Result<Option<AuthPass>, OAuthError> {
     }
 
     let auth_pass: AuthPass = match serde_json::from_str(&json) {
-        Ok(v) => {
-            info!("Deserialized auth pass from keyring");
-            v
-        }
+        Ok(v) => v,
         Err(_e) => {
             error!("Failed to decode auth pass from keyring");
             return Ok(None);
         }
     };
 
-    info!("Auth pass loaded from keyring");
     Ok(Some(auth_pass))
 }
 
-/// Clear auth_pass from secure storage and app state.
-pub fn clear_auth_pass() -> Result<(), OAuthError> {
+pub fn clear_auth_pass() -> Result<(), AuthError> {
     #[cfg(target_os = "windows")]
     {
-        // Try to get chunk count
         let count_entry = Entry::new(SERVICE_NAME, "auth_pass_count")?;
         let chunk_count = match count_entry.get_password() {
             Ok(count_str) => count_str.parse::<usize>().unwrap_or(0),
             Err(_) => 0,
         };
 
-        // Delete all chunks
         for i in 0..chunk_count {
             let entry = Entry::new(SERVICE_NAME, &format!("auth_pass_{}", i))?;
             let _ = entry.delete_credential();
         }
 
-        // Delete chunk count
         let _ = count_entry.delete_credential();
     }
 
@@ -291,99 +250,22 @@ pub fn clear_auth_pass() -> Result<(), OAuthError> {
         let _ = entry.delete_credential();
     }
 
-    info!("Auth pass cleared from keyring successfully");
     Ok(())
 }
 
-/// Logout the current user by clearing tokens from storage and state.
-///
-/// # Note
-///
-/// This currently only clears local tokens. For complete logout, you should also
-/// call the OAuth provider's token revocation endpoint if available.
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use crate::services::auth::logout;
-///
-/// logout().expect("Failed to logout");
-/// ```
-pub fn logout() -> Result<(), OAuthError> {
+pub fn logout() -> Result<(), AuthError> {
     info!("Logging out user");
     lock_w!(FDOLL).auth.auth_pass = None;
     clear_auth_pass()?;
-
-    // Clear OAuth flow state as well
-    lock_w!(FDOLL).auth.oauth_flow = Default::default();
-
-    // TODO: Call OAuth provider's revocation endpoint
-    // This would require adding a revoke_token() function that calls:
-    // POST {auth_url}/revoke with the refresh_token
-
     Ok(())
 }
 
-/// Convenience helper to perform logout side effects before app restart.
-pub async fn logout_and_restart() -> Result<(), OAuthError> {
-    // capture tokens and base_url before clearing for backend revocation
-    let (refresh_token, session_state, base_url) = {
-        let guard = lock_r!(FDOLL);
-        (
-            guard
-                .auth
-                .auth_pass
-                .as_ref()
-                .map(|p| p.refresh_token.clone()),
-            guard
-                .auth
-                .auth_pass
-                .as_ref()
-                .map(|p| p.session_state.clone()),
-            guard
-                .app_config
-                .api_base_url
-                .as_ref()
-                .cloned()
-                .unwrap_or_default(),
-        )
-    };
-
+pub async fn logout_and_restart() -> Result<(), AuthError> {
     logout()?;
-
-    if !base_url.is_empty() {
-        if let Some(refresh_token) = refresh_token.as_deref() {
-            let session_remote = crate::remotes::session::SessionRemote::new();
-            if let Err(err) = session_remote
-                .logout(refresh_token, session_state.as_deref())
-                .await
-            {
-                warn!("Failed to revoke session on server: {}", err);
-            }
-        } else {
-            warn!("No refresh token available to revoke on server");
-        }
-    }
-
     let app_handle = get_app_handle();
     app_handle.restart();
-    //------------------ any code following this expression is unreachable
-    // Ok(())
-    // ^^^^^^ unreachable expression
-    // leaving this here so the AI agent will stop adding this back
 }
 
-/// Helper to add authentication header to a request builder if tokens are available.
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use crate::services::auth::with_auth;
-///
-/// let client = reqwest::Client::new();
-/// let request = client.get("https://api.example.com/user");
-/// let authenticated_request = with_auth(request).await;
-/// ```
 pub async fn with_auth(request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
     if let Some(token) = get_access_token().await {
         request.header("Authorization", format!("Bearer {}", token))
@@ -392,281 +274,185 @@ pub async fn with_auth(request: reqwest::RequestBuilder) -> reqwest::RequestBuil
     }
 }
 
-/// Exchange authorization code for tokens.
-///
-/// This is called after receiving the OAuth callback with an authorization code.
-/// It exchanges the code for an access token and refresh token.
-///
-/// # Arguments
-///
-/// * `callback_params` - Parameters received from the OAuth callback
-/// * `code_verifier` - The PKCE code verifier that was used to generate the code challenge
-///
-/// # Errors
-///
-/// Returns `OAuthError` if the exchange fails or the server returns an error.
-pub async fn exchange_code_for_auth_pass(
-    redirect_uri: &str,
-    callback_params: OAuthCallbackParams,
-    code_verifier: &str,
-) -> Result<AuthPass, OAuthError> {
+pub async fn login(email: &str, password: &str) -> Result<AuthPass, AuthError> {
     let (app_config, http_client) = {
         let guard = lock_r!(FDOLL);
         let clients = guard.network.clients.as_ref();
         if clients.is_none() {
             error!("Clients not initialized yet!");
-            return Err(OAuthError::InvalidConfig);
+            return Err(AuthError::InvalidConfig);
         }
-        info!("HTTP client retrieved successfully for token exchange");
         (
             guard.app_config.clone(),
             clients.unwrap().http_client.clone(),
         )
     };
 
-    let url = url::Url::parse(&format!("{}/token", &app_config.auth.auth_url))
-        .map_err(|_| OAuthError::InvalidConfig)?;
+    let base_url = app_config
+        .api_base_url
+        .as_ref()
+        .ok_or(AuthError::InvalidConfig)?;
+    let url = format!("{}/auth/login", base_url);
 
-    let body = form_urlencoded::Serializer::new(String::new())
-        .append_pair("client_id", &app_config.auth.audience)
-        .append_pair("grant_type", "authorization_code")
-        .append_pair("redirect_uri", redirect_uri)
-        .append_pair("code", &callback_params.code)
-        .append_pair("code_verifier", code_verifier)
-        .finish();
+    let response = http_client
+        .post(url)
+        .json(&LoginRequest { email, password })
+        .send()
+        .await?;
 
-    info!("Exchanging authorization code for tokens");
-    info!("Token endpoint URL: {}", url);
-    info!("Request body length: {} bytes", body.len());
-
-    let exchange_request = http_client
-        .post(url.clone())
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .body(body);
-
-    info!("Sending token exchange request...");
-    let exchange_request_response = match exchange_request.send().await {
-        Ok(resp) => {
-            info!("Received response with status: {}", resp.status());
-            resp
-        }
-        Err(e) => {
-            error!("Failed to send token exchange request: {}", e);
-            error!("Error details: {:?}", e);
-            if e.is_timeout() {
-                error!("Request timed out");
-            }
-            if e.is_connect() {
-                error!("Connection error - check network and DNS");
-            }
-            if e.is_request() {
-                error!("Request error - check request format");
-            }
-            return Err(OAuthError::NetworkError(e));
-        }
-    };
-
-    if !exchange_request_response.status().is_success() {
-        let status = exchange_request_response.status();
-        let error_text = exchange_request_response.text().await.unwrap_or_default();
-        error!(
-            "Token exchange failed with status {}: {}",
-            status, error_text
-        );
-        return Err(OAuthError::ExchangeFailed(format!(
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(AuthError::RequestFailed(format!(
             "Status: {}, Body: {}",
             status, error_text
         )));
     }
 
-    let mut auth_pass: AuthPass = exchange_request_response.json().await?;
-    auth_pass.issued_at = Some(
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| OAuthError::ExchangeFailed("System time error".to_string()))?
-            .as_secs(),
-    );
-
-    info!("Successfully exchanged code for tokens");
+    let login_response: LoginResponse = response.json().await?;
+    let auth_pass = build_auth_pass(login_response.access_token, login_response.expires_in)?;
+    lock_w!(FDOLL).auth.auth_pass = Some(auth_pass.clone());
+    save_auth_pass(&auth_pass)?;
     Ok(auth_pass)
 }
 
-/// Initialize the OAuth authorization code flow.
-///
-/// This function:
-/// 1. Generates PKCE code verifier and challenge
-/// 2. Generates state parameter for CSRF protection
-/// 3. Stores state and code verifier in app state
-/// 4. Opens the OAuth authorization URL in the user's browser
-/// 5. Starts a background listener for the callback
-///
-/// The user will be redirected to the OAuth provider's login page, and after
-/// successful authentication, will be redirected back to the local callback server.
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use crate::services::auth::init_auth_code_retrieval;
-///
-/// init_auth_code_retrieval();
-/// // User will be prompted to login in their browser
-/// ```
-pub fn init_auth_code_retrieval<F>(on_success: F) -> Result<(), OAuthError>
-where
-    F: FnOnce() + Send + 'static,
-{
-    info!("init_auth_code_retrieval called");
-    let app_config = lock_r!(FDOLL).app_config.clone();
-
-    let app_handle = get_app_handle();
-
-    let code_verifier = generate_code_verifier(64);
-    let code_challenge = generate_code_challenge(&code_verifier);
-    let state = generate_code_verifier(16);
-    let cancel_token = CancellationToken::new();
-
-    // Store state and code_verifier for validation
-    let current_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-
-    {
-        let mut guard = lock_w!(FDOLL);
-        guard.auth.oauth_flow.state = Some(state.clone());
-        guard.auth.oauth_flow.code_verifier = Some(code_verifier.clone());
-        guard.auth.oauth_flow.initiated_at = Some(current_time);
-        guard.auth.oauth_flow.cancel_token = Some(cancel_token.clone());
-    }
-
-    let mut url = match url::Url::parse(&format!("{}/auth", &app_config.auth.auth_url)) {
-        Ok(url) => {
-            info!("Parsed auth URL successfully");
-            url
+pub async fn register(
+    email: &str,
+    password: &str,
+    name: Option<&str>,
+    username: Option<&str>,
+) -> Result<String, AuthError> {
+    let (app_config, http_client) = {
+        let guard = lock_r!(FDOLL);
+        let clients = guard.network.clients.as_ref();
+        if clients.is_none() {
+            error!("Clients not initialized yet!");
+            return Err(AuthError::InvalidConfig);
         }
-        Err(e) => {
-            error!("Invalid auth URL configuration: {}", e);
-            return Err(OAuthError::InvalidConfig);
-        }
+        (
+            guard.app_config.clone(),
+            clients.unwrap().http_client.clone(),
+        )
     };
 
-    info!("Initiating OAuth flow");
+    let base_url = app_config
+        .api_base_url
+        .as_ref()
+        .ok_or(AuthError::InvalidConfig)?;
+    let url = format!("{}/auth/register", base_url);
 
-    // Bind the server FIRST to ensure port is open
-    // We bind synchronously using std::net::TcpListener then convert to tokio::net::TcpListener
-    // to ensure the port is bound before we open the browser.
+    let response = http_client
+        .post(url)
+        .json(&RegisterRequest {
+            email,
+            password,
+            name,
+            username,
+        })
+        .send()
+        .await?;
 
-    // Bind to port 0 (ephemeral port),
-    // The OS will assign an available port.
-    let bind_addr = "localhost:0";
-
-    info!("Attempting to bind to: {}", bind_addr);
-    let std_listener = match std::net::TcpListener::bind(bind_addr) {
-        Ok(s) => {
-            s.set_nonblocking(true).unwrap();
-            s
-        }
-        Err(e) => {
-            error!("Failed to bind callback server: {}", e);
-            return Err(OAuthError::ServerBindError(e.to_string()));
-        }
-    };
-
-    // Get the actual port assigned by the OS
-    let local_addr = std_listener
-        .local_addr()
-        .map_err(|e| OAuthError::ServerBindError(e.to_string()))?;
-    let port = local_addr.port();
-    info!("Successfully bound to {}", local_addr);
-    info!("Listening on port {} for /callback", port);
-
-    let redirect_uri = format!("http://localhost:{}/callback", port);
-
-    url.query_pairs_mut()
-        .append_pair("client_id", &app_config.auth.audience)
-        .append_pair("response_type", "code")
-        .append_pair("redirect_uri", &redirect_uri)
-        .append_pair("scope", "openid email profile")
-        .append_pair("state", &state)
-        .append_pair("code_challenge", &code_challenge)
-        .append_pair("code_challenge_method", "S256");
-    let redirect_uri_clone = redirect_uri.clone();
-    let cancel_token_clone = cancel_token.clone();
-    tauri::async_runtime::spawn(async move {
-        info!("Starting callback listener task");
-        let listener = match TcpListener::from_std(std_listener) {
-            Ok(l) => l,
-            Err(e) => {
-                error!("Failed to convert listener: {}", e);
-                return;
-            }
-        };
-
-        match listen_for_callback(listener, cancel_token_clone).await {
-            Ok(params) => {
-                let (stored_state, stored_verifier) = {
-                    let guard = lock_r!(FDOLL);
-                    (
-                        guard.auth.oauth_flow.state.clone(),
-                        guard.auth.oauth_flow.code_verifier.clone(),
-                    )
-                };
-
-                if stored_state.as_deref() != Some(params.state.as_str()) {
-                    error!("State mismatch");
-                    return;
-                }
-
-                let Some(code_verifier) = stored_verifier else {
-                    error!("Code verifier missing");
-                    return;
-                };
-
-                match exchange_code_for_auth_pass(&redirect_uri_clone, params, &code_verifier).await
-                {
-                    Ok(auth_pass) => {
-                        {
-                            let mut guard = lock_w!(FDOLL);
-                            guard.auth.auth_pass = Some(auth_pass.clone());
-                            guard.auth.oauth_flow = Default::default();
-                        }
-                        if let Err(e) = save_auth_pass(&auth_pass) {
-                            error!("Failed to save auth pass: {}", e);
-                        }
-
-                        // Defer app initialization to the shared bootstrap path
-                        on_success();
-                    }
-                    Err(e) => error!("Token exchange failed: {}", e),
-                }
-            }
-            Err(OAuthError::Cancelled) => info!("Callback listener was cancelled"),
-            Err(e) => error!("Callback listener error: {}", e),
-        }
-    });
-
-    if let Err(e) = app_handle.opener().open_url(url, None::<&str>) {
-        error!("Failed to open auth portal: {}", e);
-        Err(OAuthError::OpenPortalFailed(e))
-    } else {
-        info!("Successfully called open_url for auth portal");
-        Ok(())
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(AuthError::RequestFailed(format!(
+            "Status: {}, Body: {}",
+            status, error_text
+        )));
     }
+
+    let register_response: RegisterResponse = response.json().await?;
+    Ok(register_response.id)
 }
 
-/// Refresh the access token using a refresh token.
-///
-/// This is called automatically by `get_tokens()` when the access token is expired
-/// but the refresh token is still valid.
-///
-/// # Arguments
-///
-/// * `refresh_token` - The refresh token to use
-///
-/// # Errors
-///
-/// Returns `OAuthError::RefreshFailed` if the refresh fails.
-pub async fn refresh_token(refresh_token: &str) -> Result<AuthPass, OAuthError> {
+pub async fn change_password(
+    current_password: &str,
+    new_password: &str,
+) -> Result<(), AuthError> {
+    let (app_config, http_client) = {
+        let guard = lock_r!(FDOLL);
+        let clients = guard.network.clients.as_ref();
+        if clients.is_none() {
+            error!("Clients not initialized yet!");
+            return Err(AuthError::InvalidConfig);
+        }
+        (
+            guard.app_config.clone(),
+            clients.unwrap().http_client.clone(),
+        )
+    };
+
+    let base_url = app_config
+        .api_base_url
+        .as_ref()
+        .ok_or(AuthError::InvalidConfig)?;
+    let url = format!("{}/auth/change-password", base_url);
+
+    let response = with_auth(
+        http_client.post(url).json(&ChangePasswordRequest {
+            current_password,
+            new_password,
+        }),
+    )
+    .await
+    .send()
+    .await?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(AuthError::RequestFailed(format!(
+            "Status: {}, Body: {}",
+            status, error_text
+        )));
+    }
+
+    Ok(())
+}
+
+pub async fn reset_password(old_password: &str, new_password: &str) -> Result<(), AuthError> {
+    let (app_config, http_client) = {
+        let guard = lock_r!(FDOLL);
+        let clients = guard.network.clients.as_ref();
+        if clients.is_none() {
+            error!("Clients not initialized yet!");
+            return Err(AuthError::InvalidConfig);
+        }
+        (
+            guard.app_config.clone(),
+            clients.unwrap().http_client.clone(),
+        )
+    };
+
+    let base_url = app_config
+        .api_base_url
+        .as_ref()
+        .ok_or(AuthError::InvalidConfig)?;
+    let url = format!("{}/auth/reset-password", base_url);
+
+    let response = with_auth(
+        http_client.post(url).json(&ResetPasswordRequest {
+            old_password,
+            new_password,
+        }),
+    )
+    .await
+    .send()
+    .await?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(AuthError::RequestFailed(format!(
+            "Status: {}, Body: {}",
+            status, error_text
+        )));
+    }
+
+    Ok(())
+}
+
+pub async fn refresh_token(access_token: &str) -> Result<AuthPass, AuthError> {
     let (app_config, http_client) = {
         let guard = lock_r!(FDOLL);
         (
@@ -681,165 +467,38 @@ pub async fn refresh_token(refresh_token: &str) -> Result<AuthPass, OAuthError> 
         )
     };
 
-    let url = url::Url::parse(&format!("{}/token", &app_config.auth.auth_url))
-        .map_err(|_| OAuthError::InvalidConfig)?;
+    let base_url = app_config
+        .api_base_url
+        .as_ref()
+        .ok_or(AuthError::InvalidConfig)?;
+    let url = format!("{}/auth/refresh", base_url);
 
-    let body = form_urlencoded::Serializer::new(String::new())
-        .append_pair("client_id", &app_config.auth.audience)
-        .append_pair("grant_type", "refresh_token")
-        .append_pair("refresh_token", refresh_token)
-        .finish();
-
-    info!("Refreshing access token");
-
-    let refresh_request = http_client
+    let response = http_client
         .post(url)
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .body(body);
+        .header("Authorization", format!("Bearer {}", access_token))
+        .send()
+        .await?;
 
-    let refresh_response = refresh_request.send().await?;
-
-    if !refresh_response.status().is_success() {
-        let status = refresh_response.status();
-        let error_text = refresh_response.text().await.unwrap_or_default();
-        error!(
-            "Token refresh failed with status {}: {}",
-            status, error_text
-        );
-        return Err(OAuthError::RefreshFailed);
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        error!("Token refresh failed with status {}: {}", status, error_text);
+        return Err(AuthError::RefreshFailed);
     }
 
-    let mut auth_pass: AuthPass = refresh_response.json().await?;
-    auth_pass.issued_at = Some(
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| OAuthError::RefreshFailed)?
-            .as_secs(),
-    );
-
-    // Update state and storage
+    let refresh_response: LoginResponse = response.json().await?;
+    let auth_pass = build_auth_pass(refresh_response.access_token, refresh_response.expires_in)?;
     lock_w!(FDOLL).auth.auth_pass = Some(auth_pass.clone());
-    if let Err(e) = save_auth_pass(&auth_pass) {
-        error!("Failed to save refreshed auth pass: {}", e);
-    } else {
-        info!("Token refreshed successfully");
-    }
-
+    save_auth_pass(&auth_pass)?;
     Ok(auth_pass)
 }
 
-/// Start a local HTTP server to listen for the OAuth callback.
-///
-/// This function starts a mini web server that listens on the configured redirect host
-/// for the OAuth callback. It:
-/// - Listens on the `/callback` endpoint
-/// - Validates all required parameters are present
-/// - Returns a nice HTML page to the user
-/// - Has a 5-minute timeout to prevent hanging indefinitely
-/// - Also provides a `/health` endpoint for health checks
-///
-/// # Timeout
-///
-/// The server will timeout after 5 minutes if no callback is received,
-/// preventing the server from running indefinitely if the user abandons the flow.
-///
-/// # Errors
-///
-/// Returns `OAuthError` if:
-/// - Required callback parameters are missing
-/// - Timeout is reached before callback is received
-async fn listen_for_callback(
-    listener: TcpListener,
-    cancel_token: CancellationToken,
-) -> Result<OAuthCallbackParams, OAuthError> {
-    // Set a 5-minute timeout
-    let timeout = Duration::from_secs(300);
-    let start_time = Instant::now();
-
-    loop {
-        let elapsed = start_time.elapsed();
-        if elapsed > timeout {
-            warn!("Callback listener timed out after 5 minutes");
-            return Err(OAuthError::CallbackTimeout);
-        }
-
-        let remaining = timeout - elapsed;
-
-        let accept_result = tokio::select! {
-            _ = cancel_token.cancelled() => {
-                info!("Callback listener cancelled");
-                return Err(OAuthError::Cancelled);
-            },
-            res = tokio::time::timeout(remaining, listener.accept()) => res,
-        };
-
-        let (mut stream, _): (TcpStream, _) = match accept_result {
-            Ok(Ok(res)) => res,
-            Ok(Err(e)) => {
-                warn!("Accept error: {}", e);
-                continue;
-            }
-            Err(_) => {
-                warn!("Callback listener timed out after 5 minutes");
-                return Err(OAuthError::CallbackTimeout);
-            }
-        };
-
-        let mut buffer = [0; 4096];
-        let n = match stream.read(&mut buffer).await {
-            Ok(n) if n > 0 => n,
-            _ => continue,
-        };
-
-        let request = String::from_utf8_lossy(&buffer[..n]);
-        let first_line = request.lines().next().unwrap_or("");
-        let mut parts = first_line.split_whitespace();
-
-        match (parts.next(), parts.next()) {
-            (Some("GET"), Some(path)) if path.starts_with("/callback") => {
-                let full_url = format!("http://localhost{}", path);
-                let url = match url::Url::parse(&full_url) {
-                    Ok(u) => u,
-                    Err(_) => continue,
-                };
-
-                let params: std::collections::HashMap<_, _> =
-                    url.query_pairs().into_owned().collect();
-
-                info!("Received OAuth callback");
-
-                let find_param = |key: &str| -> Result<String, OAuthError> {
-                    params
-                        .get(key)
-                        .cloned()
-                        .ok_or_else(|| OAuthError::MissingParameter(key.to_string()))
-                };
-
-                let callback_params = OAuthCallbackParams {
-                    state: find_param("state")?,
-                    code: find_param("code")?,
-                };
-
-                let response = format!(
-                    "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
-                    AUTH_SUCCESS_HTML.len(),
-                    AUTH_SUCCESS_HTML
-                );
-
-                let _ = stream.write_all(response.as_bytes()).await;
-                let _ = stream.flush().await;
-
-                info!("Callback processed, stopping listener");
-                return Ok(callback_params);
-            }
-            (Some("GET"), Some("/health")) => {
-                let response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
-                let _ = stream.write_all(response.as_bytes()).await;
-            }
-            _ => {
-                let response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
-                let _ = stream.write_all(response.as_bytes()).await;
-            }
-        }
-    }
+pub async fn login_and_init_session(email: &str, password: &str) -> Result<(), AuthError> {
+    login(email, password).await?;
+    close_welcome_window();
+    tauri::async_runtime::spawn(async {
+        construct_user_session().await;
+        close_splash_window();
+    });
+    Ok(())
 }

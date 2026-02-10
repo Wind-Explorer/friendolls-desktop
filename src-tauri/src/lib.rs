@@ -4,7 +4,7 @@ use crate::services::{
 };
 use commands::app::{quit_app, restart_app, retry_connection};
 use commands::app_data::{get_app_data, refresh_app_data};
-use commands::auth::{logout_and_restart, start_auth_flow};
+use commands::auth::{change_password, login, logout_and_restart, register, reset_password};
 use commands::config::{get_client_config, open_client_config_manager, save_client_config};
 use commands::dolls::{
     create_doll, delete_doll, get_doll, get_dolls, remove_active_doll, set_active_doll, update_doll,
@@ -81,7 +81,10 @@ pub fn run() {
             open_doll_editor_window,
             set_scene_interactive,
             set_pet_menu_state,
-            start_auth_flow,
+            login,
+            register,
+            change_password,
+            reset_password,
             logout_and_restart,
             send_interaction_cmd,
             send_user_status_cmd

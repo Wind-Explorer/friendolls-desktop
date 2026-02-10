@@ -2,19 +2,12 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
 
-  type AuthConfig = {
-    audience: string;
-    auth_url: string;
-  };
-
   type AppConfig = {
     api_base_url?: string | null;
-    auth: AuthConfig;
   };
 
   let form: AppConfig = {
     api_base_url: "",
-    auth: { audience: "", auth_url: "" },
   };
 
   let saving = false;
@@ -27,10 +20,6 @@
       const config = (await invoke("get_client_config")) as AppConfig;
       form = {
         api_base_url: config.api_base_url ?? "",
-        auth: {
-          audience: config.auth.audience,
-          auth_url: config.auth.auth_url,
-        },
       };
     } catch (err) {
       errorMessage = `Failed to load config: ${err}`;
@@ -38,23 +27,6 @@
   };
 
   const validate = () => {
-    if (!form.auth.auth_url.trim()) {
-      return "Auth URL is required";
-    }
-
-    try {
-      const parsed = new URL(form.auth.auth_url.trim());
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        return "Auth URL must start with http or https";
-      }
-    } catch (e) {
-      return "Auth URL must be a valid URL";
-    }
-
-    if (!form.auth.audience.trim()) {
-      return "JWT audience is required";
-    }
-
     if (form.api_base_url?.trim()) {
       try {
         const parsed = new URL(
@@ -86,10 +58,6 @@
       await invoke("save_client_config", {
         config: {
           api_base_url: form.api_base_url?.trim() || null,
-          auth: {
-            audience: form.auth.audience.trim(),
-            auth_url: form.auth.auth_url.trim(),
-          },
         },
       });
 
@@ -117,7 +85,7 @@
   <div class="flex flex-col gap-4 w-full">
     <div class="flex flex-col gap-1">
       <p class="text-xl font-semibold">Client Configuration</p>
-      <p class="opacity-70 text-sm">Set custom API and auth endpoints.</p>
+      <p class="opacity-70 text-sm">Set a custom API endpoint.</p>
     </div>
 
     <div class="flex flex-col gap-3">
@@ -128,14 +96,6 @@
           bind:value={form.api_base_url}
           placeholder="https://api.fdolls.adamcv.com"
         />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-sm">Auth URL</span>
-        <input class="input input-bordered" bind:value={form.auth.auth_url} />
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-sm">JWT Audience</span>
-        <input class="input input-bordered" bind:value={form.auth.audience} />
       </label>
     </div>
 

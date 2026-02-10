@@ -9,15 +9,8 @@ use url::Url;
 use crate::get_app_handle;
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
-pub struct AuthConfig {
-    pub audience: String,
-    pub auth_url: String,
-}
-
-#[derive(Default, Serialize, Deserialize, Clone, Debug)]
 pub struct AppConfig {
     pub api_base_url: Option<String>,
-    pub auth: AuthConfig,
 }
 
 #[derive(Debug, Error)]
@@ -39,8 +32,6 @@ pub enum ClientConfigError {
 pub static CLIENT_CONFIG_MANAGER_WINDOW_LABEL: &str = "client_config_manager";
 const CONFIG_FILENAME: &str = "client_config.json";
 const DEFAULT_API_BASE_URL: &str = "https://api.fdolls.adamcv.com";
-const DEFAULT_AUTH_URL: &str = "https://auth.adamcv.com/realms/friendolls/protocol/openid-connect";
-const DEFAULT_JWT_AUDIENCE: &str = "friendolls-desktop";
 
 fn config_file_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, ClientConfigError> {
     let dir = app_handle
@@ -79,26 +70,12 @@ fn sanitize(mut config: AppConfig) -> AppConfig {
         .or_else(|| Some(DEFAULT_API_BASE_URL.to_string()))
         .map(|v| strip_trailing_slash(&v));
 
-    let auth_url_trimmed = config.auth.auth_url.trim();
-    config.auth.auth_url =
-        parse_http_url(auth_url_trimmed).unwrap_or_else(|| DEFAULT_AUTH_URL.to_string());
-
-    if config.auth.audience.trim().is_empty() {
-        config.auth.audience = DEFAULT_JWT_AUDIENCE.to_string();
-    } else {
-        config.auth.audience = config.auth.audience.trim().to_string();
-    }
-
     config
 }
 
 pub fn default_app_config() -> AppConfig {
     AppConfig {
         api_base_url: Some(DEFAULT_API_BASE_URL.to_string()),
-        auth: AuthConfig {
-            audience: DEFAULT_JWT_AUDIENCE.to_string(),
-            auth_url: DEFAULT_AUTH_URL.to_string(),
-        },
     }
 }
 

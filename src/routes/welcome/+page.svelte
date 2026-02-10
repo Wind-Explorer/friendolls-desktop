@@ -5,17 +5,59 @@
   import ExternalLink from "../../assets/icons/external-link.svelte";
 
   let isContinuing = false;
+  let useRegister = false;
+  let errorMessage = "";
+  let form = {
+    email: "",
+    password: "",
+    name: "",
+    username: "",
+  };
+
+  const normalizeError = (value: unknown) => {
+    if (value instanceof Error) {
+      return value.message;
+    }
+    return typeof value === "string" ? value : "Something went wrong";
+  };
 
   const handleContinue = async () => {
     if (isContinuing) return;
+    if (!form.email.trim() || !form.password) {
+      errorMessage = "Email and password are required";
+      return;
+    }
     isContinuing = true;
+    errorMessage = "";
     try {
-      await invoke("start_auth_flow");
+      if (useRegister) {
+        await invoke("register", {
+          email: form.email.trim(),
+          password: form.password,
+          name: form.name.trim() || null,
+          username: form.username.trim() || null,
+        });
+        useRegister = false;
+        resetRegisterFields();
+        form.password = "";
+        return;
+      }
+
+      await invoke("login", {
+        email: form.email.trim(),
+        password: form.password,
+      });
       await getCurrentWebviewWindow().close();
     } catch (error) {
-      console.error("Failed to start auth flow", error);
-      isContinuing = false;
+      console.error("Failed to authenticate", error);
+      errorMessage = normalizeError(error);
     }
+    isContinuing = false;
+  };
+
+  const resetRegisterFields = () => {
+    form.name = "";
+    form.username = "";
   };
 
   const openClientConfigManager = async () => {
@@ -42,7 +84,47 @@
               a cute passive socialization layer!
             </p>
           </div>
-          <div class="flex flex-col gap-4 *:w-max">
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-2">
+              <label class="flex flex-col gap-1">
+                <span class="text-xs opacity-60">Email</span>
+                <input
+                  class="input input-bordered input-sm"
+                  type="email"
+                  autocomplete="email"
+                  bind:value={form.email}
+                  placeholder="you@example.com"
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs opacity-60">Password</span>
+                <input
+                  class="input input-bordered input-sm"
+                  type="password"
+                  autocomplete={useRegister ? "new-password" : "current-password"}
+                  bind:value={form.password}
+                  placeholder="••••••••"
+                />
+              </label>
+              {#if useRegister}
+                <label class="flex flex-col gap-1">
+                  <span class="text-xs opacity-60">Name (optional)</span>
+                  <input
+                    class="input input-bordered input-sm"
+                    autocomplete="name"
+                    bind:value={form.name}
+                  />
+                </label>
+                <label class="flex flex-col gap-1">
+                  <span class="text-xs opacity-60">Username (optional)</span>
+                  <input
+                    class="input input-bordered input-sm"
+                    autocomplete="username"
+                    bind:value={form.username}
+                  />
+                </label>
+              {/if}
+            </div>
             <button
               class="btn btn-primary btn-xl"
               onclick={handleContinue}
@@ -54,20 +136,36 @@
                 <div class="scale-70">
                   <ExternalLink />
                 </div>
-                Sign in
+                {useRegister ? "Create account" : "Sign in"}
               {/if}
             </button>
             <button
-              class="btn btn-link p-0 btn-sm text-base-content"
+              class="btn btn-ghost btn-sm px-0 justify-start"
+              onclick={() => {
+                useRegister = !useRegister;
+                errorMessage = "";
+                if (!useRegister) {
+                  resetRegisterFields();
+                }
+              }}
+            >
+              {useRegister ? "Already have an account? Sign in" : "New here? Create an account"}
+            </button>
+            <button
+              class="btn btn-link p-0 btn-sm text-base-content w-max"
               onclick={openClientConfigManager}
             >
               Advanced options
             </button>
           </div>
 
-          <p class="text-xs opacity-50 max-w-60">
-            An account is needed to identify you for connecting with friends.
-          </p>
+          {#if errorMessage}
+            <p class="text-xs text-error max-w-72">{errorMessage}</p>
+          {:else}
+            <p class="text-xs opacity-50 max-w-60">
+              An account is needed to identify you for connecting with friends.
+            </p>
+          {/if}
         </div>
       </div>
       <div>
