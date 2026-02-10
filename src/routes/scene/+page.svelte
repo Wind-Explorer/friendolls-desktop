@@ -163,7 +163,9 @@
           username: $appData.user.username,
           activeDoll: getUserDoll() ?? null,
         }}
-        userStatus={undefined}
+        userStatus={appMetadata
+          ? { appMetadata: appMetadata, state: "idle" }
+          : undefined}
         doll={getUserDoll()}
         isInteractive={false}
       />
