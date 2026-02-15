@@ -1,10 +1,12 @@
 use tauri::Manager;
 use tracing::{error, info, warn};
 
-use crate::get_app_handle;
+use crate::{get_app_handle, lock_w};
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::{fs, path::PathBuf};
+use std::fs;
+
+pub mod runtime;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ModuleMetadata {
@@ -13,7 +15,7 @@ pub struct ModuleMetadata {
     pub description: Option<String>,
 }
 
-fn get_module_metadata(path: PathBuf) -> Option<ModuleMetadata> {
+fn get_module_metadata(path: &std::path::Path) -> Option<ModuleMetadata> {
     let metadata_path = path.join("metadata.json");
     if metadata_path.exists() {
         match fs::read_to_string(&metadata_path) {
@@ -65,6 +67,15 @@ pub fn init_modules() {
         }
     };
 
+    let state = lock_w!(crate::state::FDOLL);
+    let mut state_guard = match state.module_handles.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            error!("Failed to lock module handles: {}", e);
+            return;
+        }
+    };
+
     for entry in entries {
         let entry = match entry {
             Ok(entry) => entry,
@@ -76,12 +87,26 @@ pub fn init_modules() {
 
         let path = entry.path();
         if path.is_dir() {
-            let module_metadata = match get_module_metadata(path) {
+            let module_metadata = match get_module_metadata(&path) {
                 Some(metadata) => metadata,
                 None => continue,
             };
-            dbg!(module_metadata);
-            // TODO: Initialize the module based on metadata
+            let script_path = path.join("main.lua");
+            if script_path.exists() {
+                match runtime::spawn_lua_runtime_from_path(&script_path) {
+                    Ok(handle) => {
+                        state_guard.push(handle);
+                    }
+                    Err(e) => {
+                        error!(
+                            "Failed to spawn runtime for module {}: {}",
+                            module_metadata.name, e
+                        );
+                    }
+                }
+            } else {
+                warn!("Module {} has no main.lua script", module_metadata.name);
+            }
         }
     }
 }

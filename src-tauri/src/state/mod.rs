@@ -19,6 +19,7 @@ pub struct AppState {
     pub auth: AuthState,
     pub user_data: AppData,
     pub tray: Option<TrayIcon>,
+    pub module_handles: std::sync::Mutex<Vec<std::thread::JoinHandle<()>>>,
 }
 
 // Global application state
@@ -36,6 +37,7 @@ pub fn init_app_state() {
         guard.network = init_network_state();
         guard.auth = init_auth_state();
         guard.user_data = AppData::default();
+        guard.module_handles = std::sync::Mutex::new(Vec::new());
     }
     update_display_dimensions_for_scene_state();
     info!("Initialized FDOLL state (WebSocket client & user data initializing asynchronously)");
