@@ -7,6 +7,7 @@ use crate::{
         active_app::init_foreground_app_change_listener,
         auth::get_session_token,
         cursor::init_cursor_tracking,
+        modules::init_modules,
         scene::{close_splash_window, open_splash_window},
         welcome::open_welcome_window,
     },
@@ -25,6 +26,7 @@ pub async fn launch_app() {
     init_app_state();
     init_system_tray();
     init_cursor_tracking().await;
+    init_modules();
     init_foreground_app_change_listener();
 
     if let Err(err) = validate_server_health().await {
