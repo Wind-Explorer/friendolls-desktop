@@ -1,17 +1,24 @@
-use mlua::{Lua, UserData, UserDataMethods};
+use mlua::{Lua, LuaSerdeExt, UserData, UserDataMethods, Value};
 use std::{path::Path, thread, time::Duration};
 use tracing::{error, info};
+
+use super::models::PresenceStatus;
 
 pub struct Engine;
 
 impl UserData for Engine {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("log", |_, _, message: String| {
             info!("{}", message);
             Ok(())
         });
         methods.add_method("sleep", |_, _, seconds: u64| {
             thread::sleep(Duration::from_secs(seconds));
+            Ok(())
+        });
+        methods.add_method("update_status", |lua, _, value: Value| {
+            let status: PresenceStatus = lua.from_value(value)?;
+            dbg!(status);
             Ok(())
         });
     }

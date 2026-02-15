@@ -7,7 +7,7 @@ use crate::{
         active_app::init_foreground_app_change_listener,
         auth::get_session_token,
         cursor::init_cursor_tracking,
-        modules::init_modules,
+        presence_modules::init_modules,
         scene::{close_splash_window, open_splash_window},
         welcome::open_welcome_window,
     },

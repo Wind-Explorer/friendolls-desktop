@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs;
 
+pub mod models;
 pub mod runtime;
 
 #[derive(Serialize, Deserialize, Debug)]
