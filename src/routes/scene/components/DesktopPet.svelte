@@ -12,14 +12,14 @@
   import PetMenu from "./PetMenu.svelte";
   import type { DollDto } from "../../../types/bindings/DollDto";
   import type { UserBasicDto } from "../../../types/bindings/UserBasicDto";
-  import type { AppMetadata } from "../../../types/bindings/AppMetadata";
-  import type { FriendUserStatus } from "../../../events/user-status";
+  import type { PresenceStatus } from "../../../types/bindings/PresenceStatus";
+  import type { UserStatus } from "../../../events/user-status";
 
   export let id = "";
   export let targetX = 0;
   export let targetY = 0;
   export let user: UserBasicDto;
-  export let userStatus: FriendUserStatus | undefined = undefined;
+  export let userStatus: UserStatus | undefined = undefined;
   export let doll: DollDto | undefined = undefined;
   export let isInteractive = false;
 
@@ -160,9 +160,9 @@
   {/if}
   {#if userStatus}
     <div class="absolute -top-5 left-0 right-0 w-max mx-auto">
-      {#if userStatus.appMetadata.appIconB64}
+      {#if userStatus.presenceStatus.graphicsB64}
         <img
-          src={`data:image/png;base64,${userStatus.appMetadata.appIconB64}`}
+          src={`data:image/png;base64,${userStatus.presenceStatus.graphicsB64}`}
           alt="Friend's active app icon"
           class="size-4"
         />

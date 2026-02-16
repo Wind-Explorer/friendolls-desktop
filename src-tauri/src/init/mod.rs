@@ -4,7 +4,6 @@ use crate::{
         tracing::init_logging,
     },
     services::{
-        active_app::init_foreground_app_change_listener,
         auth::get_session_token,
         cursor::init_cursor_tracking,
         presence_modules::init_modules,
@@ -27,7 +26,6 @@ pub async fn launch_app() {
     init_system_tray();
     init_cursor_tracking().await;
     init_modules();
-    init_foreground_app_change_listener();
 
     if let Err(err) = validate_server_health().await {
         handle_disasterous_failure(Some(err.to_string())).await;

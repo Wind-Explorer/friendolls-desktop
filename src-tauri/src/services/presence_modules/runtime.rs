@@ -1,6 +1,10 @@
 use mlua::{Lua, LuaSerdeExt, UserData, UserDataMethods, Value};
 use std::{path::Path, thread, time::Duration};
-use tracing::{error, info};
+use tokio::runtime::Runtime;
+use tracing::{error, info, warn};
+
+use crate::services::ws::user_status::{report_user_status, UserStatusPayload};
+use crate::services::ws::{ws_emit_soft, WS_EVENT};
 
 use super::models::PresenceStatus;
 
@@ -18,19 +22,34 @@ impl UserData for Engine {
         });
         methods.add_method("update_status", |lua, _, value: Value| {
             let status: PresenceStatus = lua.from_value(value)?;
-            dbg!(status);
+            let rt = Runtime::new().unwrap();
+            rt.block_on(update_status(status));
+            Ok(())
+        });
+        methods.add_async_method("update_status_async", |lua, _, value: Value| async move {
+            let status: PresenceStatus = lua.from_value(value)?;
+            update_status_async(status).await;
             Ok(())
         });
     }
 }
 
-fn load_script(path: &Path) -> Result<String, std::io::Error> {
-    std::fs::read_to_string(path)
+async fn update_status(status: PresenceStatus) {
+    let user_status = UserStatusPayload {
+        presence_status: status,
+        state: String::from("idle"),
+    };
+    report_user_status(user_status).await;
 }
 
-fn setup_engine_globals(lua: &Lua) -> Result<(), mlua::Error> {
-    let globals = lua.globals();
-    globals.set("engine", Engine)
+async fn update_status_async(status: PresenceStatus) {
+    let payload = UserStatusPayload {
+        presence_status: status,
+        state: String::from("idle"),
+    };
+    if let Err(e) = ws_emit_soft(WS_EVENT::CLIENT_REPORT_USER_STATUS, payload).await {
+        warn!("User status report failed: {}", e);
+    }
 }
 
 pub fn spawn_lua_runtime(script: &str) -> thread::JoinHandle<()> {
@@ -38,8 +57,9 @@ pub fn spawn_lua_runtime(script: &str) -> thread::JoinHandle<()> {
 
     thread::spawn(move || {
         let lua = Lua::new();
+        let globals = lua.globals();
 
-        if let Err(e) = setup_engine_globals(&lua) {
+        if let Err(e) = globals.set("engine", Engine) {
             error!("Failed to set engine global: {}", e);
             return;
         }
@@ -52,6 +72,6 @@ pub fn spawn_lua_runtime(script: &str) -> thread::JoinHandle<()> {
 }
 
 pub fn spawn_lua_runtime_from_path(path: &Path) -> Result<thread::JoinHandle<()>, std::io::Error> {
-    let script = load_script(path)?;
+    let script = std::fs::read_to_string(path)?;
     Ok(spawn_lua_runtime(&script))
 }

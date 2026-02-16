@@ -2,7 +2,6 @@ use tauri::Manager;
 
 use crate::get_app_handle;
 
-pub mod active_app;
 pub mod app_menu;
 pub mod auth;
 pub mod client_config_manager;

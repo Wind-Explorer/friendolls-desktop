@@ -15,7 +15,6 @@ use commands::friends::{
 };
 use commands::interaction::send_interaction_cmd;
 use commands::sprite::recolor_gif_base64;
-use commands::user_status::send_user_status_cmd;
 use tauri::async_runtime;
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
@@ -87,7 +86,6 @@ pub fn run() {
             reset_password,
             logout_and_restart,
             send_interaction_cmd,
-            send_user_status_cmd
         ])
         .setup(|app| {
             APP_HANDLE

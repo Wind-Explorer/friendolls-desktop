@@ -6,12 +6,15 @@
   } from "../../events/cursor";
   import { appData } from "../../events/app-data";
   import { sceneInteractive } from "../../events/scene-interactive";
-  import { friendsUserStatuses } from "../../events/user-status";
+  import {
+    friendsUserStatuses,
+    type UserStatus,
+  } from "../../events/user-status";
   import { invoke } from "@tauri-apps/api/core";
   import DesktopPet from "./components/DesktopPet.svelte";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
-  import type { AppMetadata } from "../../types/bindings/AppMetadata";
+  import type { PresenceStatus } from "../../types/bindings/PresenceStatus";
   import type { DollDto } from "../../types/bindings/DollDto";
 
   let innerWidth = $state(0);
@@ -43,11 +46,12 @@
     return $appData?.dolls?.find((d) => d.id === user.activeDollId);
   }
 
-  let appMetadata: AppMetadata | null = $state(null);
+  let presenceStatus: PresenceStatus | null = $state(null);
 
   onMount(() => {
-    const unlisten = listen<AppMetadata>("active-app-changed", (event) => {
-      appMetadata = event.payload;
+    const unlisten = listen<UserStatus>("user-status-changed", (event) => {
+      console.log("event received");
+      presenceStatus = event.payload.presenceStatus;
     });
 
     return () => {
@@ -89,14 +93,14 @@
       </span>
 
       <span class="font-mono text-xs badge py-3 flex items-center gap-2">
-        {#if appMetadata?.appIconB64}
+        {#if presenceStatus?.graphicsB64}
           <img
-            src={`data:image/png;base64,${appMetadata.appIconB64}`}
+            src={`data:image/png;base64,${presenceStatus.graphicsB64}`}
             alt="Active app icon"
             class="size-4"
           />
         {/if}
-        {appMetadata?.localized}
+        {presenceStatus?.title}
       </span>
 
       {#if Object.keys($friendsCursorPositions).length > 0}
@@ -115,15 +119,15 @@
                   {#if status}
                     <span class="flex items-center gap-1">
                       {status.state} in
-                      {#if status.appMetadata.appIconB64}
+                      {#if status.presenceStatus.graphicsB64}
                         <img
-                          src={`data:image/png;base64,${status.appMetadata.appIconB64}`}
+                          src={`data:image/png;base64,${status.presenceStatus.graphicsB64}`}
                           alt="Friend's active app icon"
                           class="size-4"
                         />
                       {/if}
-                      {status.appMetadata.localized ||
-                        status.appMetadata.unlocalized}
+                      {status.presenceStatus.title ||
+                        status.presenceStatus.subtitle}
                     </span>
                   {/if}
                 </div>
@@ -163,8 +167,8 @@
           username: $appData.user.username,
           activeDoll: getUserDoll() ?? null,
         }}
-        userStatus={appMetadata
-          ? { appMetadata: appMetadata, state: "idle" }
+        userStatus={presenceStatus
+          ? { presenceStatus: presenceStatus, state: "idle" }
           : undefined}
         doll={getUserDoll()}
         isInteractive={false}

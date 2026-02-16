@@ -21,12 +21,12 @@ mod handlers;
 mod interaction;
 mod refresh;
 mod types;
-mod user_status;
+pub mod user_status;
 mod utils;
 
 pub mod client;
 
 // Re-export public API
 pub use cursor::report_cursor_data;
+pub use emitter::ws_emit_soft;
 pub use types::WS_EVENT;
-pub use user_status::{report_user_status, UserStatusPayload};

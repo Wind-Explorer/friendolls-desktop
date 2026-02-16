@@ -28,11 +28,11 @@ async fn do_emit<T: Serialize + Send + 'static>(
     let (client_opt, is_initialized) = get_ws_state();
 
     let Some(client) = client_opt else {
-        return Ok(()); // Client not available, silent skip
+        return Ok(());
     };
 
     if !is_initialized {
-        return Ok(()); // Not initialized yet, silent skip
+        return Ok(());
     }
 
     let payload_value = serde_json::to_value(&payload)
@@ -62,7 +62,10 @@ async fn handle_soft_emit_failure(err_msg: &str) {
     };
 
     if should_reinit {
-        warn!("WebSocket emit failed {} times, reinitializing connection", MAX_FAILURES);
+        warn!(
+            "WebSocket emit failed {} times, reinitializing connection",
+            MAX_FAILURES
+        );
         let _ = crate::services::ws::client::clear_ws_client().await;
         crate::services::ws::client::establish_websocket_connection().await;
     } else {
