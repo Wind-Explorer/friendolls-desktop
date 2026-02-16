@@ -1,20 +1,12 @@
 use tauri::Manager;
 use tracing::{error, info, warn};
 
-use crate::{get_app_handle, lock_w};
-use serde::{Deserialize, Serialize};
+use crate::{get_app_handle, lock_w, services::presence_modules::models::ModuleMetadata};
 use serde_json;
 use std::fs;
 
 pub mod models;
 pub mod runtime;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ModuleMetadata {
-    pub name: String,
-    pub version: String,
-    pub description: Option<String>,
-}
 
 fn get_module_metadata(path: &std::path::Path) -> Option<ModuleMetadata> {
     let metadata_path = path.join("metadata.json");

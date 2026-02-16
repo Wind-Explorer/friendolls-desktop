@@ -9,3 +9,10 @@ pub struct PresenceStatus {
     pub subtitle: Option<String>,
     pub graphics_b64: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ModuleMetadata {
+    pub name: String,
+    pub version: String,
+    pub description: Option<String>,
+}

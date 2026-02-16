@@ -20,6 +20,14 @@ impl UserData for Engine {
             thread::sleep(Duration::from_secs(seconds));
             Ok(())
         });
+        methods.add_method("path_from_relative", |lua, _, relative_path: String| {
+            let script_path: String = lua.globals().get("script_path")?;
+            let path = Path::new(&script_path);
+            let parent = path.parent().unwrap_or(path);
+            let full_path = parent.join(&relative_path);
+            Ok(full_path.to_string_lossy().to_string())
+        });
+        methods.add_method("get_platform", |_, _, ()| Ok(std::env::consts::OS));
         methods.add_method("update_status", |lua, _, value: Value| {
             let status: PresenceStatus = lua.from_value(value)?;
             let rt = Runtime::new().unwrap();
@@ -52,12 +60,26 @@ async fn update_status_async(status: PresenceStatus) {
     }
 }
 
-pub fn spawn_lua_runtime(script: &str) -> thread::JoinHandle<()> {
-    let script = script.to_string();
+pub fn spawn_lua_runtime(script_path: &Path) -> thread::JoinHandle<()> {
+    let script_path = script_path.to_owned();
 
     thread::spawn(move || {
-        let lua = Lua::new();
+        let lua = unsafe { Lua::unsafe_new() };
         let globals = lua.globals();
+
+        // Set script_path for engine methods to access
+        if let Err(e) = globals.set("script_path", script_path.to_string_lossy().to_string()) {
+            error!("Failed to set script_path global: {}", e);
+            return;
+        }
+
+        let script = match std::fs::read_to_string(&script_path) {
+            Ok(s) => s,
+            Err(e) => {
+                error!("Failed to read script: {}", e);
+                return;
+            }
+        };
 
         if let Err(e) = globals.set("engine", Engine) {
             error!("Failed to set engine global: {}", e);
@@ -71,6 +93,5 @@ pub fn spawn_lua_runtime(script: &str) -> thread::JoinHandle<()> {
 }
 
 pub fn spawn_lua_runtime_from_path(path: &Path) -> Result<thread::JoinHandle<()>, std::io::Error> {
-    let script = std::fs::read_to_string(path)?;
-    Ok(spawn_lua_runtime(&script))
+    Ok(spawn_lua_runtime(path))
 }
