@@ -12,18 +12,10 @@ use tracing::{error, info, warn};
 static REFRESH_LOCK: once_cell::sync::Lazy<Mutex<()>> =
     once_cell::sync::Lazy::new(|| Mutex::new(()));
 
+#[derive(Default)]
 pub struct AuthState {
     pub auth_pass: Option<AuthPass>,
     pub background_refresh_token: Option<tokio_util::sync::CancellationToken>,
-}
-
-impl Default for AuthState {
-    fn default() -> Self {
-        Self {
-            auth_pass: None,
-            background_refresh_token: None,
-        }
-    }
 }
 
 pub fn init_auth_state() -> AuthState {
@@ -46,9 +38,7 @@ pub fn init_auth_state() -> AuthState {
 /// Automatically refreshes if expired and clears session on refresh failure.
 pub async fn get_auth_pass_with_refresh() -> Option<AuthPass> {
     info!("Retrieving tokens");
-    let Some(auth_pass) = ({ lock_r!(FDOLL).auth.auth_pass.clone() }) else {
-        return None;
-    };
+    let auth_pass = lock_r!(FDOLL).auth.auth_pass.clone()?;
 
     let Some(issued_at) = auth_pass.issued_at else {
         warn!("Auth pass missing issued_at timestamp, clearing");

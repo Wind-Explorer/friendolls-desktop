@@ -56,7 +56,7 @@ pub async fn update_doll(id: String, dto: UpdateDollDto) -> Result<DollDto, Stri
 
 #[tauri::command]
 pub async fn delete_doll(id: String) -> Result<(), String> {
-    let result = DollsRemote::new()
+    DollsRemote::new()
         .delete_doll(&id)
         .await
         .map_err(|e| e.to_string())?;
@@ -69,7 +69,7 @@ pub async fn delete_doll(id: String) -> Result<(), String> {
         is_active.then_some(&[AppDataRefreshScope::User, AppDataRefreshScope::Friends]),
     ).await;
 
-    Ok(result)
+    Ok(())
 }
 
 #[tauri::command]

@@ -27,7 +27,7 @@ fn get_module_metadata(path: &std::path::Path) -> Option<ModuleMetadata> {
                         metadata.name, metadata.version, metadata.description
                     );
 
-                    return Some(metadata);
+                    Some(metadata)
                 }
                 Err(e) => {
                     warn!("Failed to parse metadata.json in {}: {}", path.display(), e);

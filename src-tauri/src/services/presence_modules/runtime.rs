@@ -66,7 +66,6 @@ pub fn spawn_lua_runtime(script: &str) -> thread::JoinHandle<()> {
 
         if let Err(e) = lua.load(&script).exec() {
             error!("Failed to execute lua script: {}", e);
-            return;
         }
     })
 }

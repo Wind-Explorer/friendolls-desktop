@@ -6,19 +6,12 @@ pub struct Clients {
     pub ws_emit_failures: u8,
 }
 
+#[derive(Default)]
 pub struct NetworkState {
     pub clients: Option<Clients>,
     pub health_monitor_token: Option<tokio_util::sync::CancellationToken>,
 }
 
-impl Default for NetworkState {
-    fn default() -> Self {
-        Self {
-            clients: None,
-            health_monitor_token: None,
-        }
-    }
-}
 
 pub fn init_network_state() -> NetworkState {
     let http_client = reqwest::ClientBuilder::new()
