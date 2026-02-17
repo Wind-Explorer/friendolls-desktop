@@ -303,23 +303,29 @@
           {:else}
             <div class="flex flex-col gap-2">
               {#each friends as friend (friend.id)}
-                <div class="card px-3 py-2 bg-base-200/50">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <div class="font-light">{friend.friend.name}</div>
-                      <div class="text-xs text-base-content/70">
-                        @{friend.friend.username ?? "unknown"}
+                {#if friend.friend}
+                  <div class="card px-3 py-2 bg-base-200/50">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <div class="font-light">{friend.friend.name}</div>
+                        <div class="text-xs text-base-content/70">
+                          @{friend.friend.username ?? "unknown"}
+                        </div>
                       </div>
+                      <button
+                        class="btn btn-sm btn-outline"
+                        disabled={loading.action}
+                        on:click={() => {
+                          friend.friend
+                            ? handleUnfriend(friend.friend.id)
+                            : null;
+                        }}
+                      >
+                        Unfriend
+                      </button>
                     </div>
-                    <button
-                      class="btn btn-sm btn-outline"
-                      disabled={loading.action}
-                      on:click={() => handleUnfriend(friend.friend.id)}
-                    >
-                      Unfriend
-                    </button>
                   </div>
-                </div>
+                {/if}
               {/each}
             </div>
           {/if}

@@ -23,8 +23,8 @@
   let isInteractive = $derived($sceneInteractive);
 
   function getFriendById(userId: string) {
-    const friend = $appData?.friends?.find((f) => f.friend.id === userId);
-    return friend!.friend;
+    const friend = $appData?.friends?.find((f) => f.friend?.id === userId);
+    return friend?.friend;
   }
 
   function getFriendDoll(userId: string) {
@@ -32,8 +32,8 @@
       return $friendsActiveDolls[userId];
     }
 
-    const friend = $appData?.friends?.find((f) => f.friend.id === userId);
-    return friend?.friend.activeDoll;
+    const friend = $appData?.friends?.find((f) => f.friend?.id === userId);
+    return friend?.friend?.activeDoll;
   }
 
   function getFriendStatus(userId: string) {
@@ -109,7 +109,7 @@
             {#each Object.entries($friendsCursorPositions) as [userId, position]}
               {@const status = getFriendStatus(userId)}
               <div class="badge py-3 text-xs text-left flex flex-row gap-2">
-                <span class="font-bold">{getFriendById(userId).name}</span>
+                <span class="font-bold">{getFriendById(userId)?.name}</span>
                 <div class="flex flex-row font-mono gap-2">
                   <span>
                     ({position.mapped.x.toFixed(3)}, {position.mapped.y.toFixed(
@@ -143,12 +143,13 @@
     {#if Object.keys($friendsCursorPositions).length > 0}
       {#each Object.entries($friendsCursorPositions) as [userId, position]}
         {@const doll = getFriendDoll(userId)}
-        {#if doll}
+        {@const friend = getFriendById(userId)}
+        {#if doll && friend}
           <DesktopPet
             id={userId}
             targetX={position.mapped.x * innerWidth}
             targetY={position.mapped.y * innerHeight}
-            user={getFriendById(userId)}
+            user={friend}
             userStatus={getFriendStatus(userId)}
             {doll}
             {isInteractive}

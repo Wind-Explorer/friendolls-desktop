@@ -18,7 +18,7 @@ pub struct UserBasicDto {
 #[ts(export)]
 pub struct FriendshipResponseDto {
     pub id: String,
-    pub friend: UserBasicDto,
+    pub friend: Option<UserBasicDto>,
     pub created_at: String,
 }
 
