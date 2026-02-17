@@ -126,26 +126,9 @@ pub fn save_app_config(config: AppConfig) -> Result<AppConfig, ClientConfigError
     Ok(sanitized)
 }
 
+#[tauri::command]
 pub fn open_config_manager_window() -> Result<(), ClientConfigError> {
     let app_handle = get_app_handle();
-
-    // Directly run on main thread via dispatch but handle errors properly
-    // This is essentially what we did but let's simplify and make sure we don't block
-    let handle_for_closure = app_handle.clone();
-
-    // We want to return immediately, the window creation happens asynchronously on main thread
-    let _ = app_handle.run_on_main_thread(move || {
-        if let Err(e) = open_config_manager_window_inner(&handle_for_closure) {
-            error!("Failed to open client config manager window: {e}");
-        }
-    });
-
-    Ok(())
-}
-
-fn open_config_manager_window_inner(
-    app_handle: &tauri::AppHandle,
-) -> Result<(), ClientConfigError> {
     let existing_webview_window = app_handle.get_window(CLIENT_CONFIG_MANAGER_WINDOW_LABEL);
 
     if let Some(window) = existing_webview_window {
