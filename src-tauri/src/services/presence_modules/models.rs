@@ -14,6 +14,7 @@ pub struct PresenceStatus {
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct ModuleMetadata {
+    pub id: String,
     pub name: String,
     pub version: String,
     pub description: Option<String>,
