@@ -1,6 +1,7 @@
 <script lang="ts">
   import Friends from "./tabs/friends.svelte";
   import Preferences from "./tabs/preferences.svelte";
+  import Modules from "./tabs/modules.svelte";
   import YourDolls from "./tabs/your-dolls/index.svelte";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
@@ -66,6 +67,16 @@
         />
         <div class="tab-content bg-base-100 border-base-300 p-4">
           <Preferences />
+        </div>
+
+        <input
+          type="radio"
+          name="app_menu_tabs"
+          class="tab"
+          aria-label="Modules"
+        />
+        <div class="tab-content bg-base-100 border-base-300 p-4">
+          <Modules />
         </div>
       </div>
     </div>

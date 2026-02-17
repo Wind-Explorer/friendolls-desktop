@@ -39,7 +39,7 @@ impl Default for SceneData {
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
 #[ts(export)]
-pub struct AppData {
+pub struct UserData {
     pub user: Option<UserProfile>,
     pub friends: Option<Vec<FriendshipResponseDto>>,
     pub dolls: Option<Vec<DollDto>>,

@@ -1,9 +1,12 @@
-use crate::services::{
-    doll_editor::open_doll_editor_window,
-    scene::{set_pet_menu_state, set_scene_interactive},
+use crate::{
+    commands::app_state::get_modules,
+    services::{
+        doll_editor::open_doll_editor_window,
+        scene::{set_pet_menu_state, set_scene_interactive},
+    },
 };
 use commands::app::{quit_app, restart_app, retry_connection};
-use commands::app_data::{get_app_data, refresh_app_data};
+use commands::app_state::{get_app_data, refresh_app_data};
 use commands::auth::{change_password, login, logout_and_restart, register, reset_password};
 use commands::config::{get_client_config, open_client_config_manager, save_client_config};
 use commands::dolls::{
@@ -86,6 +89,7 @@ pub fn run() {
             reset_password,
             logout_and_restart,
             send_interaction_cmd,
+            get_modules
         ])
         .setup(|app| {
             APP_HANDLE

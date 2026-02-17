@@ -1,9 +1,9 @@
 import { writable } from "svelte/store";
-import { type AppData } from "../types/bindings/AppData";
+import { type UserData } from "../types/bindings/UserData";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 
-export let appData = writable<AppData | null>(null);
+export let appData = writable<UserData | null>(null);
 
 let unlisten: UnlistenFn | null = null;
 let isListening = false;
@@ -12,7 +12,7 @@ export async function initAppDataListener() {
   try {
     if (isListening) return;
     appData.set(await invoke("get_app_data"));
-    unlisten = await listen<AppData>("app-data-refreshed", (event) => {
+    unlisten = await listen<UserData>("app-data-refreshed", (event) => {
       console.log("app-data-refreshed", event.payload);
       appData.set(event.payload);
     });

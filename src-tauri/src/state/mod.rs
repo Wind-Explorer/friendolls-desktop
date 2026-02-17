@@ -1,5 +1,7 @@
 // in app-core/src/state.rs
-use crate::{lock_w, models::app_data::AppData};
+use crate::{
+    lock_w, models::app_data::UserData, services::presence_modules::models::ModuleMetadata,
+};
 use std::sync::{Arc, LazyLock, RwLock};
 use tauri::tray::TrayIcon;
 use tracing::info;
@@ -13,13 +15,19 @@ pub use network::*;
 pub use ui::*;
 
 #[derive(Default)]
+pub struct Modules {
+    pub handles: std::sync::Mutex<Vec<std::thread::JoinHandle<()>>>,
+    pub metadatas: Vec<ModuleMetadata>,
+}
+
+#[derive(Default)]
 pub struct AppState {
     pub app_config: crate::services::client_config_manager::AppConfig,
     pub network: NetworkState,
     pub auth: AuthState,
-    pub user_data: AppData,
+    pub user_data: UserData,
     pub tray: Option<TrayIcon>,
-    pub module_handles: std::sync::Mutex<Vec<std::thread::JoinHandle<()>>>,
+    pub modules: Modules,
 }
 
 // Global application state
@@ -36,8 +44,8 @@ pub fn init_app_state() {
         guard.app_config = crate::services::client_config_manager::load_app_config();
         guard.network = init_network_state();
         guard.auth = init_auth_state();
-        guard.user_data = AppData::default();
-        guard.module_handles = std::sync::Mutex::new(Vec::new());
+        guard.user_data = UserData::default();
+        guard.modules = Modules::default();
     }
     update_display_dimensions_for_scene_state();
     info!("Initialized FDOLL state (WebSocket client & user data initializing asynchronously)");

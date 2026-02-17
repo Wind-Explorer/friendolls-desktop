@@ -10,7 +10,9 @@ pub struct PresenceStatus {
     pub graphics_b64: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ModuleMetadata {
     pub name: String,
     pub version: String,

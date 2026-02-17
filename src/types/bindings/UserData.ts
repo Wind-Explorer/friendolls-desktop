@@ -4,4 +4,4 @@ import type { FriendshipResponseDto } from "./FriendshipResponseDto";
 import type { SceneData } from "./SceneData";
 import type { UserProfile } from "./UserProfile";
 
-export type AppData = { user: UserProfile | null, friends: Array<FriendshipResponseDto> | null, dolls: Array<DollDto> | null, scene: SceneData, };
+export type UserData = { user: UserProfile | null, friends: Array<FriendshipResponseDto> | null, dolls: Array<DollDto> | null, scene: SceneData, };

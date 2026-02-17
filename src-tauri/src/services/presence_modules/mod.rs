@@ -60,14 +60,7 @@ pub fn init_modules() {
         }
     };
 
-    let state = lock_w!(crate::state::FDOLL);
-    let mut state_guard = match state.module_handles.lock() {
-        Ok(guard) => guard,
-        Err(e) => {
-            error!("Failed to lock module handles: {}", e);
-            return;
-        }
-    };
+    let mut state = lock_w!(crate::state::FDOLL);
 
     for entry in entries {
         let entry = match entry {
@@ -88,7 +81,8 @@ pub fn init_modules() {
             if script_path.exists() {
                 match runtime::spawn_lua_runtime_from_path(&script_path) {
                     Ok(handle) => {
-                        state_guard.push(handle);
+                        state.modules.metadatas.push(module_metadata.clone());
+                        state.modules.handles.lock().unwrap().push(handle);
                     }
                     Err(e) => {
                         error!(
