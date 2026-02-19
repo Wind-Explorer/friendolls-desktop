@@ -18,6 +18,7 @@ use commands::friends::{
 };
 use commands::interaction::send_interaction_cmd;
 use commands::sprite::recolor_gif_base64;
+use commands::petpet::encode_pet_doll_gif_base64;
 use tauri::async_runtime;
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
@@ -74,6 +75,7 @@ pub fn run() {
             set_active_doll,
             remove_active_doll,
             recolor_gif_base64,
+            encode_pet_doll_gif_base64,
             quit_app,
             restart_app,
             retry_connection,

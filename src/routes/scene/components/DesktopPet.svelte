@@ -14,6 +14,7 @@
   import type { UserBasicDto } from "../../../types/bindings/UserBasicDto";
   import type { PresenceStatus } from "../../../types/bindings/PresenceStatus";
   import type { UserStatus } from "../../../events/user-status";
+  import type { InteractionPayloadDto } from "../../../types/bindings/InteractionPayloadDto";
 
   export let id = "";
   export let targetX = 0;
@@ -22,6 +23,7 @@
   export let userStatus: UserStatus | undefined = undefined;
   export let doll: DollDto | undefined = undefined;
   export let isInteractive = false;
+  export let senderDoll: DollDto | undefined = undefined;
 
   const { position, currentSprite, updatePosition, setPosition } = usePetState(
     32,
@@ -33,17 +35,14 @@
   let spriteSheetUrl = onekoGif;
 
   let isPetMenuOpen = false;
-  let receivedMessage: string | undefined = undefined;
+  let receivedInteraction: InteractionPayloadDto | undefined = undefined;
   let messageTimer: number | undefined = undefined;
 
   // Watch for received interactions for this user
   $: {
     const interaction = $receivedInteractions.get(user.id);
-    if (interaction && interaction.content !== receivedMessage) {
-      console.log(
-        `Received interaction for ${user.id}: ${interaction.content}`,
-      );
-      receivedMessage = interaction.content;
+    if (interaction && interaction !== receivedInteraction) {
+      receivedInteraction = interaction;
       isPetMenuOpen = true;
 
       // Make scene interactive so user can see it
@@ -58,7 +57,7 @@
       // Auto-close and clear after 8 seconds
       messageTimer = setTimeout(() => {
         isPetMenuOpen = false;
-        receivedMessage = undefined;
+        receivedInteraction = undefined;
         clearInteraction(user.id);
         // We probably shouldn't disable interactivity globally here as other pets might be active,
         // but 'set_pet_menu_state' in backend handles the window transparency logic per pet/menu.
@@ -85,7 +84,7 @@
   // Actually, `isInteractive` is a prop passed from +page.svelte probably based on hover state.
   // If we want the menu to stay open during the message, we should probably ignore this auto-close behavior if a message is present.
 
-  $: if (!receivedMessage && !isInteractive) {
+  $: if (!receivedInteraction && !isInteractive) {
     isPetMenuOpen = false;
   }
 
@@ -154,7 +153,13 @@
       aria-label="Pet Menu"
     >
       {#if doll}
-        <PetMenu {doll} {user} {userStatus} {receivedMessage} />
+        <PetMenu
+          {doll}
+          {user}
+          {userStatus}
+          {receivedInteraction}
+          {senderDoll}
+        />
       {/if}
     </div>
   {/if}
@@ -176,7 +181,7 @@
       isPetMenuOpen = !isPetMenuOpen;
       if (!isPetMenuOpen) {
         // Clear message when closing menu manually
-        receivedMessage = undefined;
+        receivedInteraction = undefined;
         clearInteraction(user.id);
         if (messageTimer) clearTimeout(messageTimer);
       }

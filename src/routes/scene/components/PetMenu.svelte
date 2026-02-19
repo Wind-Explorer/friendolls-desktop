@@ -4,11 +4,13 @@
   import type { UserBasicDto } from "../../../types/bindings/UserBasicDto";
   import type { SendInteractionDto } from "../../../types/bindings/SendInteractionDto";
   import type { UserStatus } from "../../../events/user-status";
+  import type { InteractionPayloadDto } from "../../../types/bindings/InteractionPayloadDto";
 
   export let doll: DollDto;
   export let user: UserBasicDto;
   export let userStatus: UserStatus | undefined = undefined;
-  export let receivedMessage: string | undefined = undefined;
+  export let receivedInteraction: InteractionPayloadDto | undefined = undefined;
+  export let senderDoll: DollDto | undefined = undefined;
 
   let showMessageInput = false;
   let messageContent = "";
@@ -29,6 +31,26 @@
     } catch (e) {
       console.error("Failed to send interaction:", e);
       alert("Failed to send message: " + e);
+    }
+  }
+
+  async function sendHeadpat() {
+    if (!senderDoll) return;
+
+    try {
+      const gifBase64 = await invoke("encode_pet_doll_gif_base64", { doll: senderDoll }) as string;
+      const dto: SendInteractionDto = {
+        recipientUserId: user.id,
+        content: gifBase64,
+        type: "headpat",
+      };
+
+      await invoke("send_interaction_cmd", { dto });
+      messageContent = "";
+      showMessageInput = false;
+    } catch (e) {
+      console.error("Failed to send interaction:", e);
+      alert("Failed to send headpat: " + e);
     }
   }
 
@@ -62,11 +84,19 @@
       </div>
     {/if}
 
-    {#if receivedMessage}
+    {#if receivedInteraction}
       <div class="">
-        <div class="text-sm max-w-[140px]">
-          {receivedMessage}
-        </div>
+        {#if receivedInteraction.type === "headpat"}
+          <img
+            src={`data:image/gif;base64,${receivedInteraction.content}`}
+            alt="Headpat GIF"
+            class="max-w-[140px] h-auto"
+          />
+        {:else}
+          <div class="text-sm max-w-[140px]">
+            {receivedInteraction.content}
+          </div>
+        {/if}
       </div>
     {:else if showMessageInput}
       <div class="flex flex-col gap-1">
@@ -89,7 +119,7 @@
       </div>
     {:else}
       <div class="flex flex-row gap-1 w-full *:flex-1 *:btn *:btn-sm">
-        <button disabled>Headpat</button>
+        <button onclick={sendHeadpat}>Headpat</button>
         <button onclick={() => (showMessageInput = true)}>Message</button>
       </div>
       <div class="flex flex-row gap-1 w-full *:flex-1 *:btn *:btn-sm">

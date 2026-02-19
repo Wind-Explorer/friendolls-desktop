@@ -153,6 +153,7 @@
             userStatus={getFriendStatus(userId)}
             {doll}
             {isInteractive}
+            senderDoll={getUserDoll()}
           />
         {/if}
       {/each}

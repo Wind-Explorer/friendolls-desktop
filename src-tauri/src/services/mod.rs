@@ -13,6 +13,7 @@ pub mod interaction;
 pub mod presence_modules;
 pub mod scene;
 pub mod sprite_recolor;
+pub mod petpet;
 pub mod welcome;
 pub mod ws;
 

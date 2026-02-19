@@ -1,5 +1,5 @@
 use serde_json::json;
-use tracing::{error, info};
+use tracing::error;
 
 use crate::{
     lock_r, models::interaction::SendInteractionDto, services::ws::WS_EVENT, state::FDOLL,
@@ -25,22 +25,11 @@ pub async fn send_interaction(dto: SendInteractionDto) -> Result<(), String> {
         // The DTO structure matches what the server expects:
         // { recipientUserId, content, type } (handled by serde rename_all="camelCase")
 
-        // Note: The `type` field in DTO is mapped to `type_` in Rust struct but serialized as `type`
-        // due to camelCase renaming (if we rely on TS-RS output) or manual renaming.
-        // Wait, `type` is a reserved keyword in Rust so we used `type_`.
-        // We need to ensure serialization maps `type_` to `type`.
-        // However, serde's `rename_all = "camelCase"` handles `recipient_user_id` -> `recipientUserId`.
-        // It does NOT automatically handle `type_` -> `type`.
-        // We should add `#[serde(rename = "type")]` to the `type_` field in the model.
-        // I will fix the model first to ensure correct serialization.
-
         let payload = json!({
             "recipientUserId": dto.recipient_user_id,
             "content": dto.content,
             "type": dto.type_
         });
-
-        info!("Sending interaction via WS: {:?}", payload);
 
         // Blocking emission because rust_socketio::Client::emit is synchronous/blocking
         // but we are in an async context. Ideally we spawn_blocking.

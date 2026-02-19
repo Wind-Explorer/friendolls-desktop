@@ -226,3 +226,30 @@ fn pick_color_from_palette(palette: &[Rgba<u8>], x: u32, y: u32) -> Rgba<u8> {
     // SAFETY: index is guaranteed to be < palette.len() due to modulo operation
     unsafe { *palette.get_unchecked(index) }
 }
+
+pub fn get_recolored_image(
+    white_color_hex: &str,
+    black_color_hex: &str,
+) -> Result<RgbaImage, Box<dyn std::error::Error>> {
+    let white_color = parse_hex_color(white_color_hex)?;
+    let black_color = parse_hex_color(black_color_hex)?;
+
+    // Get pre-decoded GIF data
+    let decoded_gif = get_decoded_gif();
+
+    // Take first frame
+    let frame = &decoded_gif.frames[0];
+    let mut img = RgbaImage::from_raw(
+        decoded_gif.width as u32,
+        decoded_gif.height as u32,
+        frame.pixels.clone(),
+    )
+    .ok_or("Failed to create image from frame")?;
+
+    // Recolor the image
+    let white_palette = generate_color_palette(white_color, 7);
+    let black_palette = generate_color_palette(black_color, 7);
+    recolor_image(&mut img, &white_palette, &black_palette, true);
+
+    Ok(img)
+}
