@@ -10,7 +10,6 @@ export async function initInteractionListeners() {
   unlistenReceived = await listen<InteractionPayloadDto>(
     "interaction-received",
     (event) => {
-      console.log("Received interaction:", event.payload);
       addInteraction(event.payload);
     },
   );
