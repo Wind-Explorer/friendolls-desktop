@@ -9,6 +9,7 @@
     receivedInteractions,
     clearInteraction,
   } from "$lib/stores/interaction-store";
+  import { INTERACTION_TYPE_HEADPAT } from "$lib/constants/interaction";
   import PetMenu from "./PetMenu.svelte";
   import type { DollDto } from "../../../types/bindings/DollDto";
   import type { UserBasicDto } from "../../../types/bindings/UserBasicDto";
@@ -43,29 +44,35 @@
     const interaction = $receivedInteractions.get(user.id);
     if (interaction && interaction !== receivedInteraction) {
       receivedInteraction = interaction;
-      isPetMenuOpen = true;
 
-      // Make scene interactive so user can see it
-      invoke("set_scene_interactive", {
-        interactive: true,
-        shouldClick: false,
-      });
+      // Headpats are handled at the page level via FullscreenModal instead of the pet menu.
+      // This provides a more prominent/fullscreen experience for headpat animations,
+      // while regular messages/bubbles are shown in the pet menu near the desktop pet.
+      if (interaction.type !== INTERACTION_TYPE_HEADPAT) {
+        isPetMenuOpen = true;
 
-      // Clear existing timer if any
-      if (messageTimer) clearTimeout(messageTimer);
+        // Make scene interactive so user can see it
+        invoke("set_scene_interactive", {
+          interactive: true,
+          shouldClick: false,
+        });
 
-      // Auto-close and clear after 8 seconds
-      messageTimer = setTimeout(() => {
-        isPetMenuOpen = false;
-        receivedInteraction = undefined;
-        clearInteraction(user.id);
-        // We probably shouldn't disable interactivity globally here as other pets might be active,
-        // but 'set_pet_menu_state' in backend handles the window transparency logic per pet/menu.
-        // However, we did explicitly call set_scene_interactive(true).
-        // It might be safer to let the mouse-leave or other logic handle setting it back to false,
-        // or just leave it as is since the user might want to interact.
-        // For now, focusing on the message lifecycle.
-      }, 8000) as unknown as number;
+        // Clear existing timer if any
+        if (messageTimer) clearTimeout(messageTimer);
+
+        // Auto-close and clear after 8 seconds
+        messageTimer = setTimeout(() => {
+          isPetMenuOpen = false;
+          receivedInteraction = undefined;
+          clearInteraction(user.id);
+          // We probably shouldn't disable interactivity globally here as other pets might be active,
+          // but 'set_pet_menu_state' in backend handles the window transparency logic per pet/menu.
+          // However, we did explicitly call set_scene_interactive(true).
+          // It might be safer to let the mouse-leave or other logic handle setting it back to false,
+          // or just leave it as is since the user might want to interact.
+          // For now, focusing on the message lifecycle.
+        }, 8000) as unknown as number;
+      }
     }
   }
 
@@ -134,6 +141,9 @@
   onDestroy(() => {
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId);
+    }
+    if (messageTimer) {
+      clearTimeout(messageTimer);
     }
   });
 </script>

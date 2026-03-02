@@ -5,6 +5,7 @@
   import type { SendInteractionDto } from "../../../types/bindings/SendInteractionDto";
   import type { UserStatus } from "../../../events/user-status";
   import type { InteractionPayloadDto } from "../../../types/bindings/InteractionPayloadDto";
+  import { INTERACTION_TYPE_HEADPAT } from "$lib/constants/interaction";
 
   export let doll: DollDto;
   export let user: UserBasicDto;
@@ -84,19 +85,11 @@
       </div>
     {/if}
 
-    {#if receivedInteraction}
+    {#if receivedInteraction && receivedInteraction.type !== INTERACTION_TYPE_HEADPAT}
       <div class="">
-        {#if receivedInteraction.type === "headpat"}
-          <img
-            src={`data:image/gif;base64,${receivedInteraction.content}`}
-            alt="Headpat GIF"
-            class="max-w-[140px] h-auto"
-          />
-        {:else}
-          <div class="text-sm max-w-[140px]">
-            {receivedInteraction.content}
-          </div>
-        {/if}
+        <div class="text-sm max-w-[140px]">
+          {receivedInteraction.content}
+        </div>
       </div>
     {:else if showMessageInput}
       <div class="flex flex-col gap-1">

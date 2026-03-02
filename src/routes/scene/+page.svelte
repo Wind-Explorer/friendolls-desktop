@@ -12,6 +12,9 @@
   } from "../../events/user-status";
   import { invoke } from "@tauri-apps/api/core";
   import DesktopPet from "./components/DesktopPet.svelte";
+  import FullscreenModal from "./components/FullscreenModal.svelte";
+  import { receivedInteractions, clearInteraction } from "$lib/stores/interaction-store";
+  import { INTERACTION_TYPE_HEADPAT } from "$lib/constants/interaction";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
   import type { PresenceStatus } from "../../types/bindings/PresenceStatus";
@@ -21,6 +24,64 @@
   let innerHeight = $state(0);
 
   let isInteractive = $derived($sceneInteractive);
+
+  // Fullscreen modal state for headpats
+  let showFullscreenModal = $state(false);
+  let fullscreenImageSrc = $state("");
+  let headpatSenderId = $state<string | null>(null);
+
+  // Queue for pending headpats (when modal is already showing)
+  let headpatQueue = $state<Array<{ userId: string; content: string }>>([]);
+
+  // Process next headpat in queue
+  function processNextHeadpat() {
+    if (headpatQueue.length > 0) {
+      const next = headpatQueue.shift()!;
+      clearInteraction(next.userId);
+      fullscreenImageSrc = `data:image/gif;base64,${next.content}`;
+      headpatSenderId = next.userId;
+      showFullscreenModal = true;
+    } else {
+      fullscreenImageSrc = "";
+      headpatSenderId = null;
+    }
+  }
+
+  function getHeadpatSenderName(userId: string | null): string {
+    if (!userId) return "";
+    const friend = getFriendById(userId);
+    return friend?.name ?? "";
+  }
+
+  // Watch for headpat interactions and show fullscreen modal
+  $effect(() => {
+    for (const [userId, interaction] of $receivedInteractions) {
+      if (interaction.type === INTERACTION_TYPE_HEADPAT) {
+        // Deduplicate: replace existing headpat from same user instead of queueing
+        const existingIndex = headpatQueue.findIndex((h) => h.userId === userId);
+        if (existingIndex >= 0) {
+          headpatQueue[existingIndex] = { userId, content: interaction.content };
+        } else if (showFullscreenModal) {
+          headpatQueue.push({ userId, content: interaction.content });
+        } else {
+          clearInteraction(userId);
+          fullscreenImageSrc = `data:image/gif;base64,${interaction.content}`;
+          headpatSenderId = userId;
+          showFullscreenModal = true;
+        }
+      }
+    }
+  });
+
+  // Clear headpat interaction when modal closes, then process next in queue
+  $effect(() => {
+    if (!showFullscreenModal && headpatSenderId) {
+      clearInteraction(headpatSenderId);
+      headpatSenderId = null;
+      // Process next headpat in queue
+      processNextHeadpat();
+    }
+  });
 
   function getFriendById(userId: string) {
     const friend = $appData?.friends?.find((f) => f.friend?.id === userId);
@@ -177,4 +238,10 @@
       />
     {/if}
   </div>
+
+  <FullscreenModal
+    bind:visible={showFullscreenModal}
+    imageSrc={fullscreenImageSrc}
+    senderName={getHeadpatSenderName(headpatSenderId)}
+  />
 </div>
