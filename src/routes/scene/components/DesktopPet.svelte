@@ -45,9 +45,6 @@
     if (interaction && interaction !== receivedInteraction) {
       receivedInteraction = interaction;
 
-      // Headpats are handled at the page level via FullscreenModal instead of the pet menu.
-      // This provides a more prominent/fullscreen experience for headpat animations,
-      // while regular messages/bubbles are shown in the pet menu near the desktop pet.
       if (interaction.type !== INTERACTION_TYPE_HEADPAT) {
         isPetMenuOpen = true;
 
@@ -65,13 +62,7 @@
           isPetMenuOpen = false;
           receivedInteraction = undefined;
           clearInteraction(user.id);
-          // We probably shouldn't disable interactivity globally here as other pets might be active,
-          // but 'set_pet_menu_state' in backend handles the window transparency logic per pet/menu.
-          // However, we did explicitly call set_scene_interactive(true).
-          // It might be safer to let the mouse-leave or other logic handle setting it back to false,
-          // or just leave it as is since the user might want to interact.
-          // For now, focusing on the message lifecycle.
-        }, 8000) as unknown as number;
+        }, 8000);
       }
     }
   }
@@ -81,15 +72,6 @@
     doll?.configuration.colorScheme.body,
     doll?.configuration.colorScheme.outline,
   );
-
-  // This reactive statement forces the menu closed whenever `isInteractive` changes.
-  // This conflicts with our message logic because we explicitly set interactive=true when opening the menu for a message.
-  // We should remove this or condition it.
-  // The original intent was likely to close the menu if the user moves the mouse away (interactive becomes false),
-  // but `isInteractive` is driven by mouse hover usually.
-  // When we force it via invoke("set_scene_interactive", { interactive: true }), it might not reflect back into `isInteractive` prop immediately or correctly depending on how the parent passes it.
-  // Actually, `isInteractive` is a prop passed from +page.svelte probably based on hover state.
-  // If we want the menu to stay open during the message, we should probably ignore this auto-close behavior if a message is present.
 
   $: if (!receivedInteraction && !isInteractive) {
     isPetMenuOpen = false;
