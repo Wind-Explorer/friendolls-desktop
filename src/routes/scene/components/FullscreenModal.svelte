@@ -20,22 +20,6 @@
     senderName = "",
   }: { imageSrc: string; visible: boolean; senderName?: string } = $props();
 
-  let timer: ReturnType<typeof setTimeout> | null = null;
-
-  $effect(() => {
-    if (visible) {
-      timer = setTimeout(() => {
-        visible = false;
-      }, 3000);
-    }
-
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-    };
-  });
 </script>
 
 {#if visible}

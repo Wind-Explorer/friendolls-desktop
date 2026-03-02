@@ -29,6 +29,7 @@
   let showFullscreenModal = $state(false);
   let fullscreenImageSrc = $state("");
   let headpatSenderId = $state<string | null>(null);
+  let headpatTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Queue for pending headpats (when modal is already showing)
   let headpatQueue = $state<Array<{ userId: string; content: string }>>([]);
@@ -41,10 +42,21 @@
       fullscreenImageSrc = `data:image/gif;base64,${next.content}`;
       headpatSenderId = next.userId;
       showFullscreenModal = true;
+      scheduleHeadpatDismiss();
     } else {
       fullscreenImageSrc = "";
       headpatSenderId = null;
     }
+  }
+
+  function scheduleHeadpatDismiss() {
+    if (headpatTimer) {
+      clearTimeout(headpatTimer);
+    }
+    headpatTimer = setTimeout(() => {
+      showFullscreenModal = false;
+      headpatTimer = null;
+    }, 3000);
   }
 
   function getHeadpatSenderName(userId: string | null): string {
@@ -57,30 +69,42 @@
   $effect(() => {
     for (const [userId, interaction] of $receivedInteractions) {
       if (interaction.type === INTERACTION_TYPE_HEADPAT) {
-        // Deduplicate: replace existing headpat from same user instead of queueing
-        const existingIndex = headpatQueue.findIndex((h) => h.userId === userId);
-        if (existingIndex >= 0) {
-          headpatQueue[existingIndex] = { userId, content: interaction.content };
-        } else if (showFullscreenModal) {
-          headpatQueue.push({ userId, content: interaction.content });
+        if (showFullscreenModal) {
+          // Queue the headpat for later (deduplicate by replacing existing from same user)
+          const existingIndex = headpatQueue.findIndex((h) => h.userId === userId);
+          if (existingIndex >= 0) {
+            headpatQueue[existingIndex] = { userId, content: interaction.content };
+          } else {
+            headpatQueue.push({ userId, content: interaction.content });
+          }
+          scheduleHeadpatDismiss();
         } else {
+          // Show immediately and clear from store
           clearInteraction(userId);
           fullscreenImageSrc = `data:image/gif;base64,${interaction.content}`;
           headpatSenderId = userId;
           showFullscreenModal = true;
+          scheduleHeadpatDismiss();
         }
       }
     }
   });
 
-  // Clear headpat interaction when modal closes, then process next in queue
+  // When modal closes, process next headpat in queue
   $effect(() => {
     if (!showFullscreenModal && headpatSenderId) {
-      clearInteraction(headpatSenderId);
       headpatSenderId = null;
-      // Process next headpat in queue
       processNextHeadpat();
     }
+  });
+
+  $effect(() => {
+    return () => {
+      if (headpatTimer) {
+        clearTimeout(headpatTimer);
+        headpatTimer = null;
+      }
+    };
   });
 
   function getFriendById(userId: string) {
