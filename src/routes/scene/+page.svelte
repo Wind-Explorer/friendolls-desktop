@@ -16,6 +16,7 @@
   import { receivedInteractions, clearInteraction } from "$lib/stores/interaction-store";
   import { INTERACTION_TYPE_HEADPAT } from "$lib/constants/interaction";
   import { listen } from "@tauri-apps/api/event";
+  import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
   import { onMount } from "svelte";
   import type { PresenceStatus } from "../../types/bindings/PresenceStatus";
   import type { DollDto } from "../../types/bindings/DollDto";
@@ -28,25 +29,55 @@
   // Fullscreen modal state for headpats
   let showFullscreenModal = $state(false);
   let fullscreenImageSrc = $state("");
+  let headpatSenderSpriteUrl = $state("");
   let headpatSenderId = $state<string | null>(null);
   let headpatTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Queue for pending headpats (when modal is already showing)
   let headpatQueue = $state<Array<{ userId: string; content: string }>>([]);
+  let headpatSpriteToken = 0;
 
   // Process next headpat in queue
   function processNextHeadpat() {
     if (headpatQueue.length > 0) {
       const next = headpatQueue.shift()!;
       clearInteraction(next.userId);
-      fullscreenImageSrc = `data:image/gif;base64,${next.content}`;
       headpatSenderId = next.userId;
+      void loadHeadpatSprites(next.userId);
       showFullscreenModal = true;
       scheduleHeadpatDismiss();
     } else {
       fullscreenImageSrc = "";
+      headpatSenderSpriteUrl = "";
       headpatSenderId = null;
     }
+  }
+
+  async function loadHeadpatSprites(senderId: string) {
+    const token = ++headpatSpriteToken;
+    const senderDoll = getFriendDoll(senderId);
+    const userDoll = getUserDoll();
+
+    let userPetpetGif = "";
+    if (userDoll) {
+      try {
+        const gifBase64 = await invoke<string>("encode_pet_doll_gif_base64", { doll: userDoll });
+        userPetpetGif = `data:image/gif;base64,${gifBase64}`;
+      } catch (e) {
+        console.error("Failed to generate user petpet:", e);
+      }
+    }
+
+    const senderSpriteUrl = senderDoll
+      ? await getSpriteSheetUrl({
+          bodyColor: senderDoll.configuration.colorScheme.body,
+          outlineColor: senderDoll.configuration.colorScheme.outline,
+        })
+      : await getSpriteSheetUrl();
+
+    if (token !== headpatSpriteToken) return;
+    fullscreenImageSrc = userPetpetGif;
+    headpatSenderSpriteUrl = senderSpriteUrl;
   }
 
   function scheduleHeadpatDismiss() {
@@ -81,8 +112,8 @@
         } else {
           // Show immediately and clear from store
           clearInteraction(userId);
-          fullscreenImageSrc = `data:image/gif;base64,${interaction.content}`;
           headpatSenderId = userId;
+          void loadHeadpatSprites(userId);
           showFullscreenModal = true;
           scheduleHeadpatDismiss();
         }
@@ -266,6 +297,7 @@
   <FullscreenModal
     bind:visible={showFullscreenModal}
     imageSrc={fullscreenImageSrc}
+    senderSpriteUrl={headpatSenderSpriteUrl}
     senderName={getHeadpatSenderName(headpatSenderId)}
   />
 </div>

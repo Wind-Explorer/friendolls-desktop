@@ -1,6 +1,8 @@
 <script lang="ts">
   import { cubicOut } from "svelte/easing";
   import { type TransitionConfig } from "svelte/transition";
+  import PetSprite from "$lib/components/PetSprite.svelte";
+  import { SPRITE_SETS, SPRITE_SIZE } from "$lib/constants/pet-sprites";
 
   function fadeSlide(
     node: HTMLElement,
@@ -14,11 +16,22 @@
     };
   }
 
+  const idleSprite = {
+    x: SPRITE_SETS.idle[0][0] * SPRITE_SIZE,
+    y: SPRITE_SETS.idle[0][1] * SPRITE_SIZE,
+  };
+
   let {
     imageSrc,
+    senderSpriteUrl = "",
     visible = $bindable(false),
     senderName = "",
-  }: { imageSrc: string; visible: boolean; senderName?: string } = $props();
+  }: {
+    imageSrc: string;
+    senderSpriteUrl?: string;
+    visible: boolean;
+    senderName?: string;
+  } = $props();
 
 </script>
 
@@ -30,6 +43,24 @@
     {#if senderName}
       <div class="mb-4 text-white text-lg font-medium">{senderName} gave you a headpat!</div>
     {/if}
-    <img src={imageSrc} alt="Headpat" class="max-w-full max-h-full object-contain" />
+    <div class="flex items-center justify-center gap-6">
+      {#if senderSpriteUrl}
+        <div class="flex items-center justify-center size-32">
+          <div style="transform: scale(4); transform-origin: center;">
+            <PetSprite
+              spriteSheetUrl={senderSpriteUrl}
+              spriteX={idleSprite.x}
+              spriteY={idleSprite.y}
+              size={32}
+            />
+          </div>
+        </div>
+      {/if}
+      <img
+        src={imageSrc}
+        alt="Headpat"
+        class="max-w-full max-h-full object-contain"
+      />
+    </div>
   </div>
 {/if}
