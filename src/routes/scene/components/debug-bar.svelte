@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PresenceStatus } from "../../../types/bindings/PresenceStatus";
-  import type { UserStatus } from "../../../events/user-status";
+  import type { PresenceState } from "../../../events/user-status";
 
   interface Friend {
     friend?: {
@@ -15,7 +15,7 @@
     presenceStatus: PresenceStatus | null;
     friendsCursorPositions: Record<string, { mapped: { x: number; y: number } }>;
     friends: Friend[];
-    friendsUserStatuses: Record<string, UserStatus>;
+    friendsPresenceStates: Record<string, PresenceState>;
   }
 
   let {
@@ -24,7 +24,7 @@
     presenceStatus,
     friendsCursorPositions,
     friends,
-    friendsUserStatuses,
+    friendsPresenceStates,
   }: Props = $props();
 
   function getFriendById(userId: string) {
@@ -33,7 +33,7 @@
   }
 
   function getFriendStatus(userId: string) {
-    return friendsUserStatuses[userId];
+    return friendsPresenceStates[userId];
   }
 </script>
 

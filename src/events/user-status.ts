@@ -9,17 +9,20 @@ import {
   setupHmrCleanup,
 } from "./listener-utils";
 
-export type UserStatus = {
+export type PresenceState = {
   presenceStatus: PresenceStatus;
   state: "idle" | "resting";
 };
 
-export const friendsUserStatuses = writable<Record<string, UserStatus>>({});
-export const currentUserStatus = writable<UserStatus | null>(null);
+export const friendsPresenceStates = writable<Record<string, PresenceState>>({});
+export const currentPresenceState = writable<PresenceState | null>(null);
 
 const subscription = createMultiListenerSubscription();
 
-export async function initUserStatusListeners() {
+/**
+ * Starts listening for user status changes and friend status updates.
+ */
+export async function startUserStatus() {
   if (subscription.isListening()) return;
 
   try {
@@ -28,7 +31,7 @@ export async function initUserStatusListeners() {
       (event) => {
         const payload = parseEventPayload<{
           userId?: string;
-          status?: UserStatus;
+          status?: PresenceState;
         }>(event.payload, AppEvents.FriendUserStatus);
         if (!payload) return;
 
@@ -48,7 +51,7 @@ export async function initUserStatusListeners() {
 
         if (status.state !== "idle" && status.state !== "resting") return;
 
-        friendsUserStatuses.update((current) => ({
+        friendsPresenceStates.update((current) => ({
           ...current,
           [userId]: {
             presenceStatus: status.presenceStatus,
@@ -59,10 +62,10 @@ export async function initUserStatusListeners() {
     );
     subscription.addUnlisten(unlistenStatus);
 
-    const unlistenUserStatusChanged = await listen<UserStatus>(
+    const unlistenUserStatusChanged = await listen<PresenceState>(
       AppEvents.UserStatusChanged,
       (event) => {
-        currentUserStatus.set(event.payload);
+        currentPresenceState.set(event.payload);
       },
     );
     subscription.addUnlisten(unlistenUserStatusChanged);
@@ -79,7 +82,7 @@ export async function initUserStatusListeners() {
       const userId = data?.userId as string | undefined;
       if (!userId) return;
 
-      friendsUserStatuses.update((current) => removeFromStore(current, userId));
+      friendsPresenceStates.update((current) => removeFromStore(current, userId));
     });
     subscription.addUnlisten(unlistenFriendDisconnected);
 
@@ -90,8 +93,8 @@ export async function initUserStatusListeners() {
   }
 }
 
-export function stopUserStatusListeners() {
+export function stopUserStatus() {
   subscription.stop();
 }
 
-setupHmrCleanup(stopUserStatusListeners);
+setupHmrCleanup(stopUserStatus);

@@ -2,7 +2,7 @@ use crate::{
     commands::app_state::get_modules,
     services::{
         doll_editor::open_doll_editor_window,
-        scene::{set_pet_menu_state, set_scene_interactive},
+        scene::{get_scene_interactive, set_pet_menu_state, set_scene_interactive},
     },
 };
 use commands::app::{quit_app, restart_app, retry_connection};
@@ -83,6 +83,7 @@ pub fn run() {
             save_client_config,
             open_client_config_manager,
             open_doll_editor_window,
+            get_scene_interactive,
             set_scene_interactive,
             set_pet_menu_state,
             login,

@@ -9,14 +9,17 @@ export const appData = writable<UserData | null>(null);
 
 const subscription = createListenerSubscription();
 
-export async function initAppDataListener() {
+/**
+ * Starts listening for app data refresh events.
+ * Initializes app data from the backend.
+ */
+export async function startAppData() {
   try {
     if (subscription.isListening()) return;
     appData.set(await invoke("get_app_data"));
     const unlisten = await listen<UserData>(
       AppEvents.AppDataRefreshed,
       (event) => {
-        console.log("app-data-refreshed", event.payload);
         appData.set(event.payload);
       },
     );
@@ -28,8 +31,8 @@ export async function initAppDataListener() {
   }
 }
 
-export function stopAppDataListener() {
+export function stopAppData() {
   subscription.stop();
 }
 
-setupHmrCleanup(stopAppDataListener);
+setupHmrCleanup(stopAppData);

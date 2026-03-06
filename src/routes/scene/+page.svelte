@@ -1,13 +1,11 @@
 <script lang="ts">
-  import {
-    cursorPositionOnScreen,
-    friendsCursorPositions,
-  } from "../../events/cursor";
+  import { cursorPositionOnScreen } from "../../events/cursor";
+  import { friendsCursorPositions } from "../../events/friend-cursor";
   import { appData } from "../../events/app-data";
   import { sceneInteractive } from "../../events/scene-interactive";
   import {
-    friendsUserStatuses,
-    currentUserStatus,
+    friendsPresenceStates,
+    currentPresenceState,
   } from "../../events/user-status";
   import { invoke } from "@tauri-apps/api/core";
   import DebugBar from "./components/debug-bar.svelte";
@@ -28,10 +26,10 @@
     <DebugBar
       isInteractive={$sceneInteractive}
       cursorPosition={$cursorPositionOnScreen}
-      presenceStatus={$currentUserStatus?.presenceStatus ?? null}
+      presenceStatus={$currentPresenceState?.presenceStatus ?? null}
       friendsCursorPositions={$friendsCursorPositions}
       friends={$appData?.friends ?? []}
-      friendsUserStatuses={$friendsUserStatuses}
+      friendsPresenceStates={$friendsPresenceStates}
     />
   </div>
 </div>

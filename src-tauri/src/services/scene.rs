@@ -83,6 +83,11 @@ pub fn set_scene_interactive(interactive: bool, should_click: bool) {
 }
 
 #[tauri::command]
+pub fn get_scene_interactive() -> Result<bool, String> {
+    Ok(scene_interactive_state().load(Ordering::SeqCst))
+}
+
+#[tauri::command]
 pub fn set_pet_menu_state(id: String, open: bool) {
     let menus_arc = get_open_pet_menus();
     let should_update = {

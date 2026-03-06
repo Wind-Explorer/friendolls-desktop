@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import { addInteraction } from "$lib/stores/interaction-store";
+import { writable } from "svelte/store";
 import type { InteractionPayloadDto } from "../types/bindings/InteractionPayloadDto";
 import type { InteractionDeliveryFailedDto } from "../types/bindings/InteractionDeliveryFailedDto";
 import { AppEvents } from "../types/bindings/AppEventsConstants";
@@ -8,35 +8,62 @@ import {
   setupHmrCleanup,
 } from "./listener-utils";
 
-const subscription = createMultiListenerSubscription();
+export const receivedInteractions = writable<Map<string, InteractionPayloadDto>>(
+  new Map(),
+);
 
-export async function initInteractionListeners() {
-  if (subscription.isListening()) return;
-
-  const unlistenReceived = await listen<InteractionPayloadDto>(
-    AppEvents.InteractionReceived,
-    (event) => {
-      addInteraction(event.payload);
-    },
-  );
-  subscription.addUnlisten(unlistenReceived);
-
-  const unlistenFailed = await listen<InteractionDeliveryFailedDto>(
-    AppEvents.InteractionDeliveryFailed,
-    (event) => {
-      console.error("Interaction delivery failed:", event.payload);
-      // You might want to show a toast or alert here
-      alert(
-        `Failed to send message to user ${event.payload.recipientUserId}: ${event.payload.reason}`,
-      );
-    },
-  );
-  subscription.addUnlisten(unlistenFailed);
-  subscription.setListening(true);
+export function addInteraction(interaction: InteractionPayloadDto) {
+  receivedInteractions.update((map) => {
+    const newMap = new Map(map);
+    newMap.set(interaction.senderUserId, interaction);
+    return newMap;
+  });
 }
 
-export function stopInteractionListeners() {
+export function clearInteraction(userId: string) {
+  receivedInteractions.update((map) => {
+    const newMap = new Map(map);
+    newMap.delete(userId);
+    return newMap;
+  });
+}
+
+const subscription = createMultiListenerSubscription();
+
+/**
+ * Starts listening for interaction events (received and delivery failed).
+ */
+export async function startInteraction() {
+  if (subscription.isListening()) return;
+
+  try {
+    const unlistenReceived = await listen<InteractionPayloadDto>(
+      AppEvents.InteractionReceived,
+      (event) => {
+        addInteraction(event.payload);
+      },
+    );
+    subscription.addUnlisten(unlistenReceived);
+
+    const unlistenFailed = await listen<InteractionDeliveryFailedDto>(
+      AppEvents.InteractionDeliveryFailed,
+      (event) => {
+        console.error("Interaction delivery failed:", event.payload);
+        alert(
+          `Failed to send message to user ${event.payload.recipientUserId}: ${event.payload.reason}`,
+        );
+      },
+    );
+    subscription.addUnlisten(unlistenFailed);
+    subscription.setListening(true);
+  } catch (err) {
+    console.error("Failed to initialize interaction listeners:", err);
+    throw err;
+  }
+}
+
+export function stopInteraction() {
   subscription.stop();
 }
 
-setupHmrCleanup(stopInteractionListeners);
+setupHmrCleanup(stopInteraction);

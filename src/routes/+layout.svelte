@@ -1,24 +1,29 @@
 <script>
   import { browser } from "$app/environment";
   import { onMount, onDestroy } from "svelte";
-  import { initCursorTracking, stopCursorTracking } from "../events/cursor";
-  import { initAppDataListener } from "../events/app-data";
-  import { initInteractionListeners, stopInteractionListeners } from "../events/interaction";
+  import { startCursorTracking, stopCursorTracking } from "../events/cursor";
   import {
-    initSceneInteractiveListener,
-    stopSceneInteractiveListener,
+    startFriendCursorTracking,
+    stopFriendCursorTracking,
+  } from "../events/friend-cursor";
+  import { startAppData } from "../events/app-data";
+  import { startInteraction, stopInteraction } from "../events/interaction";
+  import {
+    startSceneInteractive,
+    stopSceneInteractive,
   } from "../events/scene-interactive";
-  import { initUserStatusListeners, stopUserStatusListeners } from "../events/user-status";
+  import { startUserStatus, stopUserStatus } from "../events/user-status";
 
   let { children } = $props();
   if (browser) {
     onMount(async () => {
       try {
-        await initCursorTracking();
-        await initAppDataListener();
-        await initSceneInteractiveListener();
-        await initInteractionListeners();
-        await initUserStatusListeners();
+        await startAppData();
+        await startCursorTracking();
+        await startFriendCursorTracking();
+        await startSceneInteractive();
+        await startInteraction();
+        await startUserStatus();
       } catch (err) {
         console.error("Failed to initialize event listeners:", err);
       }
@@ -26,9 +31,10 @@
 
     onDestroy(() => {
       stopCursorTracking();
-      stopSceneInteractiveListener();
-      stopInteractionListeners();
-      stopUserStatusListeners();
+      stopFriendCursorTracking();
+      stopSceneInteractive();
+      stopInteraction();
+      stopUserStatus();
     });
   }
 </script>
