@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 use ts_rs::TS;
 
-use crate::{get_app_handle, lock_r, state::FDOLL};
+use crate::{get_app_handle, lock_r, services::app_events::AppEvents, state::FDOLL};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -103,7 +103,7 @@ async fn init_cursor_tracking_i() -> Result<(), String> {
             crate::services::ws::report_cursor_data(mapped_for_ws).await;
 
             // 2. Broadcast to local windows
-            if let Err(e) = app_handle.emit("cursor-position", &positions) {
+            if let Err(e) = app_handle.emit(AppEvents::CursorPosition.as_str(), &positions) {
                 error!("Failed to emit cursor position event: {:?}", e);
             }
         }

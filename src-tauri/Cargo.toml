@@ -25,6 +25,7 @@ tauri-plugin-process = "2"
 reqwest = { version = "0.12.23", features = ["json", "native-tls", "blocking"] }
 tokio-util = "0.7"
 ts-rs = "11.0.1"
+strum = { version = "0.26", features = ["derive"] }
 device_query = "4.0.1"
 dotenvy = "0.15.7"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }

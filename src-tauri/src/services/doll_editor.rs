@@ -3,7 +3,7 @@ use tauri::WebviewWindow;
 use tauri::{Emitter, Listener, Manager};
 use tracing::{error, info};
 
-use crate::get_app_handle;
+use crate::{get_app_handle, services::app_events::AppEvents};
 
 static APP_MENU_WINDOW_LABEL: &str = "app_menu";
 
@@ -76,17 +76,17 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
             // Ensure overlay is active on parent (redundancy for safety)
             #[cfg(target_os = "macos")]
             if let Some(parent) = app_handle.get_webview_window(APP_MENU_WINDOW_LABEL) {
-                if let Err(e) = parent.emit("set-interaction-overlay", true) {
+                if let Err(e) = parent.emit(AppEvents::SetInteractionOverlay.as_str(), true) {
                     error!("Failed to ensure interaction overlay on parent: {}", e);
                 }
             }
 
             // Emit event to update context
             if let Some(id) = doll_id {
-                if let Err(e) = window.emit("edit-doll", id) {
+                if let Err(e) = window.emit(AppEvents::EditDoll.as_str(), id) {
                     error!("Failed to emit edit-doll event: {}", e);
                 }
-            } else if let Err(e) = window.emit("create-doll", ()) {
+            } else if let Err(e) = window.emit(AppEvents::CreateDoll.as_str(), ()) {
                 error!("Failed to emit create-doll event: {}", e);
             }
 
@@ -136,7 +136,7 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
                 let app_handle_clone = get_app_handle().clone();
 
                 // Emit event to show overlay
-                if let Err(e) = parent.emit("set-interaction-overlay", true) {
+                if let Err(e) = parent.emit(AppEvents::SetInteractionOverlay.as_str(), true) {
                     error!("Failed to emit set-interaction-overlay event: {}", e);
                 }
 
@@ -169,7 +169,7 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
                             parent.unlisten(id);
                         }
                         // Remove overlay if we failed
-                        let _ = parent.emit("set-interaction-overlay", false);
+                        let _ = parent.emit(AppEvents::SetInteractionOverlay.as_str(), false);
                     }
                     return;
                 }
@@ -204,7 +204,9 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
                                     parent.unlisten(id);
                                 }
                                 // Remove overlay
-                                if let Err(e) = parent.emit("set-interaction-overlay", false) {
+                                if let Err(e) = parent
+                                    .emit(AppEvents::SetInteractionOverlay.as_str(), false)
+                                {
                                     error!("Failed to remove interaction overlay: {}", e);
                                 }
                             }
@@ -230,7 +232,7 @@ pub async fn open_doll_editor_window(doll_id: Option<String>) {
                         if let Some(id) = parent_focus_listener_id {
                             parent.unlisten(id);
                         }
-                        let _ = parent.emit("set-interaction-overlay", false);
+                        let _ = parent.emit(AppEvents::SetInteractionOverlay.as_str(), false);
                     }
                 }
             }

@@ -2,6 +2,7 @@ use tauri::Manager;
 
 use crate::get_app_handle;
 
+pub mod app_events;
 pub mod app_menu;
 pub mod auth;
 pub mod client_config_manager;
@@ -10,10 +11,10 @@ pub mod doll_editor;
 pub mod health_manager;
 pub mod health_monitor;
 pub mod interaction;
+pub mod petpet;
 pub mod presence_modules;
 pub mod scene;
 pub mod sprite_recolor;
-pub mod petpet;
 pub mod welcome;
 pub mod ws;
 

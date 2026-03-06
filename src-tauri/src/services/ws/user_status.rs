@@ -7,6 +7,8 @@ use tracing::warn;
 
 use crate::services::presence_modules::models::PresenceStatus;
 
+use crate::services::app_events::AppEvents;
+
 use super::{emitter, types::WS_EVENT};
 
 /// User status payload sent to WebSocket server
@@ -16,8 +18,6 @@ pub struct UserStatusPayload {
     pub presence_status: PresenceStatus,
     pub state: String,
 }
-
-pub static USER_STATUS_CHANGED: &str = "user-status-changed";
 
 /// Debouncer for user status reports
 static USER_STATUS_REPORT_DEBOUNCE: Lazy<Mutex<Option<JoinHandle<()>>>> =
@@ -32,7 +32,7 @@ pub async fn report_user_status(status: UserStatusPayload) {
         handle.abort();
     }
 
-    emitter::emit_to_frontend(USER_STATUS_CHANGED, &status);
+    emitter::emit_to_frontend(AppEvents::UserStatusChanged.as_str(), &status);
 
     // Schedule new report after 500ms
     let handle = async_runtime::spawn(async move {

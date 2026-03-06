@@ -4,6 +4,7 @@ import { writable } from "svelte/store";
 import type { CursorPositions } from "../types/bindings/CursorPositions";
 import type { CursorPosition } from "../types/bindings/CursorPosition";
 import type { DollDto } from "../types/bindings/DollDto";
+import { AppEvents } from "../types/bindings/AppEventsConstants";
 
 export let cursorPositionOnScreen = writable<CursorPositions>({
   raw: { x: 0, y: 0 },
@@ -52,7 +53,7 @@ export async function initCursorTracking() {
   try {
     // Listen to cursor position events (each window subscribes independently)
     unlistenCursor = await listen<CursorPositions>(
-      "cursor-position",
+      AppEvents.CursorPosition,
       (event) => {
         cursorPositionOnScreen.set(event.payload);
       },

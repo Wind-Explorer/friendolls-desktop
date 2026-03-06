@@ -8,7 +8,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_positioner::WindowExt;
 use tracing::{error, info, warn};
 
-use crate::get_app_handle;
+use crate::{get_app_handle, services::app_events::AppEvents};
 
 pub static SCENE_WINDOW_LABEL: &str = "scene";
 pub static SPLASH_WINDOW_LABEL: &str = "splash";
@@ -69,7 +69,7 @@ pub fn update_scene_interactive(interactive: bool, should_click: bool) {
             }
         }
 
-        if let Err(e) = window.emit("scene-interactive", &interactive) {
+        if let Err(e) = window.emit(AppEvents::SceneInteractive.as_str(), &interactive) {
             error!("Failed to emit scene interactive event: {}", e);
         }
     } else {

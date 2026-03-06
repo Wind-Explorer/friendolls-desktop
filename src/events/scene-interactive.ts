@@ -1,5 +1,6 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
+import { AppEvents } from "../types/bindings/AppEventsConstants";
 
 export const sceneInteractive = writable<boolean>(false);
 
@@ -12,7 +13,7 @@ export async function initSceneInteractiveListener() {
   try {
     // ensure initial default matches backend default
     sceneInteractive.set(false);
-    unlisten = await listen<boolean>("scene-interactive", (event) => {
+    unlisten = await listen<boolean>(AppEvents.SceneInteractive, (event) => {
       sceneInteractive.set(Boolean(event.payload));
     });
     isListening = true;
