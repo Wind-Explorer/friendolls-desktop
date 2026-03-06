@@ -5,11 +5,12 @@
   import YourDolls from "./tabs/your-dolls/index.svelte";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
+  import { AppEvents } from "../../types/bindings/AppEventsConstants";
 
   let showInteractionOverlay = false;
 
   onMount(() => {
-    const unlisten = listen("set-interaction-overlay", (event) => {
+    const unlisten = listen(AppEvents.SetInteractionOverlay, (event) => {
       showInteractionOverlay = event.payload as boolean;
     });
 

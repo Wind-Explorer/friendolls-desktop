@@ -2,20 +2,27 @@ import { listen } from "@tauri-apps/api/event";
 import { addInteraction } from "$lib/stores/interaction-store";
 import type { InteractionPayloadDto } from "../types/bindings/InteractionPayloadDto";
 import type { InteractionDeliveryFailedDto } from "../types/bindings/InteractionDeliveryFailedDto";
+import { AppEvents } from "../types/bindings/AppEventsConstants";
+import {
+  createMultiListenerSubscription,
+  setupHmrCleanup,
+} from "./listener-utils";
 
-let unlistenReceived: (() => void) | undefined;
-let unlistenFailed: (() => void) | undefined;
+const subscription = createMultiListenerSubscription();
 
 export async function initInteractionListeners() {
-  unlistenReceived = await listen<InteractionPayloadDto>(
-    "interaction-received",
+  if (subscription.isListening()) return;
+
+  const unlistenReceived = await listen<InteractionPayloadDto>(
+    AppEvents.InteractionReceived,
     (event) => {
       addInteraction(event.payload);
     },
   );
+  subscription.addUnlisten(unlistenReceived);
 
-  unlistenFailed = await listen<InteractionDeliveryFailedDto>(
-    "interaction-delivery-failed",
+  const unlistenFailed = await listen<InteractionDeliveryFailedDto>(
+    AppEvents.InteractionDeliveryFailed,
     (event) => {
       console.error("Interaction delivery failed:", event.payload);
       // You might want to show a toast or alert here
@@ -24,9 +31,12 @@ export async function initInteractionListeners() {
       );
     },
   );
+  subscription.addUnlisten(unlistenFailed);
+  subscription.setListening(true);
 }
 
 export function stopInteractionListeners() {
-  if (unlistenReceived) unlistenReceived();
-  if (unlistenFailed) unlistenFailed();
+  subscription.stop();
 }
+
+setupHmrCleanup(stopInteractionListeners);

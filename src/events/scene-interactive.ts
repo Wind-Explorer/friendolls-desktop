@@ -1,22 +1,26 @@
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
 import { AppEvents } from "../types/bindings/AppEventsConstants";
+import { createListenerSubscription, setupHmrCleanup } from "./listener-utils";
 
 export const sceneInteractive = writable<boolean>(false);
 
-let unlisten: UnlistenFn | null = null;
-let isListening = false;
+const subscription = createListenerSubscription();
 
 export async function initSceneInteractiveListener() {
-  if (isListening) return;
+  if (subscription.isListening()) return;
 
   try {
     // ensure initial default matches backend default
     sceneInteractive.set(false);
-    unlisten = await listen<boolean>(AppEvents.SceneInteractive, (event) => {
-      sceneInteractive.set(Boolean(event.payload));
-    });
-    isListening = true;
+    const unlisten = await listen<boolean>(
+      AppEvents.SceneInteractive,
+      (event) => {
+        sceneInteractive.set(Boolean(event.payload));
+      },
+    );
+    subscription.setUnlisten(unlisten);
+    subscription.setListening(true);
   } catch (error) {
     console.error("Failed to initialize scene interactive listener:", error);
     throw error;
@@ -24,15 +28,7 @@ export async function initSceneInteractiveListener() {
 }
 
 export function stopSceneInteractiveListener() {
-  if (unlisten) {
-    unlisten();
-    unlisten = null;
-    isListening = false;
-  }
+  subscription.stop();
 }
 
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    stopSceneInteractiveListener();
-  });
-}
+setupHmrCleanup(stopSceneInteractiveListener);

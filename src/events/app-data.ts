@@ -1,24 +1,27 @@
 import { writable } from "svelte/store";
 import { type UserData } from "../types/bindings/UserData";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { AppEvents } from "../types/bindings/AppEventsConstants";
+import { createListenerSubscription, setupHmrCleanup } from "./listener-utils";
 
-export let appData = writable<UserData | null>(null);
+export const appData = writable<UserData | null>(null);
 
-let unlisten: UnlistenFn | null = null;
-let isListening = false;
+const subscription = createListenerSubscription();
 
 export async function initAppDataListener() {
   try {
-    if (isListening) return;
+    if (subscription.isListening()) return;
     appData.set(await invoke("get_app_data"));
-    unlisten = await listen<UserData>(AppEvents.AppDataRefreshed, (event) => {
-      console.log("app-data-refreshed", event.payload);
-      appData.set(event.payload);
-    });
-
-    isListening = true;
+    const unlisten = await listen<UserData>(
+      AppEvents.AppDataRefreshed,
+      (event) => {
+        console.log("app-data-refreshed", event.payload);
+        appData.set(event.payload);
+      },
+    );
+    subscription.setUnlisten(unlisten);
+    subscription.setListening(true);
   } catch (error) {
     console.error(error);
     throw error;
@@ -26,16 +29,7 @@ export async function initAppDataListener() {
 }
 
 export function stopAppDataListener() {
-  if (unlisten) {
-    unlisten();
-    unlisten = null;
-    isListening = false;
-  }
+  subscription.stop();
 }
 
-// Handle HMR (Hot Module Replacement) cleanup
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    stopAppDataListener();
-  });
-}
+setupHmrCleanup(stopAppDataListener);

@@ -15,6 +15,16 @@ pub enum AppEvents {
     EditDoll,
     CreateDoll,
     UserStatusChanged,
+    FriendCursorPosition,
+    FriendDisconnected,
+    FriendActiveDollChanged,
+    FriendUserStatus,
+    InteractionReceived,
+    InteractionDeliveryFailed,
+    FriendRequestReceived,
+    FriendRequestAccepted,
+    FriendRequestDenied,
+    Unfriended,
 }
 
 impl AppEvents {
@@ -27,6 +37,16 @@ impl AppEvents {
             AppEvents::EditDoll => "edit-doll",
             AppEvents::CreateDoll => "create-doll",
             AppEvents::UserStatusChanged => "user-status-changed",
+            AppEvents::FriendCursorPosition => "friend-cursor-position",
+            AppEvents::FriendDisconnected => "friend-disconnected",
+            AppEvents::FriendActiveDollChanged => "friend-active-doll-changed",
+            AppEvents::FriendUserStatus => "friend-user-status",
+            AppEvents::InteractionReceived => "interaction-received",
+            AppEvents::InteractionDeliveryFailed => "interaction-delivery-failed",
+            AppEvents::FriendRequestReceived => "friend-request-received",
+            AppEvents::FriendRequestAccepted => "friend-request-accepted",
+            AppEvents::FriendRequestDenied => "friend-request-denied",
+            AppEvents::Unfriended => "unfriended",
         }
     }
 }

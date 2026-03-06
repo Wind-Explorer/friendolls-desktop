@@ -13,9 +13,13 @@
   import { invoke } from "@tauri-apps/api/core";
   import DesktopPet from "./components/DesktopPet.svelte";
   import FullscreenModal from "./components/FullscreenModal.svelte";
-  import { receivedInteractions, clearInteraction } from "$lib/stores/interaction-store";
+  import {
+    receivedInteractions,
+    clearInteraction,
+  } from "$lib/stores/interaction-store";
   import { INTERACTION_TYPE_HEADPAT } from "$lib/constants/interaction";
   import { listen } from "@tauri-apps/api/event";
+  import { AppEvents } from "../../types/bindings/AppEventsConstants";
   import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
   import { onMount } from "svelte";
   import type { PresenceStatus } from "../../types/bindings/PresenceStatus";
@@ -61,7 +65,9 @@
     let userPetpetGif = "";
     if (userDoll) {
       try {
-        const gifBase64 = await invoke<string>("encode_pet_doll_gif_base64", { doll: userDoll });
+        const gifBase64 = await invoke<string>("encode_pet_doll_gif_base64", {
+          doll: userDoll,
+        });
         userPetpetGif = `data:image/gif;base64,${gifBase64}`;
       } catch (e) {
         console.error("Failed to generate user petpet:", e);
@@ -102,9 +108,14 @@
       if (interaction.type === INTERACTION_TYPE_HEADPAT) {
         if (showFullscreenModal) {
           // Queue the headpat for later (deduplicate by replacing existing from same user)
-          const existingIndex = headpatQueue.findIndex((h) => h.userId === userId);
+          const existingIndex = headpatQueue.findIndex(
+            (h) => h.userId === userId,
+          );
           if (existingIndex >= 0) {
-            headpatQueue[existingIndex] = { userId, content: interaction.content };
+            headpatQueue[existingIndex] = {
+              userId,
+              content: interaction.content,
+            };
           } else {
             headpatQueue.push({ userId, content: interaction.content });
           }
@@ -165,10 +176,12 @@
   let presenceStatus: PresenceStatus | null = $state(null);
 
   onMount(() => {
-    const unlisten = listen<UserStatus>("user-status-changed", (event) => {
-      console.log("event received");
-      presenceStatus = event.payload.presenceStatus;
-    });
+    const unlisten = listen<UserStatus>(
+      AppEvents.UserStatusChanged,
+      (event) => {
+        presenceStatus = event.payload.presenceStatus;
+      },
+    );
 
     return () => {
       unlisten.then((u) => u());

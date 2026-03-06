@@ -1,6 +1,13 @@
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
 import type { PresenceStatus } from "../types/bindings/PresenceStatus";
+import { AppEvents } from "../types/bindings/AppEventsConstants";
+import {
+  createMultiListenerSubscription,
+  parseEventPayload,
+  removeFromStore,
+  setupHmrCleanup,
+} from "./listener-utils";
 
 export type UserStatus = {
   presenceStatus: PresenceStatus;
@@ -9,75 +16,65 @@ export type UserStatus = {
 
 export const friendsUserStatuses = writable<Record<string, UserStatus>>({});
 
-let unlistenStatus: UnlistenFn | null = null;
-let unlistenFriendDisconnected: UnlistenFn | null = null;
-let isListening = false;
+const subscription = createMultiListenerSubscription();
 
 export async function initUserStatusListeners() {
-  if (isListening) return;
+  if (subscription.isListening()) return;
 
   try {
-    unlistenStatus = await listen<unknown>("friend-user-status", (event) => {
-      let payload = event.payload as any;
-      if (typeof payload === "string") {
-        try {
-          payload = JSON.parse(payload);
-        } catch (error) {
-          console.error("Failed to parse friend-user-status payload", error);
-          return;
-        }
-      }
+    const unlistenStatus = await listen<unknown>(
+      AppEvents.FriendUserStatus,
+      (event) => {
+        const payload = parseEventPayload<{
+          userId?: string;
+          status?: UserStatus;
+        }>(event.payload, "friend-user-status");
+        if (!payload) return;
 
-      const userId = payload?.userId as string | undefined;
-      const status = payload?.status as UserStatus | undefined;
+        const userId = payload.userId;
+        const status = payload.status;
 
-      if (!userId || !status) return;
-      if (!status.presenceStatus) return;
+        if (!userId || !status) return;
+        if (!status.presenceStatus) return;
 
-      // Validate that appMetadata has at least one valid name
-      const hasValidName =
-        (typeof status.presenceStatus.title === "string" &&
-          status.presenceStatus.title.trim() !== "") ||
-        (typeof status.presenceStatus.subtitle === "string" &&
-          status.presenceStatus.subtitle.trim() !== "");
-      if (!hasValidName) return;
+        // Validate that appMetadata has at least one valid name
+        const hasValidName =
+          (typeof status.presenceStatus.title === "string" &&
+            status.presenceStatus.title.trim() !== "") ||
+          (typeof status.presenceStatus.subtitle === "string" &&
+            status.presenceStatus.subtitle.trim() !== "");
+        if (!hasValidName) return;
 
-      if (status.state !== "idle" && status.state !== "resting") return;
+        if (status.state !== "idle" && status.state !== "resting") return;
 
-      friendsUserStatuses.update((current) => ({
-        ...current,
-        [userId]: {
-          presenceStatus: status.presenceStatus,
-          state: status.state,
-        },
-      }));
-    });
+        friendsUserStatuses.update((current) => ({
+          ...current,
+          [userId]: {
+            presenceStatus: status.presenceStatus,
+            state: status.state,
+          },
+        }));
+      },
+    );
+    subscription.addUnlisten(unlistenStatus);
 
-    unlistenFriendDisconnected = await listen<
+    const unlistenFriendDisconnected = await listen<
       [{ userId: string }] | { userId: string } | string
-    >("friend-disconnected", (event) => {
-      let payload = event.payload as any;
-      if (typeof payload === "string") {
-        try {
-          payload = JSON.parse(payload);
-        } catch (error) {
-          console.error("Failed to parse friend-disconnected payload", error);
-          return;
-        }
-      }
+    >(AppEvents.FriendDisconnected, (event) => {
+      const payload = parseEventPayload<
+        [{ userId: string }] | { userId: string }
+      >(event.payload, "friend-disconnected");
+      if (!payload) return;
 
       const data = Array.isArray(payload) ? payload[0] : payload;
       const userId = data?.userId as string | undefined;
       if (!userId) return;
 
-      friendsUserStatuses.update((current) => {
-        const next = { ...current };
-        delete next[userId];
-        return next;
-      });
+      friendsUserStatuses.update((current) => removeFromStore(current, userId));
     });
+    subscription.addUnlisten(unlistenFriendDisconnected);
 
-    isListening = true;
+    subscription.setListening(true);
   } catch (error) {
     console.error("Failed to initialize user status listeners", error);
     throw error;
@@ -85,19 +82,7 @@ export async function initUserStatusListeners() {
 }
 
 export function stopUserStatusListeners() {
-  if (unlistenStatus) {
-    unlistenStatus();
-    unlistenStatus = null;
-  }
-  if (unlistenFriendDisconnected) {
-    unlistenFriendDisconnected();
-    unlistenFriendDisconnected = null;
-  }
-  isListening = false;
+  subscription.stop();
 }
 
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    stopUserStatusListeners();
-  });
-}
+setupHmrCleanup(stopUserStatusListeners);

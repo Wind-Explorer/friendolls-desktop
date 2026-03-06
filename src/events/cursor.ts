@@ -1,12 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
 import type { CursorPositions } from "../types/bindings/CursorPositions";
 import type { CursorPosition } from "../types/bindings/CursorPosition";
 import type { DollDto } from "../types/bindings/DollDto";
 import { AppEvents } from "../types/bindings/AppEventsConstants";
+import {
+  createMultiListenerSubscription,
+  parseEventPayload,
+  removeFromStore,
+  setupHmrCleanup,
+} from "./listener-utils";
 
-export let cursorPositionOnScreen = writable<CursorPositions>({
+export const cursorPositionOnScreen = writable<CursorPositions>({
   raw: { x: 0, y: 0 },
   mapped: { x: 0, y: 0 },
 });
@@ -26,16 +32,12 @@ type FriendCursorData = {
 // The exported store will only expose the position part to consumers,
 // but internally we manage the full data.
 // Actually, it's easier if we just export the positions and manage state internally.
-export let friendsCursorPositions = writable<Record<string, CursorPositions>>(
+export const friendsCursorPositions = writable<Record<string, CursorPositions>>(
   {},
 );
-export let friendsActiveDolls = writable<Record<string, DollDto | null>>({});
+export const friendsActiveDolls = writable<Record<string, DollDto | null>>({});
 
-let unlistenCursor: UnlistenFn | null = null;
-let unlistenFriendCursor: UnlistenFn | null = null;
-let unlistenFriendDisconnected: UnlistenFn | null = null;
-let unlistenFriendActiveDollChanged: UnlistenFn | null = null;
-let isListening = false;
+const subscription = createMultiListenerSubscription();
 
 // Internal state to track timestamps
 let friendCursorState: Record<string, FriendCursorData> = {};
@@ -46,22 +48,21 @@ let friendCursorState: Record<string, FriendCursorData> = {};
  * but all windows can independently listen to the broadcast events.
  */
 export async function initCursorTracking() {
-  if (isListening) {
-    return;
-  }
+  if (subscription.isListening()) return;
 
   try {
     // Listen to cursor position events (each window subscribes independently)
-    unlistenCursor = await listen<CursorPositions>(
+    const unlistenCursor = await listen<CursorPositions>(
       AppEvents.CursorPosition,
       (event) => {
         cursorPositionOnScreen.set(event.payload);
       },
     );
+    subscription.addUnlisten(unlistenCursor);
 
     // Listen to friend cursor position events
-    unlistenFriendCursor = await listen<FriendCursorPosition>(
-      "friend-cursor-position",
+    const unlistenFriendCursor = await listen<FriendCursorPosition>(
+      AppEvents.FriendCursorPosition,
       (event) => {
         // We now receive a clean object from Rust
         const data = event.payload;
@@ -80,58 +81,44 @@ export async function initCursorTracking() {
         });
       },
     );
+    subscription.addUnlisten(unlistenFriendCursor);
 
     // Listen to friend disconnected events
-    unlistenFriendDisconnected = await listen<[{ userId: string }]>(
-      "friend-disconnected",
-      (event) => {
-        let payload = event.payload;
-        if (typeof payload === "string") {
-          try {
-            payload = JSON.parse(payload);
-          } catch (e) {
-            console.error("Failed to parse friend disconnected payload:", e);
-            return;
-          }
-        }
+    const unlistenFriendDisconnected = await listen<
+      [{ userId: string }] | { userId: string } | string
+    >(AppEvents.FriendDisconnected, (event) => {
+      const payload = parseEventPayload<
+        [{ userId: string }] | { userId: string }
+      >(event.payload, "friend-disconnected");
+      if (!payload) return;
 
-        const data = Array.isArray(payload) ? payload[0] : payload;
+      const data = Array.isArray(payload) ? payload[0] : payload;
 
-        // Remove from internal state
-        if (friendCursorState[data.userId]) {
-          delete friendCursorState[data.userId];
-        }
+      // Remove from internal state
+      if (friendCursorState[data.userId]) {
+        delete friendCursorState[data.userId];
+      }
 
-        // Update svelte store
-        friendsCursorPositions.update((current) => {
-          const next = { ...current };
-          delete next[data.userId];
-          return next;
-        });
-      },
-    );
+      // Update svelte store
+      friendsCursorPositions.update((current) =>
+        removeFromStore(current, data.userId),
+      );
+    });
+    subscription.addUnlisten(unlistenFriendDisconnected);
 
     // Listen to friend active doll changed events
-    unlistenFriendActiveDollChanged = await listen<
+    const unlistenFriendActiveDollChanged = await listen<
       | string
       | {
           friendId: string;
           doll: DollDto | null;
         }
-    >("friend-active-doll-changed", (event) => {
-      let data = event.payload;
-
-      if (typeof data === "string") {
-        try {
-          data = JSON.parse(data);
-        } catch (e) {
-          console.error(
-            "Failed to parse friend-active-doll-changed payload:",
-            e,
-          );
-          return;
-        }
-      }
+    >(AppEvents.FriendActiveDollChanged, (event) => {
+      const data = parseEventPayload<{
+        friendId: string;
+        doll: DollDto | null;
+      }>(event.payload, "friend-active-doll-changed");
+      if (!data) return;
 
       // Cast to expected type after parsing
       const payload = data as { friendId: string; doll: DollDto | null };
@@ -149,11 +136,9 @@ export async function initCursorTracking() {
         });
 
         // Also remove from cursor positions so the sprite disappears
-        friendsCursorPositions.update((current) => {
-          const next = { ...current };
-          delete next[payload.friendId];
-          return next;
-        });
+        friendsCursorPositions.update((current) =>
+          removeFromStore(current, payload.friendId),
+        );
       } else {
         // Update or add the new doll configuration
         friendsActiveDolls.update((current) => {
@@ -164,8 +149,9 @@ export async function initCursorTracking() {
         });
       }
     });
+    subscription.addUnlisten(unlistenFriendActiveDollChanged);
 
-    isListening = true;
+    subscription.setListening(true);
   } catch (err) {
     console.error("Failed to initialize cursor tracking:", err);
     throw err;
@@ -177,28 +163,7 @@ export async function initCursorTracking() {
  * Note: This doesn't stop the Rust-side tracking, just stops this window from receiving events.
  */
 export function stopCursorTracking() {
-  if (unlistenCursor) {
-    unlistenCursor();
-    unlistenCursor = null;
-  }
-  if (unlistenFriendCursor) {
-    unlistenFriendCursor();
-    unlistenFriendCursor = null;
-  }
-  if (unlistenFriendDisconnected) {
-    unlistenFriendDisconnected();
-    unlistenFriendDisconnected = null;
-  }
-  if (unlistenFriendActiveDollChanged) {
-    unlistenFriendActiveDollChanged();
-    unlistenFriendActiveDollChanged = null;
-  }
-  isListening = false;
+  subscription.stop();
 }
 
-// Handle HMR (Hot Module Replacement) cleanup
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    stopCursorTracking();
-  });
-}
+setupHmrCleanup(stopCursorTracking);

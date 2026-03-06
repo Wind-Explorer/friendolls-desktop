@@ -3,6 +3,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { invoke } from "@tauri-apps/api/core";
   import { appData } from "../../../events/app-data";
+  import { AppEvents } from "../../../types/bindings/AppEventsConstants";
   import type { FriendRequestResponseDto } from "../../../types/bindings/FriendRequestResponseDto.js";
   import type { FriendshipResponseDto } from "../../../types/bindings/FriendshipResponseDto.js";
   import type { UserBasicDto } from "../../../types/bindings/UserBasicDto.js";
@@ -50,26 +51,26 @@
     refreshSent();
 
     unlisteners.push(
-      await listen("friend-request-received", () => {
+      await listen(AppEvents.FriendRequestReceived, () => {
         refreshReceived();
       }),
     );
 
     unlisteners.push(
-      await listen("friend-request-accepted", () => {
+      await listen(AppEvents.FriendRequestAccepted, () => {
         refreshSent();
         invoke("refresh_app_data");
       }),
     );
 
     unlisteners.push(
-      await listen("friend-request-denied", () => {
+      await listen(AppEvents.FriendRequestDenied, () => {
         refreshSent();
       }),
     );
 
     unlisteners.push(
-      await listen("unfriended", () => {
+      await listen(AppEvents.Unfriended, () => {
         invoke("refresh_app_data");
       }),
     );
