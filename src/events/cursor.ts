@@ -89,7 +89,7 @@ export async function initCursorTracking() {
     >(AppEvents.FriendDisconnected, (event) => {
       const payload = parseEventPayload<
         [{ userId: string }] | { userId: string }
-      >(event.payload, "friend-disconnected");
+      >(event.payload, AppEvents.FriendDisconnected);
       if (!payload) return;
 
       const data = Array.isArray(payload) ? payload[0] : payload;
@@ -117,7 +117,7 @@ export async function initCursorTracking() {
       const data = parseEventPayload<{
         friendId: string;
         doll: DollDto | null;
-      }>(event.payload, "friend-active-doll-changed");
+      }>(event.payload, AppEvents.FriendActiveDollChanged);
       if (!data) return;
 
       // Cast to expected type after parsing

@@ -28,7 +28,7 @@ export async function initUserStatusListeners() {
         const payload = parseEventPayload<{
           userId?: string;
           status?: UserStatus;
-        }>(event.payload, "friend-user-status");
+        }>(event.payload, AppEvents.FriendUserStatus);
         if (!payload) return;
 
         const userId = payload.userId;
@@ -63,7 +63,7 @@ export async function initUserStatusListeners() {
     >(AppEvents.FriendDisconnected, (event) => {
       const payload = parseEventPayload<
         [{ userId: string }] | { userId: string }
-      >(event.payload, "friend-disconnected");
+      >(event.payload, AppEvents.FriendDisconnected);
       if (!payload) return;
 
       const data = Array.isArray(payload) ? payload[0] : payload;
