@@ -15,6 +15,7 @@ export type UserStatus = {
 };
 
 export const friendsUserStatuses = writable<Record<string, UserStatus>>({});
+export const currentUserStatus = writable<UserStatus | null>(null);
 
 const subscription = createMultiListenerSubscription();
 
@@ -57,6 +58,14 @@ export async function initUserStatusListeners() {
       },
     );
     subscription.addUnlisten(unlistenStatus);
+
+    const unlistenUserStatusChanged = await listen<UserStatus>(
+      AppEvents.UserStatusChanged,
+      (event) => {
+        currentUserStatus.set(event.payload);
+      },
+    );
+    subscription.addUnlisten(unlistenUserStatusChanged);
 
     const unlistenFriendDisconnected = await listen<
       [{ userId: string }] | { userId: string } | string
