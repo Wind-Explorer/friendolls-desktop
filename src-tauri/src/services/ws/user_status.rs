@@ -1,4 +1,5 @@
 use once_cell::sync::Lazy;
+use tauri_specta::Event as _;
 use tauri::async_runtime::{self, JoinHandle};
 use tokio::sync::Mutex;
 use tokio::time::Duration;
@@ -6,7 +7,7 @@ use tracing::warn;
 
 use crate::models::event_payloads::UserStatusPayload;
 
-use crate::services::app_events::AppEvents;
+use crate::services::app_events::UserStatusChanged;
 
 use super::{emitter, types::WS_EVENT};
 
@@ -23,7 +24,9 @@ pub async fn report_user_status(status: UserStatusPayload) {
         handle.abort();
     }
 
-    emitter::emit_to_frontend(AppEvents::UserStatusChanged.as_str(), &status);
+    if let Err(e) = UserStatusChanged(status.clone()).emit(crate::get_app_handle()) {
+        warn!("Failed to emit user-status-changed event: {e}");
+    }
 
     // Schedule new report after 500ms
     let handle = async_runtime::spawn(async move {

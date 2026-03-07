@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+  import { commands } from "$lib/bindings";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
   import DollPreview from "../app-menu/components/doll-preview.svelte";
   import ExternalLink from "../../assets/icons/external-link.svelte";
@@ -31,22 +31,19 @@
     errorMessage = "";
     try {
       if (useRegister) {
-        await invoke("register", {
-          email: form.email.trim(),
-          password: form.password,
-          name: form.name.trim() || null,
-          username: form.username.trim() || null,
-        });
+        await commands.register(
+          form.email.trim(),
+          form.password,
+          form.name.trim() || null,
+          form.username.trim() || null,
+        );
         useRegister = false;
         resetRegisterFields();
         form.password = "";
         return;
       }
 
-      await invoke("login", {
-        email: form.email.trim(),
-        password: form.password,
-      });
+      await commands.login(form.email.trim(), form.password);
       await getCurrentWebviewWindow().close();
     } catch (error) {
       console.error("Failed to authenticate", error);
@@ -62,7 +59,7 @@
 
   const openClientConfigManager = async () => {
     try {
-      await invoke("open_client_config_manager");
+      await commands.openClientConfigManager();
     } catch (error) {
       console.error("Failed to open client config manager", error);
     }

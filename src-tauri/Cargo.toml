@@ -24,7 +24,9 @@ tauri-plugin-positioner = "2"
 tauri-plugin-process = "2"
 reqwest = { version = "0.12.23", features = ["json", "native-tls", "blocking"] }
 tokio-util = "0.7"
-ts-rs = "11.0.1"
+specta = "=2.0.0-rc.22"
+specta-typescript = "0.0.9"
+tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
 strum = { version = "0.26", features = ["derive"] }
 device_query = "4.0.1"
 dotenvy = "0.15.7"

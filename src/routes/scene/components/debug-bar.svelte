@@ -1,6 +1,5 @@
 <script lang="ts">
-  import type { PresenceStatus } from "../../../types/bindings/PresenceStatus";
-  import type { UserStatusPayload } from "../../../types/bindings/UserStatusPayload";
+  import type { PresenceStatus, UserStatusPayload } from "$lib/bindings";
 
   interface Friend {
     friend?: {

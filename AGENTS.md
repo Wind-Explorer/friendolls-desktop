@@ -6,56 +6,35 @@ Passive social app connecting peers through mouse cursor interactions in the for
 
 Desktop client app for Friendolls.
 
-## Build/Lint/Test Commands
+## Commands
 
-### Full App (Standard)
+Check code integrity after every significant change:
 
-- **Dev**: `pnpm dev` (runs Tauri dev mode)
+- `cd src-tauri && cargo check` for Rust local backend
+- `pnpm check` for Svelte frontend
 
-### Frontend (SvelteKit + TypeScript)
+Generate TypeScript bindings with `tauri-specta` when new tauri commands, events or Rust models is added / modified:
 
-- **Build**: `pnpm build`
-- **Dev server**: `pnpm dev`
-- **Type check**: `svelte-kit sync && svelte-check --tsconfig ./tsconfig.json`
-- **Watch type check**: `svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch`
-
-### Backend (Rust + Tauri)
-
-- **Build**: `cargo build`
-- **Check**: `cargo check`
-- **Lint**: `cargo clippy`
-- **Test**: `cargo test`
-- **Run single test**: `cargo test <test_name>`
-- **Generate TypeScript bindings (from project root)**: `TS_RS_EXPORT_DIR="../src/types/bindings" cargo test export_bindings --manifest-path="./src-tauri/Cargo.toml"`
-
-## Code Style Guidelines
+- `timeout 30 pnpm tauri dev`
 
 ### TypeScript/Svelte
 
-- **Strict TypeScript**: `"strict": true` enabled
-- **Imports**: At top of file, before exports
-- **Naming**: camelCase for variables/functions, PascalCase for types/interfaces
-- **Modules**: ES modules only
-- **Styling**: TailwindCSS + DaisyUI
 - **Framework**: SvelteKit in SPA mode (SSR disabled for Tauri)
-- **Error handling**: Standard try/catch with console.error logging
-- **Responsibility**: Minimal logic & data handling, should play as stateless dumb client
+- **Styling**: TailwindCSS + DaisyUI
+- **Responsibility**: Minimal logic & data handling, should play as stateless dumb client, communicate with Rust local backend via Tauri events
 
 ### Rust
 
 - **Error handling**: `thiserror::Error` derive with descriptive error messages
 - **Logging**: `tracing` crate for structured logging (info/warn/error)
 - **Async**: `tokio` runtime with `async`/`await`
-- **Serialization**: `serde` with `Serialize`/`Deserialize`
 - **Naming**: snake_case for functions/variables, PascalCase for types/structs
-- **Documentation**: Comprehensive doc comments with examples for public APIs
 - **State management**: Custom macros (`lock_r!`/`lock_w!`) for thread-safe access
-- **Security**: Use secure storage (keyring) for sensitive data, proper PKCE flow for OAuth
-- **Imports**: Group by standard library, then external crates, then local modules
+- **Security**: Use secure storage (keyring) for sensitive data
 - **Responsibility**: Handles app state & data, business logic, controls UI via events.
 
 ## Note
 
 Be sure to gather sufficient context from codebase before proceeding with changes. Observe patterns and follow trends.
 
-Do not run the app yourself. `cd src-tauri && cargo check` & `pnpm check` to confirm your changes are error-free. Don't perform git actions yourself.
+Do not run the app without timeout. `cd src-tauri && cargo check` & `pnpm check` to confirm your changes are error-free. Don't perform git actions yourself.

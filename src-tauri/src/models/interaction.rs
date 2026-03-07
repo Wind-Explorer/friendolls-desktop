@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
+use specta::Type;
 
-#[derive(Clone, Serialize, Deserialize, Debug, TS)]
-#[ts(export)]
+#[derive(Clone, Serialize, Deserialize, Debug, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SendInteractionDto {
     pub recipient_user_id: String,
@@ -11,8 +10,7 @@ pub struct SendInteractionDto {
     pub type_: String,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, TS)]
-#[ts(export)]
+#[derive(Clone, Serialize, Deserialize, Debug, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionPayloadDto {
     pub sender_user_id: String,
@@ -23,8 +21,7 @@ pub struct InteractionPayloadDto {
     pub timestamp: String,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, TS)]
-#[ts(export)]
+#[derive(Clone, Serialize, Deserialize, Debug, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionDeliveryFailedDto {
     pub recipient_user_id: String,

@@ -1,8 +1,5 @@
 import { writable } from "svelte/store";
-import { type UserData } from "../types/bindings/UserData";
-import { listen } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
-import { AppEvents } from "../types/bindings/AppEventsConstants";
+import { commands, events, type UserData } from "$lib/bindings";
 import { createListenerSubscription, setupHmrCleanup } from "./listener-utils";
 
 export const appData = writable<UserData | null>(null);
@@ -16,13 +13,10 @@ const subscription = createListenerSubscription();
 export async function startAppData() {
   try {
     if (subscription.isListening()) return;
-    appData.set(await invoke("get_app_data"));
-    const unlisten = await listen<UserData>(
-      AppEvents.AppDataRefreshed,
-      (event) => {
-        appData.set(event.payload);
-      },
-    );
+    appData.set(await commands.getAppData());
+    const unlisten = await events.appDataRefreshed.listen((event) => {
+      appData.set(event.payload);
+    });
     subscription.setUnlisten(unlisten);
     subscription.setListening(true);
   } catch (error) {

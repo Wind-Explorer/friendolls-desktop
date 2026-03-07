@@ -1,11 +1,13 @@
 use crate::services::auth;
 
 #[tauri::command]
+#[specta::specta]
 pub async fn logout_and_restart() -> Result<(), String> {
     auth::logout_and_restart().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn login(email: String, password: String) -> Result<(), String> {
     auth::login_and_init_session(&email, &password)
         .await
@@ -13,6 +15,7 @@ pub async fn login(email: String, password: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn register(
     email: String,
     password: String,
@@ -30,6 +33,7 @@ pub async fn register(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn change_password(
     current_password: String,
     new_password: String,
@@ -40,6 +44,7 @@ pub async fn change_password(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn reset_password(old_password: String, new_password: String) -> Result<(), String> {
     auth::reset_password(&old_password, &new_password)
         .await

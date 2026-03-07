@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
+  import {
+    commands,
+    type CreateDollDto,
+    type DollDto,
+    type UpdateDollDto,
+  } from "$lib/bindings";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-  import type { DollDto } from "../../types/bindings/DollDto";
-  import type { CreateDollDto } from "../../types/bindings/CreateDollDto";
-  import type { UpdateDollDto } from "../../types/bindings/UpdateDollDto";
   import DollPreview from "../app-menu/components/doll-preview.svelte";
 
   let mode: "create" | "edit" = "create";
@@ -35,7 +37,7 @@
   async function fetchDoll(id: string) {
     loading = true;
     try {
-      const doll: DollDto = await invoke("get_doll", { id });
+      const doll: DollDto = await commands.getDoll(id);
       name = doll.name;
       bodyColor = doll.configuration.colorScheme.body;
       outlineColor = doll.configuration.colorScheme.outline;
@@ -62,7 +64,7 @@
             },
           },
         };
-        await invoke("create_doll", { dto });
+        await commands.createDoll(dto);
       } else if (dollId) {
         const dto: UpdateDollDto = {
           name,
@@ -73,7 +75,7 @@
             },
           },
         };
-        await invoke("update_doll", { id: dollId, dto });
+        await commands.updateDoll(dollId, dto);
       }
 
       // Close window on success

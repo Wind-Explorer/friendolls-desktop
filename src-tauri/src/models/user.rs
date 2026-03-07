@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
+use specta::Type;
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct UserProfile {
     pub id: String,
     pub name: String,

@@ -1,18 +1,16 @@
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
+use specta::Type;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct PresenceStatus {
     pub title: Option<String>,
     pub subtitle: Option<String>,
     pub graphics_b64: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, TS)]
+#[derive(Serialize, Deserialize, Debug, Clone, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct ModuleMetadata {
     pub id: String,
     pub name: String,

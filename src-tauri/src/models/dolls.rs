@@ -1,40 +1,35 @@
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
+use specta::Type;
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct DollColorSchemeDto {
     pub outline: String,
     pub body: String,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct DollConfigurationDto {
     pub color_scheme: DollColorSchemeDto,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct CreateDollDto {
     pub name: String,
     pub configuration: Option<DollConfigurationDto>,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct UpdateDollDto {
     pub name: Option<String>,
     pub configuration: Option<DollConfigurationDto>,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct DollDto {
     pub id: String,
     pub name: String,

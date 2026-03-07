@@ -9,6 +9,7 @@ use crate::{
 };
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_dolls() -> Result<Vec<DollDto>, String> {
     DollsRemote::new()
         .get_dolls()
@@ -17,6 +18,7 @@ pub async fn get_dolls() -> Result<Vec<DollDto>, String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_doll(id: String) -> Result<DollDto, String> {
     DollsRemote::new()
         .get_doll(&id)
@@ -25,6 +27,7 @@ pub async fn get_doll(id: String) -> Result<DollDto, String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn create_doll(dto: CreateDollDto) -> Result<DollDto, String> {
     let result = DollsRemote::new()
         .create_doll(dto)
@@ -37,6 +40,7 @@ pub async fn create_doll(dto: CreateDollDto) -> Result<DollDto, String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn update_doll(id: String, dto: UpdateDollDto) -> Result<DollDto, String> {
     let result = DollsRemote::new()
         .update_doll(&id, dto)
@@ -55,6 +59,7 @@ pub async fn update_doll(id: String, dto: UpdateDollDto) -> Result<DollDto, Stri
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn delete_doll(id: String) -> Result<(), String> {
     DollsRemote::new()
         .delete_doll(&id)
@@ -73,6 +78,7 @@ pub async fn delete_doll(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn set_active_doll(doll_id: String) -> Result<(), String> {
     UserRemote::new()
         .set_active_doll(&doll_id)
@@ -85,6 +91,7 @@ pub async fn set_active_doll(doll_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remove_active_doll() -> Result<(), String> {
     UserRemote::new()
         .remove_active_doll()

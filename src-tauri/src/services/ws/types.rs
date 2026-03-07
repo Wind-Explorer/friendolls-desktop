@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// WebSocket event constants
 #[allow(non_camel_case_types)]
@@ -37,7 +38,7 @@ pub struct IncomingFriendCursorPayload {
 }
 
 /// Outgoing friend cursor position to frontend
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct OutgoingFriendCursorPayload {
     pub user_id: String,

@@ -6,6 +6,7 @@ use crate::state::AppDataRefreshScope;
 use crate::commands::refresh_app_data;
 
 #[tauri::command]
+#[specta::specta]
 pub async fn list_friends() -> Result<Vec<FriendshipResponseDto>, String> {
     FriendRemote::new()
         .get_friends()
@@ -14,6 +15,7 @@ pub async fn list_friends() -> Result<Vec<FriendshipResponseDto>, String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn search_users(username: Option<String>) -> Result<Vec<UserBasicDto>, String> {
     tracing::info!(
         "Tauri command search_users called with username: {:?}",
@@ -30,6 +32,7 @@ pub async fn search_users(username: Option<String>) -> Result<Vec<UserBasicDto>,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn send_friend_request(
     request: SendFriendRequestDto,
 ) -> Result<FriendRequestResponseDto, String> {
@@ -44,6 +47,7 @@ pub async fn send_friend_request(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn received_friend_requests() -> Result<Vec<FriendRequestResponseDto>, String> {
     FriendRemote::new()
         .get_received_requests()
@@ -52,6 +56,7 @@ pub async fn received_friend_requests() -> Result<Vec<FriendRequestResponseDto>,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn sent_friend_requests() -> Result<Vec<FriendRequestResponseDto>, String> {
     FriendRemote::new()
         .get_sent_requests()
@@ -60,6 +65,7 @@ pub async fn sent_friend_requests() -> Result<Vec<FriendRequestResponseDto>, Str
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn accept_friend_request(request_id: String) -> Result<FriendRequestResponseDto, String> {
     let result = FriendRemote::new()
         .accept_friend_request(&request_id)
@@ -72,6 +78,7 @@ pub async fn accept_friend_request(request_id: String) -> Result<FriendRequestRe
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn deny_friend_request(request_id: String) -> Result<FriendRequestResponseDto, String> {
     let result = FriendRemote::new()
         .deny_friend_request(&request_id)
@@ -84,6 +91,7 @@ pub async fn deny_friend_request(request_id: String) -> Result<FriendRequestResp
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn unfriend(friend_id: String) -> Result<(), String> {
     FriendRemote::new()
         .unfriend(&friend_id)

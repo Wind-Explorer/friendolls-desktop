@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { listen } from "@tauri-apps/api/event";
-  import { invoke } from "@tauri-apps/api/core";
+  import {
+    commands,
+    events,
+    type FriendRequestResponseDto,
+    type FriendshipResponseDto,
+    type UserBasicDto,
+  } from "$lib/bindings";
   import { appData } from "../../../events/app-data";
-  import { AppEvents } from "../../../types/bindings/AppEventsConstants";
-  import type { FriendRequestResponseDto } from "../../../types/bindings/FriendRequestResponseDto.js";
-  import type { FriendshipResponseDto } from "../../../types/bindings/FriendshipResponseDto.js";
-  import type { UserBasicDto } from "../../../types/bindings/UserBasicDto.js";
 
   let received: FriendRequestResponseDto[] = [];
   let sent: FriendRequestResponseDto[] = [];
@@ -51,27 +52,27 @@
     refreshSent();
 
     unlisteners.push(
-      await listen(AppEvents.FriendRequestReceived, () => {
+      await events.friendRequestReceived.listen(() => {
         refreshReceived();
       }),
     );
 
     unlisteners.push(
-      await listen(AppEvents.FriendRequestAccepted, () => {
+      await events.friendRequestAccepted.listen(() => {
         refreshSent();
-        invoke("refresh_app_data");
+        commands.refreshAppData();
       }),
     );
 
     unlisteners.push(
-      await listen(AppEvents.FriendRequestDenied, () => {
+      await events.friendRequestDenied.listen(() => {
         refreshSent();
       }),
     );
 
     unlisteners.push(
-      await listen(AppEvents.Unfriended, () => {
-        invoke("refresh_app_data");
+      await events.unfriended.listen(() => {
+        commands.refreshAppData();
       }),
     );
   });
@@ -83,7 +84,7 @@
   async function refreshReceived() {
     loading.received = true;
     try {
-      received = await invoke("received_friend_requests");
+      received = await commands.receivedFriendRequests();
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
     } finally {
@@ -94,7 +95,7 @@
   async function refreshSent() {
     loading.sent = true;
     try {
-      sent = await invoke("sent_friend_requests");
+      sent = await commands.sentFriendRequests();
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
     } finally {
@@ -105,8 +106,8 @@
   async function handleAccept(id: string) {
     loading.action = true;
     try {
-      await invoke("accept_friend_request", { requestId: id });
-      await Promise.all([refreshReceived(), invoke("refresh_app_data")]);
+      await commands.acceptFriendRequest(id);
+      await Promise.all([refreshReceived(), commands.refreshAppData()]);
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
     } finally {
@@ -117,7 +118,7 @@
   async function handleDeny(id: string) {
     loading.action = true;
     try {
-      await invoke("deny_friend_request", { requestId: id });
+      await commands.denyFriendRequest(id);
       await refreshReceived();
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
@@ -129,8 +130,8 @@
   async function handleUnfriend(friendId: string) {
     loading.action = true;
     try {
-      await invoke("unfriend", { friendId });
-      await invoke("refresh_app_data");
+      await commands.unfriend(friendId);
+      await commands.refreshAppData();
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
     } finally {
@@ -157,9 +158,7 @@
     error = null;
 
     try {
-      const results = await invoke<UserBasicDto[]>("search_users", {
-        username: sanitizedTerm,
-      });
+      const results = await commands.searchUsers(sanitizedTerm);
       const match = results.find(
         (user) => user.username?.toLowerCase() === normalizedTerm,
       );
@@ -181,9 +180,7 @@
   async function handleSendRequest(receiverId: string) {
     loading.action = true;
     try {
-      await invoke("send_friend_request", {
-        request: { receiverId },
-      });
+      await commands.sendFriendRequest({ receiverId });
       await refreshSent();
     } catch (e) {
       const msg = (e as Error)?.message ?? String(e);

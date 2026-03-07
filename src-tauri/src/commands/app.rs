@@ -4,6 +4,7 @@ use crate::services::auth::get_session_token;
 use tracing::info;
 
 #[tauri::command]
+#[specta::specta]
 pub fn quit_app() -> Result<(), String> {
     let app_handle = get_app_handle();
     app_handle.exit(0);
@@ -11,6 +12,7 @@ pub fn quit_app() -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn restart_app() {
     let app_handle = get_app_handle();
     app_handle.restart();
@@ -21,6 +23,7 @@ pub fn restart_app() {
 /// Validates server health, checks for a valid session token,
 /// then reconstructs the user session (re-fetches app data + WebSocket).
 #[tauri::command]
+#[specta::specta]
 pub async fn retry_connection() -> Result<(), String> {
     info!("Retrying connection...");
 

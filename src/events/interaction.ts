@@ -1,8 +1,9 @@
-import { listen } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
-import type { InteractionPayloadDto } from "../types/bindings/InteractionPayloadDto";
-import type { InteractionDeliveryFailedDto } from "../types/bindings/InteractionDeliveryFailedDto";
-import { AppEvents } from "../types/bindings/AppEventsConstants";
+import {
+  events,
+  type InteractionDeliveryFailedDto,
+  type InteractionPayloadDto,
+} from "$lib/bindings";
 import {
   createMultiListenerSubscription,
   setupHmrCleanup,
@@ -37,16 +38,12 @@ export async function startInteraction() {
   if (subscription.isListening()) return;
 
   try {
-    const unlistenReceived = await listen<InteractionPayloadDto>(
-      AppEvents.InteractionReceived,
-      (event) => {
-        addInteraction(event.payload);
-      },
-    );
+    const unlistenReceived = await events.interactionReceived.listen((event) => {
+      addInteraction(event.payload);
+    });
     subscription.addUnlisten(unlistenReceived);
 
-    const unlistenFailed = await listen<InteractionDeliveryFailedDto>(
-      AppEvents.InteractionDeliveryFailed,
+    const unlistenFailed = await events.interactionDeliveryFailed.listen(
       (event) => {
         console.error("Interaction delivery failed:", event.payload);
         alert(

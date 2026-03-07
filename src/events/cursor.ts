@@ -1,8 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
-import type { CursorPositions } from "../types/bindings/CursorPositions";
-import { AppEvents } from "../types/bindings/AppEventsConstants";
+import { events, type CursorPositions } from "$lib/bindings";
 import { createListenerSubscription, setupHmrCleanup } from "./listener-utils";
 
 export const cursorPositionOnScreen = writable<CursorPositions>({
@@ -20,12 +17,9 @@ export async function startCursorTracking() {
   if (subscription.isListening()) return;
 
   try {
-    const unlisten = await listen<CursorPositions>(
-      AppEvents.CursorPosition,
-      (event) => {
-        cursorPositionOnScreen.set(event.payload);
-      },
-    );
+    const unlisten = await events.cursorMoved.listen((event) => {
+      cursorPositionOnScreen.set(event.payload);
+    });
     subscription.setUnlisten(unlisten);
     subscription.setListening(true);
   } catch (err) {

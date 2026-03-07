@@ -1,11 +1,10 @@
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use thiserror::Error;
-use ts_rs::TS;
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct HealthResponseDto {
     pub status: String,
     pub version: String,

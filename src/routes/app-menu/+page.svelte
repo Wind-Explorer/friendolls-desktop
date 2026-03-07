@@ -3,14 +3,13 @@
   import Preferences from "./tabs/preferences.svelte";
   import Modules from "./tabs/modules.svelte";
   import YourDolls from "./tabs/your-dolls/index.svelte";
-  import { listen } from "@tauri-apps/api/event";
+  import { events } from "$lib/bindings";
   import { onMount } from "svelte";
-  import { AppEvents } from "../../types/bindings/AppEventsConstants";
 
   let showInteractionOverlay = false;
 
   onMount(() => {
-    const unlisten = listen(AppEvents.SetInteractionOverlay, (event) => {
+    const unlisten = events.setInteractionOverlay.listen((event) => {
       showInteractionOverlay = event.payload as boolean;
     });
 

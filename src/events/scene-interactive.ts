@@ -1,7 +1,5 @@
-import { listen } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
 import { writable } from "svelte/store";
-import { AppEvents } from "../types/bindings/AppEventsConstants";
+import { commands, events } from "$lib/bindings";
 import { createListenerSubscription, setupHmrCleanup } from "./listener-utils";
 
 export const sceneInteractive = writable<boolean>(false);
@@ -16,13 +14,10 @@ export async function startSceneInteractive() {
   if (subscription.isListening()) return;
 
   try {
-    sceneInteractive.set(await invoke("get_scene_interactive"));
-    const unlisten = await listen<boolean>(
-      AppEvents.SceneInteractive,
-      (event) => {
-        sceneInteractive.set(Boolean(event.payload));
-      },
-    );
+    sceneInteractive.set(await commands.getSceneInteractive());
+    const unlisten = await events.sceneInteractiveChanged.listen((event) => {
+      sceneInteractive.set(Boolean(event.payload));
+    });
     subscription.setUnlisten(unlisten);
     subscription.setListening(true);
   } catch (error) {

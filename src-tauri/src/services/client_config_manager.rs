@@ -1,6 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use tauri::Manager;
 use thiserror::Error;
 use tracing::{error, warn};
@@ -8,7 +9,7 @@ use url::Url;
 
 use crate::get_app_handle;
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 pub struct AppConfig {
     pub api_base_url: Option<String>,
 }

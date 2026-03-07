@@ -19,7 +19,17 @@ use commands::friends::{
 use commands::interaction::send_interaction_cmd;
 use commands::sprite::recolor_gif_base64;
 use commands::petpet::encode_pet_doll_gif_base64;
+use specta_typescript::Typescript;
 use tauri::async_runtime;
+use tauri_specta::{Builder as SpectaBuilder, ErrorHandlingMode, collect_commands, collect_events};
+
+use crate::services::app_events::{
+    AppDataRefreshed, CreateDoll, CursorMoved, EditDoll, FriendActiveDollChanged,
+    FriendCursorPositionUpdated, FriendDisconnected, FriendRequestAccepted,
+    FriendRequestDenied, FriendRequestReceived, FriendUserStatusChanged,
+    InteractionDeliveryFailed, InteractionReceived, SceneInteractiveChanged,
+    SetInteractionOverlay, Unfriended, UserStatusChanged,
+};
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
 
@@ -51,12 +61,9 @@ fn register_app_events(event: tauri::RunEvent) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_positioner::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_process::init())
-        .invoke_handler(tauri::generate_handler![
+    let specta_builder = SpectaBuilder::<tauri::Wry>::new()
+        .error_handling(ErrorHandlingMode::Throw)
+        .commands(collect_commands![
             get_app_data,
             refresh_app_data,
             list_friends,
@@ -94,7 +101,39 @@ pub fn run() {
             send_interaction_cmd,
             get_modules
         ])
-        .setup(|app| {
+        .events(collect_events![
+            CursorMoved,
+            SceneInteractiveChanged,
+            AppDataRefreshed,
+            SetInteractionOverlay,
+            EditDoll,
+            CreateDoll,
+            UserStatusChanged,
+            FriendCursorPositionUpdated,
+            FriendDisconnected,
+            FriendActiveDollChanged,
+            FriendUserStatusChanged,
+            InteractionReceived,
+            InteractionDeliveryFailed,
+            FriendRequestReceived,
+            FriendRequestAccepted,
+            FriendRequestDenied,
+            Unfriended
+        ]);
+
+    #[cfg(debug_assertions)]
+    specta_builder
+        .export(Typescript::default(), "../src/lib/bindings.ts")
+        .expect("Failed to export TypeScript bindings");
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
+        .invoke_handler(specta_builder.invoke_handler())
+        .setup(move |app| {
+            specta_builder.mount_events(app);
             APP_HANDLE
                 .set(app.handle().to_owned())
                 .expect("Failed to init app handle.");

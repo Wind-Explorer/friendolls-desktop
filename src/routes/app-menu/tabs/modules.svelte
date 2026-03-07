@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
-  import type { ModuleMetadata } from "../../../types/bindings/ModuleMetadata";
+  import { commands, type ModuleMetadata } from "$lib/bindings";
 
   let modules: ModuleMetadata[] = [];
   let loading = false;
@@ -10,7 +9,7 @@
   onMount(async () => {
     loading = true;
     try {
-      modules = await invoke("get_modules");
+      modules = await commands.getModules();
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
     } finally {

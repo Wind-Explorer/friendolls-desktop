@@ -1,6 +1,7 @@
 use crate::services::sprite_recolor;
 
 #[tauri::command]
+#[specta::specta]
 pub fn recolor_gif_base64(
     white_color_hex: String,
     black_color_hex: String,

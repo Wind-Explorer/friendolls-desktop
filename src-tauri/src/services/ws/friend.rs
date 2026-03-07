@@ -6,7 +6,11 @@ use crate::models::event_payloads::{
     FriendRequestDeniedPayload, FriendRequestReceivedPayload, FriendUserStatusPayload,
     UnfriendedPayload,
 };
-use crate::services::app_events::AppEvents;
+use crate::services::app_events::{
+    FriendActiveDollChanged, FriendCursorPositionUpdated, FriendDisconnected,
+    FriendRequestAccepted, FriendRequestDenied, FriendRequestReceived, FriendUserStatusChanged,
+    Unfriended,
+};
 use crate::services::cursor::{normalized_to_absolute, CursorPositions};
 use crate::state::AppDataRefreshScope;
 
@@ -21,7 +25,7 @@ pub fn on_friend_request_received(payload: Payload, _socket: RawClient) {
     if let Ok(data) =
         utils::extract_and_parse::<FriendRequestReceivedPayload>(payload, "friend-request-received")
     {
-        emitter::emit_to_frontend(AppEvents::FriendRequestReceived.as_str(), data);
+        emitter::emit_to_frontend_typed(&FriendRequestReceived(data));
     }
 }
 
@@ -30,7 +34,7 @@ pub fn on_friend_request_accepted(payload: Payload, _socket: RawClient) {
     if let Ok(data) =
         utils::extract_and_parse::<FriendRequestAcceptedPayload>(payload, "friend-request-accepted")
     {
-        emitter::emit_to_frontend(AppEvents::FriendRequestAccepted.as_str(), data);
+        emitter::emit_to_frontend_typed(&FriendRequestAccepted(data));
         refresh::refresh_app_data(AppDataRefreshScope::Friends);
     }
 }
@@ -40,14 +44,14 @@ pub fn on_friend_request_denied(payload: Payload, _socket: RawClient) {
     if let Ok(data) =
         utils::extract_and_parse::<FriendRequestDeniedPayload>(payload, "friend-request-denied")
     {
-        emitter::emit_to_frontend(AppEvents::FriendRequestDenied.as_str(), data);
+        emitter::emit_to_frontend_typed(&FriendRequestDenied(data));
     }
 }
 
 /// Handler for unfriended event
 pub fn on_unfriended(payload: Payload, _socket: RawClient) {
     if let Ok(data) = utils::extract_and_parse::<UnfriendedPayload>(payload, "unfriended") {
-        emitter::emit_to_frontend(AppEvents::Unfriended.as_str(), data);
+        emitter::emit_to_frontend_typed(&Unfriended(data));
         refresh::refresh_app_data(AppDataRefreshScope::Friends);
     }
 }
@@ -68,7 +72,7 @@ pub fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
             },
         };
 
-        emitter::emit_to_frontend(AppEvents::FriendCursorPosition.as_str(), outgoing_payload);
+        emitter::emit_to_frontend_typed(&FriendCursorPositionUpdated(outgoing_payload));
     }
 }
 
@@ -77,7 +81,7 @@ pub fn on_friend_disconnected(payload: Payload, _socket: RawClient) {
     if let Ok(data) =
         utils::extract_and_parse::<FriendDisconnectedPayload>(payload, "friend-disconnected")
     {
-        emitter::emit_to_frontend(AppEvents::FriendDisconnected.as_str(), data);
+        emitter::emit_to_frontend_typed(&FriendDisconnected(data));
     }
 }
 
@@ -110,7 +114,7 @@ pub fn on_friend_active_doll_changed(payload: Payload, _socket: RawClient) {
         payload,
         "friend-active-doll-changed",
     ) {
-        emitter::emit_to_frontend(AppEvents::FriendActiveDollChanged.as_str(), data);
+        emitter::emit_to_frontend_typed(&FriendActiveDollChanged(data));
         refresh::refresh_app_data(AppDataRefreshScope::Friends);
     }
 }
@@ -120,6 +124,6 @@ pub fn on_friend_user_status(payload: Payload, _socket: RawClient) {
     if let Ok(data) =
         utils::extract_and_parse::<FriendUserStatusPayload>(payload, "friend-user-status")
     {
-        emitter::emit_to_frontend(AppEvents::FriendUserStatus.as_str(), data);
+        emitter::emit_to_frontend_typed(&FriendUserStatusChanged(data));
     }
 }

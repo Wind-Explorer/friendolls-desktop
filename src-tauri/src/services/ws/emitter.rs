@@ -1,6 +1,7 @@
 use rust_socketio::Payload;
 use serde::Serialize;
-use tauri::{async_runtime, Emitter};
+use tauri::async_runtime;
+use tauri_specta::Event;
 use tracing::{error, warn};
 
 use crate::{
@@ -110,11 +111,8 @@ pub async fn ws_emit_soft<T: Serialize + Send + 'static>(
     }
 }
 
-/// Emit event to frontend (Tauri window)
-///
-/// Handles error logging consistently.
-pub fn emit_to_frontend<T: Serialize + Clone>(event: &str, payload: T) {
-    if let Err(e) = get_app_handle().emit(event, payload) {
-        error!("Failed to emit {} event to frontend: {:?}", event, e);
+pub fn emit_to_frontend_typed<E: Event + Serialize + Clone>(event: &E) {
+    if let Err(e) = event.emit(get_app_handle()) {
+        error!("Failed to emit {} event to frontend: {:?}", E::NAME, e);
     }
 }

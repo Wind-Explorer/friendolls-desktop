@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
+use specta::Type;
 
 use crate::models::{dolls::DollDto, friends::FriendshipResponseDto, user::UserProfile};
 
-#[derive(Serialize, Deserialize, Clone, Debug, TS)]
-#[ts(export)]
+#[derive(Serialize, Deserialize, Clone, Debug, Type)]
 pub struct DisplayData {
     pub screen_width: i32,
     pub screen_height: i32,
@@ -21,8 +20,7 @@ impl Default for DisplayData {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, TS)]
-#[ts(export)]
+#[derive(Serialize, Deserialize, Clone, Debug, Type)]
 pub struct SceneData {
     pub display: DisplayData,
     pub grid_size: i32,
@@ -37,8 +35,7 @@ impl Default for SceneData {
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
-#[ts(export)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 pub struct UserData {
     pub user: Option<UserProfile>,
     pub friends: Option<Vec<FriendshipResponseDto>>,

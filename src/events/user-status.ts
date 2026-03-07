@@ -1,9 +1,9 @@
-import { listen } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
-import type { FriendDisconnectedPayload } from "../types/bindings/FriendDisconnectedPayload";
-import type { FriendUserStatusPayload } from "../types/bindings/FriendUserStatusPayload";
-import type { UserStatusPayload } from "../types/bindings/UserStatusPayload";
-import { AppEvents } from "../types/bindings/AppEventsConstants";
+import {
+  events,
+  type FriendDisconnectedPayload,
+  type UserStatusPayload,
+} from "$lib/bindings";
 import {
   createMultiListenerSubscription,
   removeFromStore,
@@ -24,36 +24,31 @@ export async function startUserStatus() {
   if (subscription.isListening()) return;
 
   try {
-    const unlistenStatus = await listen<FriendUserStatusPayload>(
-      AppEvents.FriendUserStatus,
-      (event) => {
-        const { userId, status } = event.payload;
+    const unlistenStatus = await events.friendUserStatusChanged.listen((event) => {
+      const { userId, status } = event.payload;
 
-        const hasValidName =
-          (typeof status.presenceStatus.title === "string" &&
-            status.presenceStatus.title.trim() !== "") ||
-          (typeof status.presenceStatus.subtitle === "string" &&
-            status.presenceStatus.subtitle.trim() !== "");
-        if (!hasValidName) return;
+      const hasValidName =
+        (typeof status.presenceStatus.title === "string" &&
+          status.presenceStatus.title.trim() !== "") ||
+        (typeof status.presenceStatus.subtitle === "string" &&
+          status.presenceStatus.subtitle.trim() !== "");
+      if (!hasValidName) return;
 
-        friendsPresenceStates.update((current) => ({
-          ...current,
-          [userId]: status,
-        }));
-      },
-    );
+      friendsPresenceStates.update((current) => ({
+        ...current,
+        [userId]: status,
+      }));
+    });
     subscription.addUnlisten(unlistenStatus);
 
-    const unlistenUserStatusChanged = await listen<UserStatusPayload>(
-      AppEvents.UserStatusChanged,
+    const unlistenUserStatusChanged = await events.userStatusChanged.listen(
       (event) => {
         currentPresenceState.set(event.payload);
       },
     );
     subscription.addUnlisten(unlistenUserStatusChanged);
 
-    const unlistenFriendDisconnected = await listen<FriendDisconnectedPayload>(
-      AppEvents.FriendDisconnected,
+    const unlistenFriendDisconnected = await events.friendDisconnected.listen(
       (event) => {
         const { userId } = event.payload;
         friendsPresenceStates.update((current) =>

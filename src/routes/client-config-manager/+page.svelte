@@ -1,10 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
-
-  type AppConfig = {
-    api_base_url?: string | null;
-  };
+  import { commands, type AppConfig } from "$lib/bindings";
 
   let form: AppConfig = {
     api_base_url: "",
@@ -17,7 +13,7 @@
 
   const loadConfig = async () => {
     try {
-      const config = (await invoke("get_client_config")) as AppConfig;
+      const config = await commands.getClientConfig();
       form = {
         api_base_url: config.api_base_url ?? "",
       };
@@ -55,10 +51,8 @@
     successMessage = "";
     restartError = "";
     try {
-      await invoke("save_client_config", {
-        config: {
-          api_base_url: form.api_base_url?.trim() || null,
-        },
+      await commands.saveClientConfig({
+        api_base_url: form.api_base_url?.trim() || null,
       });
 
       successMessage = "Success. Restart to apply changes.";
@@ -72,7 +66,7 @@
   const restart = async () => {
     restartError = "";
     try {
-      await invoke("restart_app");
+      await commands.restartApp();
     } catch (err) {
       restartError = `Restart failed: ${err}`;
     }

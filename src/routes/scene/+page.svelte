@@ -7,7 +7,7 @@
     friendsPresenceStates,
     currentPresenceState,
   } from "../../events/user-status";
-  import { invoke } from "@tauri-apps/api/core";
+  import { commands } from "$lib/bindings";
   import DebugBar from "./components/debug-bar.svelte";
 </script>
 
@@ -16,10 +16,7 @@
     class="absolute inset-0 z-10 size-full"
     aria-label="Deactive scene interactive"
     onmousedown={async () => {
-      await invoke("set_scene_interactive", {
-        interactive: false,
-        shouldClick: true,
-      });
+      await commands.setSceneInteractive(false, true);
     }}>&nbsp;</button
   >
   <div id="debug-bar">

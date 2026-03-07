@@ -4,11 +4,12 @@ use std::thread;
 
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use once_cell::sync::OnceCell;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 use tauri_plugin_positioner::WindowExt;
+use tauri_specta::Event as _;
 use tracing::{error, info, warn};
 
-use crate::{get_app_handle, services::app_events::AppEvents};
+use crate::{get_app_handle, services::app_events::SceneInteractiveChanged};
 
 pub static SCENE_WINDOW_LABEL: &str = "scene";
 pub static SPLASH_WINDOW_LABEL: &str = "splash";
@@ -69,7 +70,7 @@ pub fn update_scene_interactive(interactive: bool, should_click: bool) {
             }
         }
 
-        if let Err(e) = window.emit(AppEvents::SceneInteractive.as_str(), &interactive) {
+        if let Err(e) = SceneInteractiveChanged(interactive).emit(&window) {
             error!("Failed to emit scene interactive event: {}", e);
         }
     } else {
@@ -78,16 +79,19 @@ pub fn update_scene_interactive(interactive: bool, should_click: bool) {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn set_scene_interactive(interactive: bool, should_click: bool) {
     update_scene_interactive(interactive, should_click);
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_scene_interactive() -> Result<bool, String> {
     Ok(scene_interactive_state().load(Ordering::SeqCst))
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn set_pet_menu_state(id: String, open: bool) {
     let menus_arc = get_open_pet_menus();
     let should_update = {

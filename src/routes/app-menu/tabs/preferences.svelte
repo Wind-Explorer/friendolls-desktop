@@ -1,5 +1,5 @@
-<script>
-  import { invoke } from "@tauri-apps/api/core";
+<script lang="ts">
+  import { commands } from "$lib/bindings";
   import { appData } from "../../../events/app-data";
   import Power from "../../../assets/icons/power.svelte";
 
@@ -17,7 +17,7 @@
     if (signingOut) return;
     signingOut = true;
     try {
-      await invoke("logout_and_restart");
+      await commands.logoutAndRestart();
     } catch (error) {
       console.error("Failed to sign out", error);
       signingOut = false;
@@ -26,7 +26,7 @@
 
   const openClientConfigManager = async () => {
     try {
-      await invoke("open_client_config_manager");
+      await commands.openClientConfigManager();
     } catch (error) {
       console.error("Failed to open client config manager", error);
     }
@@ -49,10 +49,10 @@
 
     isChangingPassword = true;
     try {
-      await invoke("change_password", {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-      });
+      await commands.changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword,
+      );
       passwordSuccess = "Password updated";
       passwordForm.currentPassword = "";
       passwordForm.newPassword = "";
@@ -131,7 +131,7 @@
       <button
         class="btn btn-error btn-square btn-soft"
         onclick={async () => {
-          await invoke("quit_app");
+          await commands.quitApp();
         }}
       >
         <div class="scale-50">

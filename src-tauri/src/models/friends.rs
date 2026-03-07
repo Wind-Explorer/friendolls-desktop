@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
+use specta::Type;
 
 use super::dolls::DollDto;
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct UserBasicDto {
     pub id: String,
     pub name: String,
@@ -13,25 +12,22 @@ pub struct UserBasicDto {
     pub active_doll: Option<DollDto>,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct FriendshipResponseDto {
     pub id: String,
     pub friend: Option<UserBasicDto>,
     pub created_at: String,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct SendFriendRequestDto {
     pub receiver_id: String,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct FriendRequestResponseDto {
     pub id: String,
     pub sender: UserBasicDto,

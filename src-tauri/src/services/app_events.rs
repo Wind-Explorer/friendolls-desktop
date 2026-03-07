@@ -1,105 +1,84 @@
-use serde::Serialize;
-#[allow(unused_imports)]
-use std::{fs, path::Path};
-use strum::{AsRefStr, EnumIter};
-use ts_rs::TS;
+use serde::{Deserialize, Serialize};
+use specta::Type;
+use tauri_specta::Event;
 
-#[derive(Serialize, TS, EnumIter, AsRefStr)]
-#[serde(rename_all = "kebab-case")]
-#[ts(export)]
-pub enum AppEvents {
-    CursorPosition,
-    SceneInteractive,
-    AppDataRefreshed,
-    SetInteractionOverlay,
-    EditDoll,
-    CreateDoll,
-    UserStatusChanged,
-    FriendCursorPosition,
-    FriendDisconnected,
-    FriendActiveDollChanged,
-    FriendUserStatus,
-    InteractionReceived,
-    InteractionDeliveryFailed,
-    FriendRequestReceived,
-    FriendRequestAccepted,
-    FriendRequestDenied,
-    Unfriended,
-}
+use crate::{
+    models::{
+        app_data::UserData,
+        event_payloads::{
+            FriendActiveDollChangedPayload, FriendDisconnectedPayload,
+            FriendRequestAcceptedPayload, FriendRequestDeniedPayload, FriendRequestReceivedPayload,
+            FriendUserStatusPayload, UnfriendedPayload, UserStatusPayload,
+        },
+        interaction::{InteractionDeliveryFailedDto, InteractionPayloadDto},
+    },
+    services::{cursor::CursorPositions, ws::OutgoingFriendCursorPayload},
+};
 
-impl AppEvents {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            AppEvents::CursorPosition => "cursor-position",
-            AppEvents::SceneInteractive => "scene-interactive",
-            AppEvents::AppDataRefreshed => "app-data-refreshed",
-            AppEvents::SetInteractionOverlay => "set-interaction-overlay",
-            AppEvents::EditDoll => "edit-doll",
-            AppEvents::CreateDoll => "create-doll",
-            AppEvents::UserStatusChanged => "user-status-changed",
-            AppEvents::FriendCursorPosition => "friend-cursor-position",
-            AppEvents::FriendDisconnected => "friend-disconnected",
-            AppEvents::FriendActiveDollChanged => "friend-active-doll-changed",
-            AppEvents::FriendUserStatus => "friend-user-status",
-            AppEvents::InteractionReceived => "interaction-received",
-            AppEvents::InteractionDeliveryFailed => "interaction-delivery-failed",
-            AppEvents::FriendRequestReceived => "friend-request-received",
-            AppEvents::FriendRequestAccepted => "friend-request-accepted",
-            AppEvents::FriendRequestDenied => "friend-request-denied",
-            AppEvents::Unfriended => "unfriended",
-        }
-    }
-}
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "cursor-position")]
+pub struct CursorMoved(pub CursorPositions);
 
-#[test]
-fn export_bindings_appeventsconsts() {
-    use strum::IntoEnumIterator;
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "scene-interactive")]
+pub struct SceneInteractiveChanged(pub bool);
 
-    let some_export_dir = std::env::var("TS_RS_EXPORT_DIR")
-        .ok()
-        .map(|s| Path::new(&s).to_owned());
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "app-data-refreshed")]
+pub struct AppDataRefreshed(pub UserData);
 
-    let Some(export_dir) = some_export_dir else {
-        eprintln!("TS_RS_EXPORT_DIR not set, skipping constants export");
-        return;
-    };
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "set-interaction-overlay")]
+pub struct SetInteractionOverlay(pub bool);
 
-    let to_kebab_case = |s: &str| -> String {
-        let mut result = String::new();
-        for (i, c) in s.chars().enumerate() {
-            if c.is_uppercase() {
-                if i > 0 {
-                    result.push('-');
-                }
-                result.push(c.to_lowercase().next().unwrap());
-            } else {
-                result.push(c);
-            }
-        }
-        result
-    };
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "edit-doll")]
+pub struct EditDoll(pub String);
 
-    let mut lines = vec![
-        r#"// Auto-generated constants - DO NOT EDIT"#.to_string(),
-        r#"// Generated from Rust AppEvents enum"#.to_string(),
-        "".to_string(),
-        "export const AppEvents = {".to_string(),
-    ];
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "create-doll")]
+pub struct CreateDoll;
 
-    for variant in AppEvents::iter() {
-        let name = variant.as_ref();
-        let kebab = to_kebab_case(name);
-        lines.push(format!("  {}: \"{}\",", name, kebab));
-    }
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "user-status-changed")]
+pub struct UserStatusChanged(pub UserStatusPayload);
 
-    lines.push("} as const;".to_string());
-    lines.push("".to_string());
-    lines.push("export type AppEvents = typeof AppEvents[keyof typeof AppEvents];".to_string());
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "friend-cursor-position")]
+pub struct FriendCursorPositionUpdated(pub OutgoingFriendCursorPayload);
 
-    let constants_content = lines.join("\n");
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "friend-disconnected")]
+pub struct FriendDisconnected(pub FriendDisconnectedPayload);
 
-    let constants_path = export_dir.join("AppEventsConstants.ts");
-    if let Err(e) = fs::write(&constants_path, constants_content) {
-        eprintln!("Failed to write {}: {}", constants_path.display(), e);
-    }
-}
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "friend-active-doll-changed")]
+pub struct FriendActiveDollChanged(pub FriendActiveDollChangedPayload);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "friend-user-status")]
+pub struct FriendUserStatusChanged(pub FriendUserStatusPayload);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "interaction-received")]
+pub struct InteractionReceived(pub InteractionPayloadDto);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "interaction-delivery-failed")]
+pub struct InteractionDeliveryFailed(pub InteractionDeliveryFailedDto);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "friend-request-received")]
+pub struct FriendRequestReceived(pub FriendRequestReceivedPayload);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "friend-request-accepted")]
+pub struct FriendRequestAccepted(pub FriendRequestAcceptedPayload);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "friend-request-denied")]
+pub struct FriendRequestDenied(pub FriendRequestDeniedPayload);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "unfriended")]
+pub struct Unfriended(pub UnfriendedPayload);

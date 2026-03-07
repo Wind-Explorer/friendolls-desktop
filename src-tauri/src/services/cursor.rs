@@ -1,26 +1,29 @@
 use device_query::{DeviceEvents, DeviceEventsHandler};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::Emitter;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
-use ts_rs::TS;
 
-use crate::{get_app_handle, lock_r, services::app_events::AppEvents, state::FDOLL};
+use crate::{
+    get_app_handle,
+    lock_r,
+    services::app_events::CursorMoved,
+    state::FDOLL,
+};
+use tauri_specta::Event as _;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct CursorPosition {
     pub x: f64,
     pub y: f64,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct CursorPositions {
     pub raw: CursorPosition,
     pub mapped: CursorPosition,
@@ -103,7 +106,7 @@ async fn init_cursor_tracking_i() -> Result<(), String> {
             crate::services::ws::report_cursor_data(mapped_for_ws).await;
 
             // 2. Broadcast to local windows
-            if let Err(e) = app_handle.emit(AppEvents::CursorPosition.as_str(), &positions) {
+            if let Err(e) = CursorMoved(positions).emit(app_handle) {
                 error!("Failed to emit cursor position event: {:?}", e);
             }
         }

@@ -1,8 +1,6 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+  import { commands, type DollDto, type UserProfile } from "$lib/bindings";
   import { appData } from "../../../../events/app-data";
-  import type { DollDto } from "../../../../types/bindings/DollDto";
-  import type { UserProfile } from "../../../../types/bindings/UserProfile";
   import DollsList from "./dolls-list.svelte";
 
   let loading = false;
@@ -16,17 +14,17 @@
   $: initialLoading = $appData === null;
 
   async function openCreateModal() {
-    await invoke("open_doll_editor_window", { dollId: null });
+    await commands.openDollEditorWindow(null);
   }
 
   async function openEditModal(doll: DollDto) {
-    await invoke("open_doll_editor_window", { dollId: doll.id });
+    await commands.openDollEditorWindow(doll.id);
   }
 
   async function handleSetActiveDoll(dollId: string) {
     try {
       loading = true;
-      await invoke("set_active_doll", { dollId });
+      await commands.setActiveDoll(dollId);
       // No manual refresh needed - backend will refresh and emit app-data-refreshed
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
@@ -38,7 +36,7 @@
   async function handleRemoveActiveDoll() {
     try {
       loading = true;
-      await invoke("remove_active_doll");
+      await commands.removeActiveDoll();
       // No manual refresh needed - backend will refresh and emit app-data-refreshed
     } catch (e) {
       error = (e as Error)?.message ?? String(e);

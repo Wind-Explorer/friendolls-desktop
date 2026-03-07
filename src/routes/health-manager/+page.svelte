@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
+  import { commands } from "$lib/bindings";
   import { page } from "$app/stores";
 
   let errorMessage = "";
@@ -15,7 +15,7 @@
     isRetrying = true;
     errorMessage = "";
     try {
-      await invoke("retry_connection");
+      await commands.retryConnection();
     } catch (err) {
       errorMessage = `${err}`;
       isRetrying = false;
@@ -55,7 +55,7 @@
         class="btn btn-outline"
         onclick={async () => {
           try {
-            await invoke("open_client_config_manager");
+            await commands.openClientConfigManager();
           } catch (err) {
             errorMessage = `Failed to open config manager: ${err}`;
           }

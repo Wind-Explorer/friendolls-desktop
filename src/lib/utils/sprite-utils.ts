@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { commands } from "$lib/bindings";
 import onekoGif from "../../assets/oneko/oneko.gif";
 
 export interface RecolorOptions {
@@ -15,11 +15,11 @@ export async function getSpriteSheetUrl(
   }
 
   try {
-    const result = await invoke<string>("recolor_gif_base64", {
-      whiteColorHex: options.bodyColor,
-      blackColorHex: options.outlineColor,
-      applyTexture: options.applyTexture ?? true,
-    });
+    const result = await commands.recolorGifBase64(
+      options.bodyColor,
+      options.outlineColor,
+      options.applyTexture ?? true,
+    );
     return `data:image/gif;base64,${result}`;
   } catch (e) {
     console.error("Failed to recolor sprite:", e);

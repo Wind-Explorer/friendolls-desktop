@@ -7,6 +7,7 @@ use crate::{
 };
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_client_config() -> AppConfig {
     let mut guard = lock_w!(FDOLL);
     guard.app_config = load_app_config();
@@ -14,6 +15,7 @@ pub fn get_client_config() -> AppConfig {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn save_client_config(config: AppConfig) -> Result<(), String> {
     match save_app_config(config) {
         Ok(saved) => {
@@ -26,6 +28,7 @@ pub fn save_client_config(config: AppConfig) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn open_client_config_manager() -> Result<(), String> {
     open_config_manager_window().map_err(|e| e.to_string())
 }

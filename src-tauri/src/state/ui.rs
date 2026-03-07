@@ -1,12 +1,12 @@
 use crate::{
     get_app_handle, lock_r, lock_w,
     remotes::{dolls::DollsRemote, friends::FriendRemote, user::UserRemote},
-    services::app_events::AppEvents,
+    services::app_events::AppDataRefreshed,
     state::FDOLL,
 };
 use std::{collections::HashSet, sync::LazyLock};
-use tauri::Emitter;
 use tokio::sync::Mutex;
+use tauri_specta::Event as _;
 use tracing::{info, warn};
 
 pub fn update_display_dimensions_for_scene_state() {
@@ -211,9 +211,7 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
                 let app_data_clone = guard.user_data.clone();
                 drop(guard); // Drop lock before emitting to prevent potential deadlocks
 
-                if let Err(e) =
-                    get_app_handle().emit(AppEvents::AppDataRefreshed.as_str(), &app_data_clone)
-                {
+                if let Err(e) = AppDataRefreshed(app_data_clone).emit(get_app_handle()) {
                     warn!("Failed to emit app-data-refreshed event: {}", e);
                     use tauri_plugin_dialog::MessageDialogBuilder;
                     use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
