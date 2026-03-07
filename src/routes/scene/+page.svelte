@@ -8,7 +8,17 @@
     currentPresenceState,
   } from "../../events/user-status";
   import { commands } from "$lib/bindings";
+  import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
   import DebugBar from "./components/debug-bar.svelte";
+  import Neko from "./components/neko/neko.svelte";
+
+  let spriteUrl = $state("");
+
+  $effect(() => {
+    getSpriteSheetUrl().then((url) => {
+      spriteUrl = url;
+    });
+  });
 </script>
 
 <div class="w-svw h-svh p-4 relative overflow-hidden">
@@ -19,6 +29,11 @@
       await commands.setSceneInteractive(false, true);
     }}>&nbsp;</button
   >
+  <Neko
+    targetX={$cursorPositionOnScreen.raw.x}
+    targetY={$cursorPositionOnScreen.raw.y}
+    {spriteUrl}
+  />
   <div id="debug-bar">
     <DebugBar
       isInteractive={$sceneInteractive}
