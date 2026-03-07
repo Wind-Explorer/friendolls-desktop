@@ -74,22 +74,6 @@ export function setupHmrCleanup(cleanup: () => void) {
   }
 }
 
-export function parseEventPayload<T>(
-  payload: unknown,
-  errorLabel: string,
-): T | null {
-  if (typeof payload === "string") {
-    try {
-      return JSON.parse(payload) as T;
-    } catch (error) {
-      console.error(`Failed to parse ${errorLabel} payload`, error);
-      return null;
-    }
-  }
-
-  return payload as T;
-}
-
 export function removeFromStore<T>(
   current: Record<string, T>,
   key: string,

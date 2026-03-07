@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PresenceStatus } from "../../../types/bindings/PresenceStatus";
-  import type { PresenceState } from "../../../events/user-status";
+  import type { UserStatusPayload } from "../../../types/bindings/UserStatusPayload";
 
   interface Friend {
     friend?: {
@@ -15,7 +15,7 @@
     presenceStatus: PresenceStatus | null;
     friendsCursorPositions: Record<string, { mapped: { x: number; y: number } }>;
     friends: Friend[];
-    friendsPresenceStates: Record<string, PresenceState>;
+    friendsPresenceStates: Record<string, UserStatusPayload>;
   }
 
   let {

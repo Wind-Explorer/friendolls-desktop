@@ -3,7 +3,8 @@ use std::{path::Path, thread, time::Duration};
 use tokio::runtime::Runtime;
 use tracing::{error, info, warn};
 
-use crate::services::ws::user_status::{report_user_status, UserStatusPayload};
+use crate::models::event_payloads::{UserStatusPayload, UserStatusState};
+use crate::services::ws::user_status::report_user_status;
 use crate::services::ws::{ws_emit_soft, WS_EVENT};
 
 use super::models::PresenceStatus;
@@ -45,7 +46,7 @@ impl UserData for Engine {
 async fn update_status(status: PresenceStatus) {
     let user_status = UserStatusPayload {
         presence_status: status,
-        state: String::from("idle"),
+        state: UserStatusState::Idle,
     };
     report_user_status(user_status).await;
 }
@@ -53,7 +54,7 @@ async fn update_status(status: PresenceStatus) {
 async fn update_status_async(status: PresenceStatus) {
     let payload = UserStatusPayload {
         presence_status: status,
-        state: String::from("idle"),
+        state: UserStatusState::Idle,
     };
     if let Err(e) = ws_emit_soft(WS_EVENT::CLIENT_REPORT_USER_STATUS, payload).await {
         warn!("User status report failed: {}", e);

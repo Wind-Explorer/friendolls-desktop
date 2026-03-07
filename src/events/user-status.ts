@@ -1,21 +1,19 @@
 import { listen } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
-import type { PresenceStatus } from "../types/bindings/PresenceStatus";
+import type { FriendDisconnectedPayload } from "../types/bindings/FriendDisconnectedPayload";
+import type { FriendUserStatusPayload } from "../types/bindings/FriendUserStatusPayload";
+import type { UserStatusPayload } from "../types/bindings/UserStatusPayload";
 import { AppEvents } from "../types/bindings/AppEventsConstants";
 import {
   createMultiListenerSubscription,
-  parseEventPayload,
   removeFromStore,
   setupHmrCleanup,
 } from "./listener-utils";
 
-export type PresenceState = {
-  presenceStatus: PresenceStatus;
-  state: "idle" | "resting";
-};
-
-export const friendsPresenceStates = writable<Record<string, PresenceState>>({});
-export const currentPresenceState = writable<PresenceState | null>(null);
+export const friendsPresenceStates = writable<
+  Record<string, UserStatusPayload>
+>({});
+export const currentPresenceState = writable<UserStatusPayload | null>(null);
 
 const subscription = createMultiListenerSubscription();
 
@@ -26,22 +24,11 @@ export async function startUserStatus() {
   if (subscription.isListening()) return;
 
   try {
-    const unlistenStatus = await listen<unknown>(
+    const unlistenStatus = await listen<FriendUserStatusPayload>(
       AppEvents.FriendUserStatus,
       (event) => {
-        const payload = parseEventPayload<{
-          userId?: string;
-          status?: PresenceState;
-        }>(event.payload, AppEvents.FriendUserStatus);
-        if (!payload) return;
+        const { userId, status } = event.payload;
 
-        const userId = payload.userId;
-        const status = payload.status;
-
-        if (!userId || !status) return;
-        if (!status.presenceStatus) return;
-
-        // Validate that appMetadata has at least one valid name
         const hasValidName =
           (typeof status.presenceStatus.title === "string" &&
             status.presenceStatus.title.trim() !== "") ||
@@ -49,20 +36,15 @@ export async function startUserStatus() {
             status.presenceStatus.subtitle.trim() !== "");
         if (!hasValidName) return;
 
-        if (status.state !== "idle" && status.state !== "resting") return;
-
         friendsPresenceStates.update((current) => ({
           ...current,
-          [userId]: {
-            presenceStatus: status.presenceStatus,
-            state: status.state,
-          },
+          [userId]: status,
         }));
       },
     );
     subscription.addUnlisten(unlistenStatus);
 
-    const unlistenUserStatusChanged = await listen<PresenceState>(
+    const unlistenUserStatusChanged = await listen<UserStatusPayload>(
       AppEvents.UserStatusChanged,
       (event) => {
         currentPresenceState.set(event.payload);
@@ -70,20 +52,15 @@ export async function startUserStatus() {
     );
     subscription.addUnlisten(unlistenUserStatusChanged);
 
-    const unlistenFriendDisconnected = await listen<
-      [{ userId: string }] | { userId: string } | string
-    >(AppEvents.FriendDisconnected, (event) => {
-      const payload = parseEventPayload<
-        [{ userId: string }] | { userId: string }
-      >(event.payload, AppEvents.FriendDisconnected);
-      if (!payload) return;
-
-      const data = Array.isArray(payload) ? payload[0] : payload;
-      const userId = data?.userId as string | undefined;
-      if (!userId) return;
-
-      friendsPresenceStates.update((current) => removeFromStore(current, userId));
-    });
+    const unlistenFriendDisconnected = await listen<FriendDisconnectedPayload>(
+      AppEvents.FriendDisconnected,
+      (event) => {
+        const { userId } = event.payload;
+        friendsPresenceStates.update((current) =>
+          removeFromStore(current, userId),
+        );
+      },
+    );
     subscription.addUnlisten(unlistenFriendDisconnected);
 
     subscription.setListening(true);

@@ -1,23 +1,14 @@
 use once_cell::sync::Lazy;
-use serde::Serialize;
 use tauri::async_runtime::{self, JoinHandle};
 use tokio::sync::Mutex;
 use tokio::time::Duration;
 use tracing::warn;
 
-use crate::services::presence_modules::models::PresenceStatus;
+use crate::models::event_payloads::UserStatusPayload;
 
 use crate::services::app_events::AppEvents;
 
 use super::{emitter, types::WS_EVENT};
-
-/// User status payload sent to WebSocket server
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserStatusPayload {
-    pub presence_status: PresenceStatus,
-    pub state: String,
-}
 
 /// Debouncer for user status reports
 static USER_STATUS_REPORT_DEBOUNCE: Lazy<Mutex<Option<JoinHandle<()>>>> =

@@ -2,10 +2,11 @@ import { listen } from "@tauri-apps/api/event";
 import { writable } from "svelte/store";
 import type { CursorPositions } from "../types/bindings/CursorPositions";
 import type { DollDto } from "../types/bindings/DollDto";
+import type { FriendDisconnectedPayload } from "../types/bindings/FriendDisconnectedPayload";
+import type { FriendActiveDollChangedPayload } from "../types/bindings/FriendActiveDollChangedPayload";
 import { AppEvents } from "../types/bindings/AppEventsConstants";
 import {
   createMultiListenerSubscription,
-  parseEventPayload,
   removeFromStore,
   setupHmrCleanup,
 } from "./listener-utils";
@@ -59,63 +60,51 @@ export async function startFriendCursorTracking() {
     );
     subscription.addUnlisten(unlistenFriendCursor);
 
-  const unlistenFriendDisconnected = await listen<
-    [{ userId: string }] | { userId: string } | string
-  >(AppEvents.FriendDisconnected, (event) => {
-    const payload = parseEventPayload<
-      [{ userId: string }] | { userId: string }
-    >(event.payload, AppEvents.FriendDisconnected);
-    if (!payload) return;
+    const unlistenFriendDisconnected = await listen<FriendDisconnectedPayload>(
+      AppEvents.FriendDisconnected,
+      (event) => {
+        const data = event.payload;
 
-    const data = Array.isArray(payload) ? payload[0] : payload;
+        if (friendCursorState[data.userId]) {
+          delete friendCursorState[data.userId];
+        }
 
-    if (friendCursorState[data.userId]) {
-      delete friendCursorState[data.userId];
-    }
-
-    friendsCursorPositions.update((current) =>
-      removeFromStore(current, data.userId),
+        friendsCursorPositions.update((current) =>
+          removeFromStore(current, data.userId),
+        );
+      },
     );
-  });
-  subscription.addUnlisten(unlistenFriendDisconnected);
+    subscription.addUnlisten(unlistenFriendDisconnected);
 
-  const unlistenFriendActiveDollChanged = await listen<
-    | string
-    | {
-        friendId: string;
-        doll: DollDto | null;
-      }
-  >(AppEvents.FriendActiveDollChanged, (event) => {
-    const data = parseEventPayload<{
-      friendId: string;
-      doll: DollDto | null;
-    }>(event.payload, AppEvents.FriendActiveDollChanged);
-    if (!data) return;
+    const unlistenFriendActiveDollChanged =
+      await listen<FriendActiveDollChangedPayload>(
+        AppEvents.FriendActiveDollChanged,
+        (event) => {
+          const payload = event.payload;
 
-    const payload = data as { friendId: string; doll: DollDto | null };
+          if (!payload.doll) {
+            friendsActiveDolls.update((current) => {
+              const next = { ...current };
+              next[payload.friendId] = null;
+              return next;
+            });
 
-    if (!payload.doll) {
-      friendsActiveDolls.update((current) => {
-        const next = { ...current };
-        next[payload.friendId] = null;
-        return next;
-      });
-
-      friendsCursorPositions.update((current) =>
-        removeFromStore(current, payload.friendId),
+            friendsCursorPositions.update((current) =>
+              removeFromStore(current, payload.friendId),
+            );
+          } else {
+            friendsActiveDolls.update((current) => {
+              return {
+                ...current,
+                [payload.friendId]: payload.doll,
+              };
+            });
+          }
+        },
       );
-    } else {
-      friendsActiveDolls.update((current) => {
-        return {
-          ...current,
-          [payload.friendId]: payload.doll!,
-        };
-      });
-    }
-  });
-  subscription.addUnlisten(unlistenFriendActiveDollChanged);
+    subscription.addUnlisten(unlistenFriendActiveDollChanged);
 
-  subscription.setListening(true);
+    subscription.setListening(true);
   } catch (err) {
     console.error("Failed to initialize friend cursor tracking:", err);
     throw err;

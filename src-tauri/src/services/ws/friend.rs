@@ -1,6 +1,11 @@
 use rust_socketio::{Payload, RawClient};
 use tracing::info;
 
+use crate::models::event_payloads::{
+    FriendActiveDollChangedPayload, FriendDisconnectedPayload, FriendRequestAcceptedPayload,
+    FriendRequestDeniedPayload, FriendRequestReceivedPayload, FriendUserStatusPayload,
+    UnfriendedPayload,
+};
 use crate::services::app_events::AppEvents;
 use crate::services::cursor::{normalized_to_absolute, CursorPositions};
 use crate::state::AppDataRefreshScope;
@@ -13,30 +18,36 @@ use super::{
 
 /// Handler for friend-request-received event
 pub fn on_friend_request_received(payload: Payload, _socket: RawClient) {
-    if let Ok(value) = utils::extract_text_value(payload, "friend-request-received") {
-        emitter::emit_to_frontend(AppEvents::FriendRequestReceived.as_str(), value);
+    if let Ok(data) =
+        utils::extract_and_parse::<FriendRequestReceivedPayload>(payload, "friend-request-received")
+    {
+        emitter::emit_to_frontend(AppEvents::FriendRequestReceived.as_str(), data);
     }
 }
 
 /// Handler for friend-request-accepted event
 pub fn on_friend_request_accepted(payload: Payload, _socket: RawClient) {
-    if let Ok(value) = utils::extract_text_value(payload, "friend-request-accepted") {
-        emitter::emit_to_frontend(AppEvents::FriendRequestAccepted.as_str(), value);
+    if let Ok(data) =
+        utils::extract_and_parse::<FriendRequestAcceptedPayload>(payload, "friend-request-accepted")
+    {
+        emitter::emit_to_frontend(AppEvents::FriendRequestAccepted.as_str(), data);
         refresh::refresh_app_data(AppDataRefreshScope::Friends);
     }
 }
 
 /// Handler for friend-request-denied event
 pub fn on_friend_request_denied(payload: Payload, _socket: RawClient) {
-    if let Ok(value) = utils::extract_text_value(payload, "friend-request-denied") {
-        emitter::emit_to_frontend(AppEvents::FriendRequestDenied.as_str(), value);
+    if let Ok(data) =
+        utils::extract_and_parse::<FriendRequestDeniedPayload>(payload, "friend-request-denied")
+    {
+        emitter::emit_to_frontend(AppEvents::FriendRequestDenied.as_str(), data);
     }
 }
 
 /// Handler for unfriended event
 pub fn on_unfriended(payload: Payload, _socket: RawClient) {
-    if let Ok(value) = utils::extract_text_value(payload, "unfriended") {
-        emitter::emit_to_frontend(AppEvents::Unfriended.as_str(), value);
+    if let Ok(data) = utils::extract_and_parse::<UnfriendedPayload>(payload, "unfriended") {
+        emitter::emit_to_frontend(AppEvents::Unfriended.as_str(), data);
         refresh::refresh_app_data(AppDataRefreshScope::Friends);
     }
 }
@@ -63,8 +74,10 @@ pub fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
 
 /// Handler for friend-disconnected event
 pub fn on_friend_disconnected(payload: Payload, _socket: RawClient) {
-    if let Ok(value) = utils::extract_text_value(payload, "friend-disconnected") {
-        emitter::emit_to_frontend(AppEvents::FriendDisconnected.as_str(), value);
+    if let Ok(data) =
+        utils::extract_and_parse::<FriendDisconnectedPayload>(payload, "friend-disconnected")
+    {
+        emitter::emit_to_frontend(AppEvents::FriendDisconnected.as_str(), data);
     }
 }
 
@@ -93,15 +106,20 @@ fn handle_friend_doll_change(event_name: &str, payload: Payload) {
 
 /// Handler for friend-active-doll-changed event
 pub fn on_friend_active_doll_changed(payload: Payload, _socket: RawClient) {
-    if let Ok(value) = utils::extract_text_value(payload, "friend-active-doll-changed") {
-        emitter::emit_to_frontend(AppEvents::FriendActiveDollChanged.as_str(), value);
+    if let Ok(data) = utils::extract_and_parse::<FriendActiveDollChangedPayload>(
+        payload,
+        "friend-active-doll-changed",
+    ) {
+        emitter::emit_to_frontend(AppEvents::FriendActiveDollChanged.as_str(), data);
         refresh::refresh_app_data(AppDataRefreshScope::Friends);
     }
 }
 
 /// Handler for friend-user-status event
 pub fn on_friend_user_status(payload: Payload, _socket: RawClient) {
-    if let Ok(value) = utils::extract_text_value(payload, "friend-user-status") {
-        emitter::emit_to_frontend(AppEvents::FriendUserStatus.as_str(), value);
+    if let Ok(data) =
+        utils::extract_and_parse::<FriendUserStatusPayload>(payload, "friend-user-status")
+    {
+        emitter::emit_to_frontend(AppEvents::FriendUserStatus.as_str(), data);
     }
 }
