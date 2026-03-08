@@ -1,10 +1,10 @@
 import { writable } from "svelte/store";
 import { commands, events, type UserData } from "$lib/bindings";
-import { createListenerSubscription, setupHmrCleanup } from "./listener-utils";
+import { createListenersSubscription, setupHmrCleanup } from "./listener-utils";
 
 export const appData = writable<UserData | null>(null);
 
-const subscription = createListenerSubscription();
+const subscription = createListenersSubscription();
 
 /**
  * Starts listening for app data refresh events.
@@ -17,7 +17,7 @@ export async function startAppData() {
     const unlisten = await events.appDataRefreshed.listen((event) => {
       appData.set(event.payload);
     });
-    subscription.setUnlisten(unlisten);
+    subscription.addUnlisten(unlisten);
     subscription.setListening(true);
   } catch (error) {
     console.error(error);

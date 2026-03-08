@@ -4,44 +4,12 @@ export type ListenerSubscription = {
   stop: () => void;
   isListening: () => boolean;
   setListening: (value: boolean) => void;
-  setUnlisten: (unlisten: UnlistenFn | null) => void;
-};
-
-export type MultiListenerSubscription = {
-  stop: () => void;
-  isListening: () => boolean;
-  setListening: (value: boolean) => void;
   addUnlisten: (unlisten: UnlistenFn | null) => void;
 };
 
-export function createListenerSubscription(
+export function createListenersSubscription(
   stopFn: () => void = () => {},
 ): ListenerSubscription {
-  let unlisten: UnlistenFn | null = null;
-  let listening = false;
-
-  return {
-    stop: () => {
-      if (unlisten) {
-        unlisten();
-        unlisten = null;
-      }
-      listening = false;
-      stopFn();
-    },
-    isListening: () => listening,
-    setListening: (value) => {
-      listening = value;
-    },
-    setUnlisten: (next) => {
-      unlisten = next;
-    },
-  };
-}
-
-export function createMultiListenerSubscription(
-  stopFn: () => void = () => {},
-): MultiListenerSubscription {
   let unlistens: UnlistenFn[] = [];
   let listening = false;
 

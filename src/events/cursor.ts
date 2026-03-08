@@ -1,13 +1,13 @@
 import { writable } from "svelte/store";
 import { events, type CursorPositions } from "$lib/bindings";
-import { createListenerSubscription, setupHmrCleanup } from "./listener-utils";
+import { createListenersSubscription, setupHmrCleanup } from "./listener-utils";
 
 export const cursorPositionOnScreen = writable<CursorPositions>({
   raw: { x: 0, y: 0 },
   mapped: { x: 0, y: 0 },
 });
 
-const subscription = createListenerSubscription();
+const subscription = createListenersSubscription();
 
 /**
  * Starts tracking the local cursor position.
@@ -20,7 +20,7 @@ export async function startCursorTracking() {
     const unlisten = await events.cursorMoved.listen((event) => {
       cursorPositionOnScreen.set(event.payload);
     });
-    subscription.setUnlisten(unlisten);
+    subscription.addUnlisten(unlisten);
     subscription.setListening(true);
   } catch (err) {
     console.error("Failed to initialize cursor tracking:", err);

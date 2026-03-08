@@ -1,11 +1,7 @@
 import { writable } from "svelte/store";
+import { events, type UserStatusPayload } from "$lib/bindings";
 import {
-  events,
-  type FriendDisconnectedPayload,
-  type UserStatusPayload,
-} from "$lib/bindings";
-import {
-  createMultiListenerSubscription,
+  createListenersSubscription,
   removeFromStore,
   setupHmrCleanup,
 } from "./listener-utils";
@@ -15,7 +11,7 @@ export const friendsPresenceStates = writable<
 >({});
 export const currentPresenceState = writable<UserStatusPayload | null>(null);
 
-const subscription = createMultiListenerSubscription();
+const subscription = createListenersSubscription();
 
 /**
  * Starts listening for user status changes and friend status updates.
@@ -24,21 +20,23 @@ export async function startUserStatus() {
   if (subscription.isListening()) return;
 
   try {
-    const unlistenStatus = await events.friendUserStatusChanged.listen((event) => {
-      const { userId, status } = event.payload;
+    const unlistenStatus = await events.friendUserStatusChanged.listen(
+      (event) => {
+        const { userId, status } = event.payload;
 
-      const hasValidName =
-        (typeof status.presenceStatus.title === "string" &&
-          status.presenceStatus.title.trim() !== "") ||
-        (typeof status.presenceStatus.subtitle === "string" &&
-          status.presenceStatus.subtitle.trim() !== "");
-      if (!hasValidName) return;
+        const hasValidName =
+          (typeof status.presenceStatus.title === "string" &&
+            status.presenceStatus.title.trim() !== "") ||
+          (typeof status.presenceStatus.subtitle === "string" &&
+            status.presenceStatus.subtitle.trim() !== "");
+        if (!hasValidName) return;
 
-      friendsPresenceStates.update((current) => ({
-        ...current,
-        [userId]: status,
-      }));
-    });
+        friendsPresenceStates.update((current) => ({
+          ...current,
+          [userId]: status,
+        }));
+      },
+    );
     subscription.addUnlisten(unlistenStatus);
 
     const unlistenUserStatusChanged = await events.userStatusChanged.listen(

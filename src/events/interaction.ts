@@ -1,17 +1,10 @@
 import { writable } from "svelte/store";
-import {
-  events,
-  type InteractionDeliveryFailedDto,
-  type InteractionPayloadDto,
-} from "$lib/bindings";
-import {
-  createMultiListenerSubscription,
-  setupHmrCleanup,
-} from "./listener-utils";
+import { events, type InteractionPayloadDto } from "$lib/bindings";
+import { createListenersSubscription, setupHmrCleanup } from "./listener-utils";
 
-export const receivedInteractions = writable<Map<string, InteractionPayloadDto>>(
-  new Map(),
-);
+export const receivedInteractions = writable<
+  Map<string, InteractionPayloadDto>
+>(new Map());
 
 export function addInteraction(interaction: InteractionPayloadDto) {
   receivedInteractions.update((map) => {
@@ -29,7 +22,7 @@ export function clearInteraction(userId: string) {
   });
 }
 
-const subscription = createMultiListenerSubscription();
+const subscription = createListenersSubscription();
 
 /**
  * Starts listening for interaction events (received and delivery failed).
@@ -38,9 +31,11 @@ export async function startInteraction() {
   if (subscription.isListening()) return;
 
   try {
-    const unlistenReceived = await events.interactionReceived.listen((event) => {
-      addInteraction(event.payload);
-    });
+    const unlistenReceived = await events.interactionReceived.listen(
+      (event) => {
+        addInteraction(event.payload);
+      },
+    );
     subscription.addUnlisten(unlistenReceived);
 
     const unlistenFailed = await events.interactionDeliveryFailed.listen(

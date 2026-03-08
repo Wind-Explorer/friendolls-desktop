@@ -1,10 +1,10 @@
 import { writable } from "svelte/store";
 import { commands, events } from "$lib/bindings";
-import { createListenerSubscription, setupHmrCleanup } from "./listener-utils";
+import { createListenersSubscription, setupHmrCleanup } from "./listener-utils";
 
 export const sceneInteractive = writable<boolean>(false);
 
-const subscription = createListenerSubscription();
+const subscription = createListenersSubscription();
 
 /**
  * Starts listening for scene interactive state changes.
@@ -18,7 +18,7 @@ export async function startSceneInteractive() {
     const unlisten = await events.sceneInteractiveChanged.listen((event) => {
       sceneInteractive.set(Boolean(event.payload));
     });
-    subscription.setUnlisten(unlisten);
+    subscription.addUnlisten(unlisten);
     subscription.setListening(true);
   } catch (error) {
     console.error("Failed to initialize scene interactive listener:", error);

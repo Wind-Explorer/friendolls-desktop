@@ -3,12 +3,10 @@ import {
   events,
   type CursorPositions,
   type DollDto,
-  type FriendActiveDollChangedPayload,
-  type FriendDisconnectedPayload,
   type OutgoingFriendCursorPayload,
 } from "$lib/bindings";
 import {
-  createMultiListenerSubscription,
+  createListenersSubscription,
   removeFromStore,
   setupHmrCleanup,
 } from "./listener-utils";
@@ -23,7 +21,7 @@ export const friendsCursorPositions = writable<Record<string, CursorPositions>>(
 );
 export const friendsActiveDolls = writable<Record<string, DollDto | null>>({});
 
-const subscription = createMultiListenerSubscription();
+const subscription = createListenersSubscription();
 
 let friendCursorState: Record<string, FriendCursorData> = {};
 
@@ -37,8 +35,8 @@ export async function startFriendCursorTracking() {
   try {
     // TODO: Add initial sync for existing friends' cursors and dolls if needed
 
-    const unlistenFriendCursor = await events.friendCursorPositionUpdated.listen(
-      (event) => {
+    const unlistenFriendCursor =
+      await events.friendCursorPositionUpdated.listen((event) => {
         const data: OutgoingFriendCursorPayload = event.payload;
 
         friendCursorState[data.userId] = {
@@ -52,8 +50,7 @@ export async function startFriendCursorTracking() {
             [data.userId]: data.position,
           };
         });
-      },
-    );
+      });
     subscription.addUnlisten(unlistenFriendCursor);
 
     const unlistenFriendDisconnected = await events.friendDisconnected.listen(
@@ -72,30 +69,28 @@ export async function startFriendCursorTracking() {
     subscription.addUnlisten(unlistenFriendDisconnected);
 
     const unlistenFriendActiveDollChanged =
-      await events.friendActiveDollChanged.listen(
-        (event) => {
-          const payload = event.payload;
+      await events.friendActiveDollChanged.listen((event) => {
+        const payload = event.payload;
 
-          if (!payload.doll) {
-            friendsActiveDolls.update((current) => {
-              const next = { ...current };
-              next[payload.friendId] = null;
-              return next;
-            });
+        if (!payload.doll) {
+          friendsActiveDolls.update((current) => {
+            const next = { ...current };
+            next[payload.friendId] = null;
+            return next;
+          });
 
-            friendsCursorPositions.update((current) =>
-              removeFromStore(current, payload.friendId),
-            );
-          } else {
-            friendsActiveDolls.update((current) => {
-              return {
-                ...current,
-                [payload.friendId]: payload.doll,
-              };
-            });
-          }
-        },
-      );
+          friendsCursorPositions.update((current) =>
+            removeFromStore(current, payload.friendId),
+          );
+        } else {
+          friendsActiveDolls.update((current) => {
+            return {
+              ...current,
+              [payload.friendId]: payload.doll,
+            };
+          });
+        }
+      });
     subscription.addUnlisten(unlistenFriendActiveDollChanged);
 
     subscription.setListening(true);
