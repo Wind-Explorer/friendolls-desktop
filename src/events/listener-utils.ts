@@ -4,7 +4,7 @@ export type ListenerSubscription = {
   stop: () => void;
   isListening: () => boolean;
   setListening: (value: boolean) => void;
-  addUnlisten: (unlisten: UnlistenFn | null) => void;
+  addEventListener: (unlisten: UnlistenFn | null) => void;
 };
 
 export function createListenersSubscription(
@@ -26,7 +26,7 @@ export function createListenersSubscription(
     setListening: (value) => {
       listening = value;
     },
-    addUnlisten: (unlisten) => {
+    addEventListener: (unlisten) => {
       if (unlisten) {
         unlistens.push(unlisten);
       }
@@ -34,12 +34,39 @@ export function createListenersSubscription(
   };
 }
 
-export function setupHmrCleanup(cleanup: () => void) {
-  if (import.meta.hot) {
-    import.meta.hot.dispose(() => {
-      cleanup();
-    });
+export type EventSource = {
+  start: () => Promise<void>;
+  stop: () => void;
+  isListening: () => boolean;
+};
+
+export function createEventSource(
+  setup: (addEventListener: (unlisten: UnlistenFn) => void) => Promise<void>,
+  stopFn: () => void = () => {},
+): EventSource {
+  const subscription = createListenersSubscription(stopFn);
+
+  async function start() {
+    if (subscription.isListening()) return;
+    try {
+      await setup((unlisten) => subscription.addEventListener(unlisten));
+      subscription.setListening(true);
+    } catch (err) {
+      subscription.stop();
+      console.error(`Failed to start:`, err);
+      throw err;
+    }
   }
+
+  function stop() {
+    subscription.stop();
+  }
+
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => stop());
+  }
+
+  return { start, stop, isListening: () => subscription.isListening() };
 }
 
 export function removeFromStore<T>(
