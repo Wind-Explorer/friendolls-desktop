@@ -75,8 +75,7 @@
     const newPos = moveTowards(nekoPos.x, nekoPos.y, targetPos.x, targetPos.y);
     nekoPos = newPos;
 
-    nekoEl.style.left = `${nekoPos.x - 16}px`;
-    nekoEl.style.top = `${nekoPos.y - 16}px`;
+    nekoEl.style.transform = `translate(${nekoPos.x - 16}px, ${nekoPos.y - 16}px)`;
   }
 
   onMount(() => {
