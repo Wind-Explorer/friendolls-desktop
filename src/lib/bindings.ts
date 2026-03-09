@@ -8,6 +8,9 @@ export const commands = {
 async getAppData() : Promise<UserData> {
     return await TAURI_INVOKE("get_app_data");
 },
+async getActiveDollColorScheme() : Promise<DollColorSchemeDto | null> {
+    return await TAURI_INVOKE("get_active_doll_color_scheme");
+},
 async refreshAppData() : Promise<UserData> {
     return await TAURI_INVOKE("refresh_app_data");
 },

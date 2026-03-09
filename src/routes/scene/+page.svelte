@@ -15,8 +15,12 @@
   let spriteUrl = $state("");
 
   $effect(() => {
-    getSpriteSheetUrl().then((url) => {
-      spriteUrl = url;
+    $appData;
+    if (!$appData) return;
+    commands.getActiveDollColorScheme().then((colorScheme) => {
+      getSpriteSheetUrl(colorScheme ?? undefined).then((url) => {
+        spriteUrl = url;
+      });
     });
   });
 </script>

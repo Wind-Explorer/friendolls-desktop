@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use commands::app::{quit_app, restart_app, retry_connection};
-use commands::app_state::{get_app_data, refresh_app_data};
+use commands::app_state::{get_app_data, get_active_doll_color_scheme, refresh_app_data};
 use commands::auth::{change_password, login, logout_and_restart, register, reset_password};
 use commands::config::{get_client_config, open_client_config_manager, save_client_config};
 use commands::dolls::{
@@ -65,6 +65,7 @@ pub fn run() {
         .error_handling(ErrorHandlingMode::Throw)
         .commands(collect_commands![
             get_app_data,
+            get_active_doll_color_scheme,
             refresh_app_data,
             list_friends,
             search_users,
