@@ -16,8 +16,8 @@
   let saving = false;
 
   let name = "";
-  let bodyColor = "#FFFFFF";
-  let outlineColor = "#000000";
+  let body = "#FFFFFF";
+  let outline = "#000000";
 
   onMount(async () => {
     // Check URL search params for ID
@@ -39,8 +39,8 @@
     try {
       const doll: DollDto = await commands.getDoll(id);
       name = doll.name;
-      bodyColor = doll.configuration.colorScheme.body;
-      outlineColor = doll.configuration.colorScheme.outline;
+      body = doll.configuration.colorScheme.body;
+      outline = doll.configuration.colorScheme.outline;
     } catch (e) {
       error = (e as Error)?.message ?? String(e);
       console.error("Failed to fetch doll:", e);
@@ -59,8 +59,8 @@
           name,
           configuration: {
             colorScheme: {
-              body: bodyColor,
-              outline: outlineColor,
+              body: body,
+              outline: outline,
             },
           },
         };
@@ -70,8 +70,8 @@
           name,
           configuration: {
             colorScheme: {
-              body: bodyColor,
-              outline: outlineColor,
+              body: body,
+              outline: outline,
             },
           },
         };
@@ -108,7 +108,7 @@
   {:else}
     <div class="h-full w-full p-4 gap-4 flex flex-col">
       <div class="flex justify-center mt-4">
-        <DollPreview {bodyColor} {outlineColor} />
+        <DollPreview dollColorScheme={{ body, outline }} />
       </div>
       <div class="form-control w-full">
         <label class="label" for="name-input">
@@ -132,13 +132,13 @@
             id="body-color-input"
             type="color"
             class="input input-bordered w-10 p-0"
-            bind:value={bodyColor}
+            bind:value={body}
             disabled={saving}
           />
           <input
             type="text"
             class="input input-bordered w-full"
-            bind:value={bodyColor}
+            bind:value={body}
             disabled={saving}
           />
         </div>
@@ -152,13 +152,13 @@
             id="outline-color-input"
             type="color"
             class="input input-bordered w-10 p-0"
-            bind:value={outlineColor}
+            bind:value={outline}
             disabled={saving}
           />
           <input
             type="text"
             class="input input-bordered w-full"
-            bind:value={outlineColor}
+            bind:value={outline}
             disabled={saving}
           />
         </div>

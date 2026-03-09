@@ -3,10 +3,9 @@
   import { SPRITE_SETS, SPRITE_SIZE } from "$lib/constants/pet-sprites";
   import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
   import PetSprite from "$lib/components/PetSprite.svelte";
+  import type { DollColorSchemeDto } from "$lib/bindings";
 
-  export let bodyColor: string;
-  export let outlineColor: string;
-  export let applyTexture: boolean = true;
+  export let dollColorScheme: DollColorSchemeDto;
 
   let previewBase64: string | null = null;
   let error: string | null = null;
@@ -21,11 +20,7 @@
 
   function generatePreview() {
     error = null;
-    getSpriteSheetUrl({
-      bodyColor,
-      outlineColor,
-      applyTexture,
-    })
+    getSpriteSheetUrl(dollColorScheme)
       .then((url: string) => {
         previewBase64 = url;
       })
@@ -70,7 +65,7 @@
     }, 3000);
   }
 
-  $: if (bodyColor && outlineColor) {
+  $: if (dollColorScheme) {
     debouncedGeneratePreview();
   }
 
@@ -103,7 +98,10 @@
         />
       </div>
     {:else}
-      <div class="size-full skeleton" style:background-color={bodyColor}></div>
+      <div
+        class="size-full skeleton"
+        style:background-color={dollColorScheme.body}
+      ></div>
     {/if}
   </div>
 </div>

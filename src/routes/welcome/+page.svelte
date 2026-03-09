@@ -98,7 +98,9 @@
                 <input
                   class="input input-bordered input-sm"
                   type="password"
-                  autocomplete={useRegister ? "new-password" : "current-password"}
+                  autocomplete={useRegister
+                    ? "new-password"
+                    : "current-password"}
                   bind:value={form.password}
                   placeholder="••••••••"
                 />
@@ -146,7 +148,9 @@
                 }
               }}
             >
-              {useRegister ? "Already have an account? Sign in" : "New here? Create an account"}
+              {useRegister
+                ? "Already have an account? Sign in"
+                : "New here? Create an account"}
             </button>
             <button
               class="btn btn-link p-0 btn-sm text-base-content w-max"
@@ -175,7 +179,7 @@
   >
     <div></div>
     <div class="flex flex-col scale-200 origin-bottom-right">
-      <DollPreview bodyColor="b7f2ff" outlineColor="496065" />
+      <DollPreview dollColorScheme={{ body: "b7f2ff", outline: "496065" }} />
     </div>
   </div>
 </div>

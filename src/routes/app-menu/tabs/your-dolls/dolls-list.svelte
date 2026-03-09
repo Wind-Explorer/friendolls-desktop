@@ -43,10 +43,7 @@
               class="flex flex-col w-full text-center py-6 gap-2 *:mx-auto hover:opacity-70 hover:cursor-pointer"
             >
               <div class="flex justify-center">
-                <DollPreview
-                  bodyColor={doll.configuration.colorScheme.body}
-                  outlineColor={doll.configuration.colorScheme.outline}
-                />
+                <DollPreview dollColorScheme={doll.configuration.colorScheme} />
               </div>
               <p
                 style:background-color={doll.configuration.colorScheme.body}
