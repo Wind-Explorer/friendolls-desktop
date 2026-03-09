@@ -7,18 +7,16 @@ use crate::models::event_payloads::{
     UnfriendedPayload,
 };
 use crate::services::app_events::{
-    FriendActiveDollChanged, FriendCursorPositionUpdated, FriendDisconnected,
-    FriendRequestAccepted, FriendRequestDenied, FriendRequestReceived, FriendUserStatusChanged,
-    Unfriended,
+    FriendActiveDollChanged, FriendDisconnected, FriendRequestAccepted, FriendRequestDenied,
+    FriendRequestReceived, FriendUserStatusChanged, Unfriended,
 };
-use crate::services::cursor::{normalized_to_absolute, CursorPositions};
+use crate::services::{
+    cursor::{normalized_to_absolute, CursorPositions},
+    friend_cursor,
+};
 use crate::state::AppDataRefreshScope;
 
-use super::{
-    emitter, refresh,
-    types::{IncomingFriendCursorPayload, OutgoingFriendCursorPayload},
-    utils,
-};
+use super::{emitter, refresh, types::IncomingFriendCursorPayload, utils};
 
 /// Handler for friend-request-received event
 pub fn on_friend_request_received(payload: Payload, _socket: RawClient) {
@@ -64,15 +62,13 @@ pub fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
         let mapped_pos = &friend_data.position;
         let raw_pos = normalized_to_absolute(mapped_pos);
 
-        let outgoing_payload = OutgoingFriendCursorPayload {
-            user_id: friend_data.user_id,
-            position: CursorPositions {
+        friend_cursor::update_position(
+            friend_data.user_id,
+            CursorPositions {
                 raw: raw_pos,
                 mapped: mapped_pos.clone(),
             },
-        };
-
-        emitter::emit_to_frontend_typed(&FriendCursorPositionUpdated(outgoing_payload));
+        );
     }
 }
 
@@ -81,6 +77,7 @@ pub fn on_friend_disconnected(payload: Payload, _socket: RawClient) {
     if let Ok(data) =
         utils::extract_and_parse::<FriendDisconnectedPayload>(payload, "friend-disconnected")
     {
+        friend_cursor::remove_friend(&data.user_id);
         emitter::emit_to_frontend_typed(&FriendDisconnected(data));
     }
 }
@@ -114,6 +111,7 @@ pub fn on_friend_active_doll_changed(payload: Payload, _socket: RawClient) {
         payload,
         "friend-active-doll-changed",
     ) {
+        friend_cursor::set_active_doll(&data.friend_id, data.doll.is_some());
         emitter::emit_to_frontend_typed(&FriendActiveDollChanged(data));
         refresh::refresh_app_data(AppDataRefreshScope::Friends);
     }

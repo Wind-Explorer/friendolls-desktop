@@ -130,7 +130,7 @@ createDoll: CreateDoll,
 cursorMoved: CursorMoved,
 editDoll: EditDoll,
 friendActiveDollChanged: FriendActiveDollChanged,
-friendCursorPositionUpdated: FriendCursorPositionUpdated,
+friendCursorPositionsUpdated: FriendCursorPositionsUpdated,
 friendDisconnected: FriendDisconnected,
 friendRequestAccepted: FriendRequestAccepted,
 friendRequestDenied: FriendRequestDenied,
@@ -148,7 +148,7 @@ createDoll: "create-doll",
 cursorMoved: "cursor-moved",
 editDoll: "edit-doll",
 friendActiveDollChanged: "friend-active-doll-changed",
-friendCursorPositionUpdated: "friend-cursor-position-updated",
+friendCursorPositionsUpdated: "friend-cursor-positions-updated",
 friendDisconnected: "friend-disconnected",
 friendRequestAccepted: "friend-request-accepted",
 friendRequestDenied: "friend-request-denied",
@@ -182,7 +182,8 @@ export type DollDto = { id: string; name: string; configuration: DollConfigurati
 export type EditDoll = string
 export type FriendActiveDollChanged = FriendActiveDollChangedPayload
 export type FriendActiveDollChangedPayload = { friendId: string; doll: DollDto | null }
-export type FriendCursorPositionUpdated = OutgoingFriendCursorPayload
+export type FriendCursorPositionsDto = Partial<{ [key in string]: CursorPositions }>
+export type FriendCursorPositionsUpdated = FriendCursorPositionsDto
 export type FriendDisconnected = FriendDisconnectedPayload
 export type FriendDisconnectedPayload = { userId: string }
 export type FriendRequestAccepted = FriendRequestAcceptedPayload
@@ -200,10 +201,6 @@ export type InteractionDeliveryFailedDto = { recipientUserId: string; reason: st
 export type InteractionPayloadDto = { senderUserId: string; senderName: string; content: string; type: string; timestamp: string }
 export type InteractionReceived = InteractionPayloadDto
 export type ModuleMetadata = { id: string; name: string; version: string; description: string | null }
-/**
- * Outgoing friend cursor position to frontend
- */
-export type OutgoingFriendCursorPayload = { userId: string; position: CursorPositions }
 export type PresenceStatus = { title: string | null; subtitle: string | null; graphicsB64: string | null }
 export type SceneData = { display: DisplayData; grid_size: number }
 export type SceneInteractiveChanged = boolean

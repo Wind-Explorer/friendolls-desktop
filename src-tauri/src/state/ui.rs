@@ -1,7 +1,7 @@
 use crate::{
     get_app_handle, lock_r, lock_w,
     remotes::{dolls::DollsRemote, friends::FriendRemote, user::UserRemote},
-    services::app_events::AppDataRefreshed,
+    services::{app_events::AppDataRefreshed, friend_cursor},
     state::FDOLL,
 };
 use std::{collections::HashSet, sync::LazyLock};
@@ -161,6 +161,8 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
                     Ok(friends) => {
                         let mut guard = lock_w!(crate::state::FDOLL);
                         guard.user_data.friends = Some(friends);
+                        drop(guard);
+                        friend_cursor::sync_from_app_data();
                     }
                     Err(e) => {
                         warn!("Failed to fetch friends list: {}", e);
@@ -260,4 +262,6 @@ pub fn clear_app_data() {
     guard.user_data.dolls = None;
     guard.user_data.user = None;
     guard.user_data.friends = None;
+    drop(guard);
+    friend_cursor::clear();
 }

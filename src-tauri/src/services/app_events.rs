@@ -12,7 +12,10 @@ use crate::{
         },
         interaction::{InteractionDeliveryFailedDto, InteractionPayloadDto},
     },
-    services::{cursor::CursorPositions, ws::OutgoingFriendCursorPayload},
+    services::{
+        cursor::CursorPositions, friend_cursor::FriendCursorPositionsDto,
+        ws::OutgoingFriendCursorPayload,
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -46,6 +49,10 @@ pub struct UserStatusChanged(pub UserStatusPayload);
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "friend-cursor-position")]
 pub struct FriendCursorPositionUpdated(pub OutgoingFriendCursorPayload);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "friend-cursor-positions")]
+pub struct FriendCursorPositionsUpdated(pub FriendCursorPositionsDto);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "friend-disconnected")]
