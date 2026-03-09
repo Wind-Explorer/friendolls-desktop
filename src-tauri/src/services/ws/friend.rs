@@ -122,6 +122,10 @@ pub fn on_friend_user_status(payload: Payload, _socket: RawClient) {
     if let Ok(data) =
         utils::extract_and_parse::<FriendUserStatusPayload>(payload, "friend-user-status")
     {
+        if !data.status.has_presence_content() {
+            return;
+        }
+
         emitter::emit_to_frontend_typed(&FriendUserStatusChanged(data));
     }
 }

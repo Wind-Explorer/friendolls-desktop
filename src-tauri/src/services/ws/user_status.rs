@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
-use tauri_specta::Event as _;
 use tauri::async_runtime::{self, JoinHandle};
+use tauri_specta::Event as _;
 use tokio::sync::Mutex;
 use tokio::time::Duration;
 use tracing::warn;
@@ -22,6 +22,10 @@ pub async fn report_user_status(status: UserStatusPayload) {
     // Cancel previous pending report
     if let Some(handle) = debouncer.take() {
         handle.abort();
+    }
+
+    if !status.has_presence_content() {
+        return;
     }
 
     if let Err(e) = UserStatusChanged(status.clone()).emit(crate::get_app_handle()) {

@@ -13,13 +13,6 @@ export const { start: startUserStatus, stop: stopUserStatus } =
       await events.friendUserStatusChanged.listen((event) => {
         const { userId, status } = event.payload;
 
-        const hasValidName =
-          (typeof status.presenceStatus.title === "string" &&
-            status.presenceStatus.title.trim() !== "") ||
-          (typeof status.presenceStatus.subtitle === "string" &&
-            status.presenceStatus.subtitle.trim() !== "");
-        if (!hasValidName) return;
-
         friendsPresenceStates.update((current) => ({
           ...current,
           [userId]: status,

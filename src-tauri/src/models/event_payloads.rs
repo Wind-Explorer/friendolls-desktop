@@ -19,6 +19,20 @@ pub struct UserStatusPayload {
     pub state: UserStatusState,
 }
 
+impl UserStatusPayload {
+    pub fn has_presence_content(&self) -> bool {
+        self.presence_status
+            .title
+            .as_ref()
+            .is_some_and(|title| !title.trim().is_empty())
+            || self
+                .presence_status
+                .subtitle
+                .as_ref()
+                .is_some_and(|subtitle| !subtitle.trim().is_empty())
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FriendUserStatusPayload {
