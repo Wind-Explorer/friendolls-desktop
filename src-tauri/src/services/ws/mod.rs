@@ -29,5 +29,4 @@ pub mod client;
 // Re-export public API
 pub use cursor::report_cursor_data;
 pub use emitter::ws_emit_soft;
-pub use types::OutgoingFriendCursorPayload;
 pub use types::WS_EVENT;

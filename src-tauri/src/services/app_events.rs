@@ -12,10 +12,7 @@ use crate::{
         },
         interaction::{InteractionDeliveryFailedDto, InteractionPayloadDto},
     },
-    services::{
-        cursor::CursorPositions, friend_cursor::FriendCursorPositionsDto,
-        ws::OutgoingFriendCursorPayload,
-    },
+    services::{cursor::CursorPositions, friend_cursor::FriendCursorPositionsDto},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -49,10 +46,6 @@ pub struct CreateDoll;
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "user-status-changed")]
 pub struct UserStatusChanged(pub UserStatusPayload);
-
-#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
-#[tauri_specta(event_name = "friend-cursor-position")]
-pub struct FriendCursorPositionUpdated(pub OutgoingFriendCursorPayload);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "friend-cursor-positions")]
