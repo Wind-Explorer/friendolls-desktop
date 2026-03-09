@@ -1,12 +1,15 @@
 use crate::{
     get_app_handle, lock_r, lock_w,
     remotes::{dolls::DollsRemote, friends::FriendRemote, user::UserRemote},
-    services::{app_events::AppDataRefreshed, friend_cursor},
+    services::{
+        app_events::{ActiveDollSpriteChanged, AppDataRefreshed},
+        friend_cursor, sprite,
+    },
     state::FDOLL,
 };
 use std::{collections::HashSet, sync::LazyLock};
-use tokio::sync::Mutex;
 use tauri_specta::Event as _;
+use tokio::sync::Mutex;
 use tracing::{info, warn};
 
 pub fn update_display_dimensions_for_scene_state() {
@@ -226,6 +229,26 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
                     )
                     .kind(MessageDialogKind::Error)
                     .show(|_| {});
+                }
+
+                if matches!(
+                    scope,
+                    AppDataRefreshScope::All
+                        | AppDataRefreshScope::User
+                        | AppDataRefreshScope::Dolls
+                ) {
+                    match sprite::get_active_doll_sprite_base64() {
+                        Ok(sprite_b64) => {
+                            if let Err(e) =
+                                ActiveDollSpriteChanged(sprite_b64).emit(get_app_handle())
+                            {
+                                warn!("Failed to emit active-doll-sprite-changed event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            warn!("Failed to generate active doll sprite: {}", e);
+                        }
+                    }
                 }
             }
 

@@ -5,8 +5,8 @@ pub mod config;
 pub mod dolls;
 pub mod friends;
 pub mod interaction;
-pub mod sprite;
 pub mod petpet;
+pub mod sprite;
 
 use crate::lock_r;
 use crate::state::{init_app_data_scoped, AppDataRefreshScope, FDOLL};

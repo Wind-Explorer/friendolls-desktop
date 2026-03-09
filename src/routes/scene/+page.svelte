@@ -2,27 +2,15 @@
   import { cursorPositionOnScreen } from "../../events/cursor";
   import { friendsCursorPositions } from "../../events/friend-cursor";
   import { appData } from "../../events/app-data";
+  import { activeDollSpriteUrl } from "../../events/active-doll-sprite";
   import { sceneInteractive } from "../../events/scene-interactive";
   import {
     friendsPresenceStates,
     currentPresenceState,
   } from "../../events/user-status";
   import { commands } from "$lib/bindings";
-  import { getSpriteSheetUrl } from "$lib/utils/sprite-utils";
   import DebugBar from "./components/debug-bar.svelte";
   import Neko from "./components/neko/neko.svelte";
-
-  let spriteUrl = $state("");
-
-  $effect(() => {
-    $appData;
-    if (!$appData) return;
-    commands.getActiveDollColorScheme().then((colorScheme) => {
-      getSpriteSheetUrl(colorScheme ?? undefined).then((url) => {
-        spriteUrl = url;
-      });
-    });
-  });
 </script>
 
 <div class="w-svw h-svh p-4 relative overflow-hidden">
@@ -36,7 +24,7 @@
   <Neko
     targetX={$cursorPositionOnScreen.raw.x}
     targetY={$cursorPositionOnScreen.raw.y}
-    {spriteUrl}
+    spriteUrl={$activeDollSpriteUrl}
   />
   <div id="debug-bar">
     <DebugBar

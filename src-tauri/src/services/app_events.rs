@@ -31,6 +31,10 @@ pub struct SceneInteractiveChanged(pub bool);
 pub struct AppDataRefreshed(pub UserData);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "active-doll-sprite-changed")]
+pub struct ActiveDollSpriteChanged(pub Option<String>);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "set-interaction-overlay")]
 pub struct SetInteractionOverlay(pub bool);
 

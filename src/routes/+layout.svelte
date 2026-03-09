@@ -6,6 +6,10 @@
     startFriendCursorTracking,
     stopFriendCursorTracking,
   } from "../events/friend-cursor";
+  import {
+    startActiveDollSprite,
+    stopActiveDollSprite,
+  } from "../events/active-doll-sprite";
   import { startAppData } from "../events/app-data";
   import { startInteraction, stopInteraction } from "../events/interaction";
   import {
@@ -19,6 +23,7 @@
     onMount(async () => {
       try {
         await startAppData();
+        await startActiveDollSprite();
         await startCursorTracking();
         await startFriendCursorTracking();
         await startSceneInteractive();
@@ -32,6 +37,7 @@
     onDestroy(() => {
       stopCursorTracking();
       stopFriendCursorTracking();
+      stopActiveDollSprite();
       stopSceneInteractive();
       stopInteraction();
       stopUserStatus();

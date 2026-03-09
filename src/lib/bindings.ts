@@ -8,8 +8,8 @@ export const commands = {
 async getAppData() : Promise<UserData> {
     return await TAURI_INVOKE("get_app_data");
 },
-async getActiveDollColorScheme() : Promise<DollColorSchemeDto | null> {
-    return await TAURI_INVOKE("get_active_doll_color_scheme");
+async getActiveDollSpriteBase64() : Promise<string | null> {
+    return await TAURI_INVOKE("get_active_doll_sprite_base64");
 },
 async refreshAppData() : Promise<UserData> {
     return await TAURI_INVOKE("refresh_app_data");
@@ -128,6 +128,7 @@ async getModules() : Promise<ModuleMetadata[]> {
 
 
 export const events = __makeEvents__<{
+activeDollSpriteChanged: ActiveDollSpriteChanged,
 appDataRefreshed: AppDataRefreshed,
 createDoll: CreateDoll,
 cursorMoved: CursorMoved,
@@ -146,6 +147,7 @@ setInteractionOverlay: SetInteractionOverlay,
 unfriended: Unfriended,
 userStatusChanged: UserStatusChanged
 }>({
+activeDollSpriteChanged: "active-doll-sprite-changed",
 appDataRefreshed: "app-data-refreshed",
 createDoll: "create-doll",
 cursorMoved: "cursor-moved",
@@ -171,6 +173,7 @@ userStatusChanged: "user-status-changed"
 
 /** user-defined types **/
 
+export type ActiveDollSpriteChanged = string | null
 export type AppConfig = { api_base_url: string | null }
 export type AppDataRefreshed = UserData
 export type CreateDoll = null

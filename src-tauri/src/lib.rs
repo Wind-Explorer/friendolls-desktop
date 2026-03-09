@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use commands::app::{quit_app, restart_app, retry_connection};
-use commands::app_state::{get_app_data, get_active_doll_color_scheme, refresh_app_data};
+use commands::app_state::{get_active_doll_sprite_base64, get_app_data, refresh_app_data};
 use commands::auth::{change_password, login, logout_and_restart, register, reset_password};
 use commands::config::{get_client_config, open_client_config_manager, save_client_config};
 use commands::dolls::{
@@ -17,18 +17,18 @@ use commands::friends::{
     search_users, send_friend_request, sent_friend_requests, unfriend,
 };
 use commands::interaction::send_interaction_cmd;
-use commands::sprite::recolor_gif_base64;
 use commands::petpet::encode_pet_doll_gif_base64;
+use commands::sprite::recolor_gif_base64;
 use specta_typescript::Typescript;
 use tauri::async_runtime;
-use tauri_specta::{Builder as SpectaBuilder, ErrorHandlingMode, collect_commands, collect_events};
+use tauri_specta::{collect_commands, collect_events, Builder as SpectaBuilder, ErrorHandlingMode};
 
 use crate::services::app_events::{
-    AppDataRefreshed, CreateDoll, CursorMoved, EditDoll, FriendActiveDollChanged,
-    FriendCursorPositionsUpdated, FriendDisconnected,
-    FriendRequestAccepted, FriendRequestDenied, FriendRequestReceived,
-    FriendUserStatusChanged, InteractionDeliveryFailed, InteractionReceived,
-    SceneInteractiveChanged, SetInteractionOverlay, Unfriended, UserStatusChanged,
+    ActiveDollSpriteChanged, AppDataRefreshed, CreateDoll, CursorMoved, EditDoll,
+    FriendActiveDollChanged, FriendCursorPositionsUpdated, FriendDisconnected,
+    FriendRequestAccepted, FriendRequestDenied, FriendRequestReceived, FriendUserStatusChanged,
+    InteractionDeliveryFailed, InteractionReceived, SceneInteractiveChanged, SetInteractionOverlay,
+    Unfriended, UserStatusChanged,
 };
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
@@ -65,7 +65,7 @@ pub fn run() {
         .error_handling(ErrorHandlingMode::Throw)
         .commands(collect_commands![
             get_app_data,
-            get_active_doll_color_scheme,
+            get_active_doll_sprite_base64,
             refresh_app_data,
             list_friends,
             search_users,
@@ -106,6 +106,7 @@ pub fn run() {
             CursorMoved,
             SceneInteractiveChanged,
             AppDataRefreshed,
+            ActiveDollSpriteChanged,
             SetInteractionOverlay,
             EditDoll,
             CreateDoll,
