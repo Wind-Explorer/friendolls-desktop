@@ -1,12 +1,8 @@
-use tauri::Manager;
-
-use crate::get_app_handle;
-use tracing::warn;
-
+pub mod app_data;
 pub mod app_events;
 pub mod app_menu;
 pub mod auth;
-pub mod client_config_manager;
+pub mod client_config;
 pub mod cursor;
 pub mod doll_editor;
 pub mod friends;
@@ -16,17 +12,8 @@ pub mod interaction;
 pub mod petpet;
 pub mod presence_modules;
 pub mod scene;
+pub mod session_windows;
 pub mod sprite;
 pub mod sprite_recolor;
 pub mod welcome;
 pub mod ws;
-
-pub fn close_all_windows() {
-    let app_handle = get_app_handle();
-    let webview_windows = app_handle.webview_windows();
-    for window in webview_windows {
-        if let Err(err) = window.1.close() {
-            warn!("Failed to close window '{}': {}", window.0, err);
-        }
-    }
-}

@@ -2,9 +2,10 @@ use crate::{
     lock_r,
     models::app_data::UserData,
     services::{
+        app_data::{init_app_data_scoped, AppDataRefreshScope},
         friends, presence_modules::models::ModuleMetadata, sprite,
     },
-    state::{init_app_data_scoped, AppDataRefreshScope, FDOLL},
+    state::FDOLL,
 };
 
 #[tauri::command]

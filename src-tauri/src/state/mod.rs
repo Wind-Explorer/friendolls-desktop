@@ -1,6 +1,8 @@
 // in app-core/src/state.rs
 use crate::{
-    lock_w, models::app_data::UserData, services::presence_modules::models::ModuleMetadata,
+    lock_w,
+    models::app_data::UserData,
+    services::{app_data::update_display_dimensions_for_scene_state, presence_modules::models::ModuleMetadata},
 };
 use std::sync::{Arc, LazyLock, RwLock};
 use tauri::tray::TrayIcon;
@@ -8,11 +10,9 @@ use tracing::info;
 
 pub mod auth;
 mod network;
-mod ui;
 
 pub use auth::*;
 pub use network::*;
-pub use ui::*;
 
 #[derive(Default)]
 pub struct Modules {
@@ -22,7 +22,7 @@ pub struct Modules {
 
 #[derive(Default)]
 pub struct AppState {
-    pub app_config: crate::services::client_config_manager::AppConfig,
+    pub app_config: crate::services::client_config::AppConfig,
     pub network: NetworkState,
     pub auth: AuthState,
     pub user_data: UserData,
@@ -41,7 +41,7 @@ pub fn init_app_state() {
     dotenvy::dotenv().ok();
     {
         let mut guard = lock_w!(FDOLL);
-        guard.app_config = crate::services::client_config_manager::load_app_config();
+        guard.app_config = crate::services::client_config::load_app_config();
         guard.network = init_network_state();
         guard.auth = init_auth_state();
         guard.user_data = UserData::default();

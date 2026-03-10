@@ -89,8 +89,8 @@ async getClientConfig() : Promise<AppConfig> {
 async saveClientConfig(config: AppConfig) : Promise<null> {
     return await TAURI_INVOKE("save_client_config", { config });
 },
-async openClientConfigManager() : Promise<null> {
-    return await TAURI_INVOKE("open_client_config_manager");
+async openClientConfig() : Promise<null> {
+    return await TAURI_INVOKE("open_client_config");
 },
 async openDollEditorWindow(dollId: string | null) : Promise<void> {
     await TAURI_INVOKE("open_doll_editor_window", { dollId });

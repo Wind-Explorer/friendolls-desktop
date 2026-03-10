@@ -1,7 +1,7 @@
 use crate::{
     lock_w,
-    services::client_config_manager::{
-        load_app_config, open_config_manager_window, save_app_config, AppConfig,
+    services::client_config::{
+        load_app_config, open_config_window, save_app_config, AppConfig,
     },
     state::FDOLL,
 };
@@ -29,6 +29,6 @@ pub fn save_client_config(config: AppConfig) -> Result<(), String> {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn open_client_config_manager() -> Result<(), String> {
-    open_config_manager_window().map_err(|e| e.to_string())
+pub async fn open_client_config() -> Result<(), String> {
+    open_config_window().map_err(|e| e.to_string())
 }

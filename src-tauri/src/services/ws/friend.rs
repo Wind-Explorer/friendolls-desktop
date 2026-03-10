@@ -6,6 +6,7 @@ use crate::models::event_payloads::{
     FriendRequestDeniedPayload, FriendRequestReceivedPayload, FriendUserStatusPayload,
     UnfriendedPayload,
 };
+use crate::services::app_data::AppDataRefreshScope;
 use crate::services::app_events::{
     FriendActiveDollChanged, FriendDisconnected, FriendRequestAccepted, FriendRequestDenied,
     FriendRequestReceived, FriendUserStatusChanged, Unfriended,
@@ -14,7 +15,6 @@ use crate::services::{
     cursor::{normalized_to_absolute, CursorPositions},
     friends,
 };
-use crate::state::AppDataRefreshScope;
 
 use super::{emitter, refresh, types::IncomingFriendCursorPayload, utils};
 

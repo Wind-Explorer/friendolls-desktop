@@ -5,7 +5,7 @@ use super::{refresh, utils};
 /// Handler for doll.created event
 pub fn on_doll_created(payload: Payload, _socket: RawClient) {
     if utils::extract_text_value(payload, "doll.created").is_ok() {
-        refresh::refresh_app_data(crate::state::AppDataRefreshScope::Dolls);
+        refresh::refresh_app_data(crate::services::app_data::AppDataRefreshScope::Dolls);
     }
 }
 

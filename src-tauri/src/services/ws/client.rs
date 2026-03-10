@@ -7,7 +7,7 @@ use tracing::{error, info};
 
 use crate::{
     lock_r, lock_w,
-    services::{auth::get_access_token, client_config_manager::AppConfig},
+    services::{auth::get_access_token, client_config::AppConfig},
     state::FDOLL,
 };
 

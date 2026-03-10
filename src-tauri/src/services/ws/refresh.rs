@@ -1,6 +1,6 @@
 use tauri::async_runtime;
 
-use crate::state::{init_app_data_scoped, AppDataRefreshScope};
+use crate::services::app_data::{init_app_data_scoped, AppDataRefreshScope};
 
 /// Refresh app data with the given scope
 pub fn refresh_app_data(scope: AppDataRefreshScope) {

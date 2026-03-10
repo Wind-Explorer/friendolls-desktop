@@ -1,11 +1,11 @@
 use crate::{
+    commands::{is_active_doll, refresh_app_data, refresh_app_data_conditionally},
     models::dolls::{CreateDollDto, DollDto, UpdateDollDto},
     remotes::{
         dolls::DollsRemote,
         user::UserRemote,
     },
-    state::AppDataRefreshScope,
-    commands::{refresh_app_data, refresh_app_data_conditionally, is_active_doll},
+    services::app_data::AppDataRefreshScope,
 };
 
 #[tauri::command]

@@ -11,7 +11,7 @@ use commands::app_state::{
     refresh_app_data,
 };
 use commands::auth::{change_password, login, logout_and_restart, register, reset_password};
-use commands::config::{get_client_config, open_client_config_manager, save_client_config};
+use commands::config::{get_client_config, open_client_config, save_client_config};
 use commands::dolls::{
     create_doll, delete_doll, get_doll, get_dolls, remove_active_doll, set_active_doll, update_doll,
 };
@@ -94,7 +94,7 @@ pub fn run() {
             retry_connection,
             get_client_config,
             save_client_config,
-            open_client_config_manager,
+            open_client_config,
             open_doll_editor_window,
             get_scene_interactive,
             set_scene_interactive,

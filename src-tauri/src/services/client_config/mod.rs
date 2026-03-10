@@ -6,7 +6,7 @@ use specta::Type;
 use thiserror::Error;
 
 pub use store::{load_app_config, save_app_config};
-pub use window::open_config_manager_window;
+pub use window::open_config_window;
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 pub struct AppConfig {
@@ -23,10 +23,10 @@ pub enum ClientConfigError {
     Parse(#[from] serde_json::Error),
     #[error("failed to run on main thread: {0}")]
     Dispatch(#[from] tauri::Error),
-    #[error("failed to build client config manager window: {0}")]
+    #[error("failed to build client config window: {0}")]
     Window(tauri::Error),
-    #[error("failed to show client config manager window: {0}")]
+    #[error("failed to show client config window: {0}")]
     ShowWindow(tauri::Error),
 }
 
-pub static CLIENT_CONFIG_MANAGER_WINDOW_LABEL: &str = "client_config_manager";
+pub static CLIENT_CONFIG_WINDOW_LABEL: &str = "client_config";

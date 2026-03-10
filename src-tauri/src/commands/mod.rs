@@ -9,7 +9,10 @@ pub mod petpet;
 pub mod sprite;
 
 use crate::lock_r;
-use crate::state::{init_app_data_scoped, AppDataRefreshScope, FDOLL};
+use crate::{
+    services::app_data::{init_app_data_scoped, AppDataRefreshScope},
+    state::FDOLL,
+};
 use tauri::async_runtime;
 
 /// Helper to execute a mutation operation and refresh app data scopes in the background.
