@@ -1,36 +1,13 @@
 use std::{fs, path::PathBuf};
 
-use serde::{Deserialize, Serialize};
-use specta::Type;
 use tauri::Manager;
-use thiserror::Error;
-use tracing::{error, warn};
+use tracing::warn;
 use url::Url;
 
 use crate::get_app_handle;
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
-pub struct AppConfig {
-    pub api_base_url: Option<String>,
-}
+use super::{AppConfig, ClientConfigError};
 
-#[derive(Debug, Error)]
-pub enum ClientConfigError {
-    #[error("failed to resolve app config dir: {0}")]
-    ResolvePath(tauri::Error),
-    #[error("io error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("failed to parse client config: {0}")]
-    Parse(#[from] serde_json::Error),
-    #[error("failed to run on main thread: {0}")]
-    Dispatch(#[from] tauri::Error),
-    #[error("failed to build client config manager window: {0}")]
-    Window(tauri::Error),
-    #[error("failed to show client config manager window: {0}")]
-    ShowWindow(tauri::Error),
-}
-
-pub static CLIENT_CONFIG_MANAGER_WINDOW_LABEL: &str = "client_config_manager";
 const CONFIG_FILENAME: &str = "client_config.json";
 const DEFAULT_API_BASE_URL: &str = "https://api.fdolls.adamcv.com";
 
@@ -125,49 +102,4 @@ pub fn save_app_config(config: AppConfig) -> Result<AppConfig, ClientConfigError
     fs::rename(&temp_path, &path)?;
 
     Ok(sanitized)
-}
-
-#[tauri::command]
-pub fn open_config_manager_window() -> Result<(), ClientConfigError> {
-    let app_handle = get_app_handle();
-    let existing_webview_window = app_handle.get_window(CLIENT_CONFIG_MANAGER_WINDOW_LABEL);
-
-    if let Some(window) = existing_webview_window {
-        if let Err(e) = window.show() {
-            error!("Failed to show client config manager window: {e}");
-            return Err(ClientConfigError::ShowWindow(e));
-        }
-        if let Err(e) = window.set_focus() {
-            error!("Failed to focus client config manager window: {e}");
-        }
-        return Ok(());
-    }
-
-    match tauri::WebviewWindowBuilder::new(
-        app_handle,
-        CLIENT_CONFIG_MANAGER_WINDOW_LABEL,
-        tauri::WebviewUrl::App("/client-config-manager".into()),
-    )
-    .title("Advanced Configuration")
-    .inner_size(300.0, 420.0)
-    .resizable(false)
-    .maximizable(false)
-    .visible(false)
-    .build()
-    {
-        Ok(window) => {
-            if let Err(e) = window.show() {
-                error!("Failed to show client config manager window: {}", e);
-                return Err(ClientConfigError::ShowWindow(e));
-            }
-            if let Err(e) = window.set_focus() {
-                error!("Failed to focus client config manager window: {e}");
-            }
-            Ok(())
-        }
-        Err(e) => {
-            error!("Failed to build client config manager window: {}", e);
-            Err(ClientConfigError::Window(e))
-        }
-    }
 }
