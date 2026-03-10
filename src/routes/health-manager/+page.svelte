@@ -55,9 +55,9 @@
         class="btn btn-outline"
         onclick={async () => {
           try {
-            await commands.openClientConfigManager();
+            await commands.openClientConfig();
           } catch (err) {
-            errorMessage = `Failed to open config manager: ${err}`;
+            errorMessage = `Failed to open config: ${err}`;
           }
         }}
       >

@@ -24,11 +24,11 @@
     }
   }
 
-  const openClientConfigManager = async () => {
+  const openClientConfig = async () => {
     try {
-      await commands.openClientConfigManager();
+      await commands.openClientConfig();
     } catch (error) {
-      console.error("Failed to open client config manager", error);
+      console.error("Failed to open client config", error);
     }
   };
 
@@ -73,7 +73,7 @@
       <button class="btn" class:btn-disabled={signingOut} onclick={handleSignOut}>
         {signingOut ? "Signing out..." : "Sign out"}
       </button>
-      <button class="btn btn-outline" onclick={openClientConfigManager}>
+      <button class="btn btn-outline" onclick={openClientConfig}>
         Advanced options
       </button>
     </div>

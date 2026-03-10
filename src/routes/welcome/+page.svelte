@@ -57,11 +57,11 @@
     form.username = "";
   };
 
-  const openClientConfigManager = async () => {
+  const openClientConfig = async () => {
     try {
-      await commands.openClientConfigManager();
+      await commands.openClientConfig();
     } catch (error) {
-      console.error("Failed to open client config manager", error);
+      console.error("Failed to open client config", error);
     }
   };
 </script>
@@ -154,7 +154,7 @@
             </button>
             <button
               class="btn btn-link p-0 btn-sm text-base-content w-max"
-              onclick={openClientConfigManager}
+              onclick={openClientConfig}
             >
               Advanced options
             </button>
