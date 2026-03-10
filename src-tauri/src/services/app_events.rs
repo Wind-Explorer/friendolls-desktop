@@ -13,8 +13,8 @@ use crate::{
         interaction::{InteractionDeliveryFailedDto, InteractionPayloadDto},
     },
     services::{
-        cursor::CursorPositions, friend_active_doll_sprite::FriendActiveDollSpritesDto,
-        friend_cursor::FriendCursorPositionsDto,
+        cursor::CursorPositions,
+        friends::{FriendActiveDollSpritesDto, FriendCursorPositionsDto},
     },
 };
 

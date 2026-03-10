@@ -16,7 +16,7 @@ static USER_STATUS_REPORT_DEBOUNCE: Lazy<Mutex<Option<JoinHandle<()>>>> =
     Lazy::new(|| Mutex::new(None));
 
 /// Report user status to WebSocket server with debouncing
-pub async fn report_user_status(status: UserStatusPayload) {
+pub async fn report_user_status(status: UserStatusPayload) -> Result<(), String> {
     let mut debouncer = USER_STATUS_REPORT_DEBOUNCE.lock().await;
 
     // Cancel previous pending report
@@ -25,7 +25,7 @@ pub async fn report_user_status(status: UserStatusPayload) {
     }
 
     if !status.has_presence_content() {
-        return;
+        return Ok(());
     }
 
     if let Err(e) = UserStatusChanged(status.clone()).emit(crate::get_app_handle()) {
@@ -43,4 +43,5 @@ pub async fn report_user_status(status: UserStatusPayload) {
     });
 
     *debouncer = Some(handle);
+    Ok(())
 }

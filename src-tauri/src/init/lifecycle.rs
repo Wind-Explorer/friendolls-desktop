@@ -53,7 +53,7 @@ async fn disconnect_user_profile() {
 
 /// Destructs the user session and show health manager window
 /// with error message, offering troubleshooting options.
-pub async fn handle_disasterous_failure(error_message: Option<String>) {
+pub async fn handle_disastrous_failure(error_message: Option<String>) {
     destruct_user_session().await;
     open_health_manager_window(error_message);
 }

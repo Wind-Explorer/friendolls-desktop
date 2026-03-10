@@ -35,6 +35,7 @@ fn scene_interactive_state() -> Arc<AtomicBool> {
 
 pub fn update_scene_interactive(interactive: bool, should_click: bool) {
     let app_handle = get_app_handle();
+    scene_interactive_state().store(interactive, Ordering::SeqCst);
 
     // If we are forcing interactive to false (e.g. background click), clear any open menus
     // This prevents the loop from immediately re-enabling it if the frontend hasn't updated yet

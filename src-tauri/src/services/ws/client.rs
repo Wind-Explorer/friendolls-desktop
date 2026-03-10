@@ -23,7 +23,7 @@ pub async fn establish_websocket_connection() {
                 return; // Success
             } else {
                 // Connection failed, trigger disaster recovery
-                crate::init::lifecycle::handle_disasterous_failure(
+                crate::init::lifecycle::handle_disastrous_failure(
                     Some("WebSocket connection failed. Please check your network and try again.".to_string())
                 ).await;
                 return;
@@ -32,9 +32,9 @@ pub async fn establish_websocket_connection() {
 
         sleep(BACKOFF).await;
     }
-    
+
     // If we exhausted retries without valid token
-    crate::init::lifecycle::handle_disasterous_failure(
+    crate::init::lifecycle::handle_disastrous_failure(
         Some("Failed to authenticate. Please restart and sign in again.".to_string())
     ).await;
 }

@@ -5,7 +5,7 @@ use tauri_specta::Event;
 use tracing::{error, warn};
 
 use crate::{
-    get_app_handle, init::lifecycle::handle_disasterous_failure, lock_r, lock_w, state::FDOLL,
+    get_app_handle, init::lifecycle::handle_disastrous_failure, lock_r, lock_w, state::FDOLL,
 };
 
 /// Acquire WebSocket client and initialization state from app state
@@ -87,7 +87,7 @@ pub async fn ws_emit<T: Serialize + Send + 'static>(
         Ok(_) => Ok(()),
         Err(err_msg) => {
             error!("[critical] {}", err_msg);
-            handle_disasterous_failure(Some(err_msg.clone())).await;
+            handle_disastrous_failure(Some(err_msg.clone())).await;
             Err(err_msg)
         }
     }

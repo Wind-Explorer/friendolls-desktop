@@ -1,6 +1,6 @@
 use crate::{
     init::{
-        lifecycle::{construct_user_session, handle_disasterous_failure, validate_server_health},
+        lifecycle::{construct_user_session, handle_disastrous_failure, validate_server_health},
         tracing::init_logging,
     },
     services::{
@@ -28,7 +28,7 @@ pub async fn launch_app() {
     init_modules();
 
     if let Err(err) = validate_server_health().await {
-        handle_disasterous_failure(Some(err.to_string())).await;
+        handle_disastrous_failure(Some(err.to_string())).await;
         return;
     }
 

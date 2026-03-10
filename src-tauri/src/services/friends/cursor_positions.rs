@@ -103,10 +103,8 @@ pub fn set_active_doll(user_id: &str, has_active_doll: bool) {
         .active_dolls
         .insert(user_id.to_string(), has_active_doll);
 
-    if !has_active_doll {
-        if projection.positions.remove(user_id).is_some() {
-            emit_snapshot(&projection.positions);
-        }
+    if !has_active_doll && projection.positions.remove(user_id).is_some() {
+        emit_snapshot(&projection.positions);
     }
 }
 

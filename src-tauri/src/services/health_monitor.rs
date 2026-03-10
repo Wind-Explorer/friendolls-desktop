@@ -1,5 +1,5 @@
 use crate::{
-    init::lifecycle::{handle_disasterous_failure, validate_server_health},
+    init::lifecycle::{handle_disastrous_failure, validate_server_health},
     lock_w,
     services::ws::client::establish_websocket_connection,
     state::FDOLL,
@@ -44,7 +44,7 @@ pub async fn start_health_monitor() {
 
                             if consecutive_failures >= MAX_FAILURES {
                                 info!("Server appears unreachable after {} attempts, triggering recovery", MAX_FAILURES);
-                                handle_disasterous_failure(Some(format!(
+                                handle_disastrous_failure(Some(format!(
                                     "Lost connection to server: {}",
                                     e
                                 )))

@@ -5,7 +5,6 @@ use tracing::{error, info, warn};
 
 use crate::models::event_payloads::{UserStatusPayload, UserStatusState};
 use crate::services::ws::user_status::report_user_status;
-use crate::services::ws::{ws_emit_soft, WS_EVENT};
 
 use super::models::PresenceStatus;
 
@@ -48,7 +47,9 @@ async fn update_status(status: PresenceStatus) {
         presence_status: status,
         state: UserStatusState::Idle,
     };
-    report_user_status(user_status).await;
+    if let Err(e) = report_user_status(user_status).await {
+        warn!("User status report failed: {}", e);
+    }
 }
 
 async fn update_status_async(status: PresenceStatus) {
@@ -56,7 +57,7 @@ async fn update_status_async(status: PresenceStatus) {
         presence_status: status,
         state: UserStatusState::Idle,
     };
-    if let Err(e) = ws_emit_soft(WS_EVENT::CLIENT_REPORT_USER_STATUS, payload).await {
+    if let Err(e) = report_user_status(payload).await {
         warn!("User status report failed: {}", e);
     }
 }

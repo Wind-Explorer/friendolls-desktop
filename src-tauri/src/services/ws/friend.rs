@@ -12,7 +12,7 @@ use crate::services::app_events::{
 };
 use crate::services::{
     cursor::{normalized_to_absolute, CursorPositions},
-    friend_active_doll_sprite, friend_cursor,
+    friends,
 };
 use crate::state::AppDataRefreshScope;
 
@@ -62,7 +62,7 @@ pub fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
         let mapped_pos = &friend_data.position;
         let raw_pos = normalized_to_absolute(mapped_pos);
 
-        friend_cursor::update_position(
+        friends::update_cursor_position(
             friend_data.user_id,
             CursorPositions {
                 raw: raw_pos,
@@ -77,8 +77,7 @@ pub fn on_friend_disconnected(payload: Payload, _socket: RawClient) {
     if let Ok(data) =
         utils::extract_and_parse::<FriendDisconnectedPayload>(payload, "friend-disconnected")
     {
-        friend_active_doll_sprite::remove_friend(&data.user_id);
-        friend_cursor::remove_friend(&data.user_id);
+        friends::remove_friend(&data.user_id);
         emitter::emit_to_frontend_typed(&FriendDisconnected(data));
     }
 }
@@ -112,8 +111,7 @@ pub fn on_friend_active_doll_changed(payload: Payload, _socket: RawClient) {
         payload,
         "friend-active-doll-changed",
     ) {
-        friend_active_doll_sprite::set_active_doll(&data.friend_id, data.doll.as_ref());
-        friend_cursor::set_active_doll(&data.friend_id, data.doll.is_some());
+        friends::set_active_doll(&data.friend_id, data.doll.as_ref());
         emitter::emit_to_frontend_typed(&FriendActiveDollChanged(data));
     }
 }
