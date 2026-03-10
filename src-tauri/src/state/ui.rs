@@ -3,7 +3,7 @@ use crate::{
     remotes::{dolls::DollsRemote, friends::FriendRemote, user::UserRemote},
     services::{
         app_events::{ActiveDollSpriteChanged, AppDataRefreshed},
-        friend_cursor, sprite,
+        friend_active_doll_sprite, friend_cursor, sprite,
     },
     state::FDOLL,
 };
@@ -165,6 +165,7 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
                         let mut guard = lock_w!(crate::state::FDOLL);
                         guard.user_data.friends = Some(friends);
                         drop(guard);
+                        friend_active_doll_sprite::sync_from_app_data();
                         friend_cursor::sync_from_app_data();
                     }
                     Err(e) => {
@@ -286,5 +287,6 @@ pub fn clear_app_data() {
     guard.user_data.user = None;
     guard.user_data.friends = None;
     drop(guard);
+    friend_active_doll_sprite::clear();
     friend_cursor::clear();
 }

@@ -1,7 +1,9 @@
 use crate::{
     lock_r,
     models::app_data::UserData,
-    services::{presence_modules::models::ModuleMetadata, sprite},
+    services::{
+        friend_active_doll_sprite, presence_modules::models::ModuleMetadata, sprite,
+    },
     state::{init_app_data_scoped, AppDataRefreshScope, FDOLL},
 };
 
@@ -31,4 +33,12 @@ pub fn get_modules() -> Result<Vec<ModuleMetadata>, String> {
 #[specta::specta]
 pub fn get_active_doll_sprite_base64() -> Result<Option<String>, String> {
     sprite::get_active_doll_sprite_base64()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_friend_active_doll_sprites_base64(
+) -> Result<friend_active_doll_sprite::FriendActiveDollSpritesDto, String> {
+    friend_active_doll_sprite::sync_from_app_data();
+    Ok(friend_active_doll_sprite::get_snapshot())
 }

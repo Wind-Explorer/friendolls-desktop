@@ -6,7 +6,10 @@ use crate::{
     },
 };
 use commands::app::{quit_app, restart_app, retry_connection};
-use commands::app_state::{get_active_doll_sprite_base64, get_app_data, refresh_app_data};
+use commands::app_state::{
+    get_active_doll_sprite_base64, get_app_data, get_friend_active_doll_sprites_base64,
+    refresh_app_data,
+};
 use commands::auth::{change_password, login, logout_and_restart, register, reset_password};
 use commands::config::{get_client_config, open_client_config_manager, save_client_config};
 use commands::dolls::{
@@ -25,7 +28,8 @@ use tauri_specta::{collect_commands, collect_events, Builder as SpectaBuilder, E
 
 use crate::services::app_events::{
     ActiveDollSpriteChanged, AppDataRefreshed, CreateDoll, CursorMoved, EditDoll,
-    FriendActiveDollChanged, FriendCursorPositionsUpdated, FriendDisconnected,
+    FriendActiveDollChanged, FriendActiveDollSpritesUpdated, FriendCursorPositionsUpdated,
+    FriendDisconnected,
     FriendRequestAccepted, FriendRequestDenied, FriendRequestReceived, FriendUserStatusChanged,
     InteractionDeliveryFailed, InteractionReceived, SceneInteractiveChanged, SetInteractionOverlay,
     Unfriended, UserStatusChanged,
@@ -66,6 +70,7 @@ pub fn run() {
         .commands(collect_commands![
             get_app_data,
             get_active_doll_sprite_base64,
+            get_friend_active_doll_sprites_base64,
             refresh_app_data,
             list_friends,
             search_users,
@@ -114,6 +119,7 @@ pub fn run() {
             FriendCursorPositionsUpdated,
             FriendDisconnected,
             FriendActiveDollChanged,
+            FriendActiveDollSpritesUpdated,
             FriendUserStatusChanged,
             InteractionReceived,
             InteractionDeliveryFailed,

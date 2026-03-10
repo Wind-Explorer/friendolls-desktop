@@ -11,6 +11,9 @@ async getAppData() : Promise<UserData> {
 async getActiveDollSpriteBase64() : Promise<string | null> {
     return await TAURI_INVOKE("get_active_doll_sprite_base64");
 },
+async getFriendActiveDollSpritesBase64() : Promise<FriendActiveDollSpritesDto> {
+    return await TAURI_INVOKE("get_friend_active_doll_sprites_base64");
+},
 async refreshAppData() : Promise<UserData> {
     return await TAURI_INVOKE("refresh_app_data");
 },
@@ -134,6 +137,7 @@ createDoll: CreateDoll,
 cursorMoved: CursorMoved,
 editDoll: EditDoll,
 friendActiveDollChanged: FriendActiveDollChanged,
+friendActiveDollSpritesUpdated: FriendActiveDollSpritesUpdated,
 friendCursorPositionsUpdated: FriendCursorPositionsUpdated,
 friendDisconnected: FriendDisconnected,
 friendRequestAccepted: FriendRequestAccepted,
@@ -153,6 +157,7 @@ createDoll: "create-doll",
 cursorMoved: "cursor-moved",
 editDoll: "edit-doll",
 friendActiveDollChanged: "friend-active-doll-changed",
+friendActiveDollSpritesUpdated: "friend-active-doll-sprites-updated",
 friendCursorPositionsUpdated: "friend-cursor-positions-updated",
 friendDisconnected: "friend-disconnected",
 friendRequestAccepted: "friend-request-accepted",
@@ -188,6 +193,8 @@ export type DollDto = { id: string; name: string; configuration: DollConfigurati
 export type EditDoll = string
 export type FriendActiveDollChanged = FriendActiveDollChangedPayload
 export type FriendActiveDollChangedPayload = { friendId: string; doll: DollDto | null }
+export type FriendActiveDollSpritesDto = Partial<{ [key in string]: string }>
+export type FriendActiveDollSpritesUpdated = FriendActiveDollSpritesDto
 export type FriendCursorPositionsDto = Partial<{ [key in string]: CursorPositions }>
 export type FriendCursorPositionsUpdated = FriendCursorPositionsDto
 export type FriendDisconnected = FriendDisconnectedPayload

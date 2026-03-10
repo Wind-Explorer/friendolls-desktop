@@ -8,14 +8,17 @@
     targetX: number;
     targetY: number;
     spriteUrl: string;
+    initialX?: number;
+    initialY?: number;
   }
 
-  let { targetX, targetY, spriteUrl }: Props = $props();
+  let { targetX, targetY, spriteUrl, initialX = 32, initialY = 32 }: Props =
+    $props();
 
   let nekoEl: HTMLDivElement;
   let animationFrameId: number;
 
-  let nekoPos = $state({ x: 32, y: 32 });
+  let nekoPos = $state({ x: initialX, y: initialY });
   let frameCount = 0;
   let idleTime = 0;
   let idleAnimation: string | null = $state(null);

@@ -3,6 +3,7 @@
   import { friendsCursorPositions } from "../../events/friend-cursor";
   import { appData } from "../../events/app-data";
   import { activeDollSpriteUrl } from "../../events/active-doll-sprite";
+  import { friendActiveDollSpriteUrls } from "../../events/friend-active-doll-sprite";
   import { sceneInteractive } from "../../events/scene-interactive";
   import {
     friendsPresenceStates,
@@ -26,6 +27,17 @@
     targetY={$cursorPositionOnScreen.raw.y}
     spriteUrl={$activeDollSpriteUrl}
   />
+  {#each Object.entries($friendsCursorPositions) as [friendId, position] (friendId)}
+    {#if $friendActiveDollSpriteUrls[friendId]}
+      <Neko
+        targetX={position.raw.x}
+        targetY={position.raw.y}
+        spriteUrl={$friendActiveDollSpriteUrls[friendId]}
+        initialX={position.raw.x}
+        initialY={position.raw.y}
+      />
+    {/if}
+  {/each}
   <div id="debug-bar">
     <DebugBar
       isInteractive={$sceneInteractive}

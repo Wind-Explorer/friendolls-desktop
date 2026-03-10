@@ -10,6 +10,10 @@
     startActiveDollSprite,
     stopActiveDollSprite,
   } from "../events/active-doll-sprite";
+  import {
+    startFriendActiveDollSprite,
+    stopFriendActiveDollSprite,
+  } from "../events/friend-active-doll-sprite";
   import { startAppData } from "../events/app-data";
   import { startInteraction, stopInteraction } from "../events/interaction";
   import {
@@ -24,6 +28,7 @@
       try {
         await startAppData();
         await startActiveDollSprite();
+        await startFriendActiveDollSprite();
         await startCursorTracking();
         await startFriendCursorTracking();
         await startSceneInteractive();
@@ -38,6 +43,7 @@
       stopCursorTracking();
       stopFriendCursorTracking();
       stopActiveDollSprite();
+      stopFriendActiveDollSprite();
       stopSceneInteractive();
       stopInteraction();
       stopUserStatus();
