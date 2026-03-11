@@ -1,6 +1,6 @@
 use crate::{
     init::{
-        lifecycle::{construct_user_session, handle_disastrous_failure, validate_server_health},
+        lifecycle::validate_server_health,
         tracing::init_logging,
     },
     services::{
@@ -8,6 +8,7 @@ use crate::{
         cursor::init_cursor_tracking,
         presence_modules::init_modules,
         scene::{close_splash_window, open_splash_window},
+        session::{construct_user_session, handle_disastrous_failure},
         welcome::open_welcome_window,
     },
     state::init_app_state,

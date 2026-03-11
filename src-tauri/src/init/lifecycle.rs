@@ -3,58 +3,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 use tracing::warn;
 
-use crate::{
-    models::health::HealthError,
-    remotes::health::HealthRemote,
-    services::{
-        app_data::{clear_app_data, init_app_data_scoped, AppDataRefreshScope},
-        health_manager::open_health_manager_window,
-        health_monitor::{start_health_monitor, stop_health_monitor},
-        scene::open_scene_window,
-        session_windows::close_all_windows,
-        ws::client::{clear_ws_client, establish_websocket_connection},
-    },
-    state::auth::{start_background_token_refresh, stop_background_token_refresh},
-    system_tray::update_system_tray,
-};
-
-/// Connects the user profile and opens the scene window.
-pub async fn construct_user_session() {
-    connect_user_profile().await;
-    close_all_windows();
-    open_scene_window();
-    update_system_tray(true);
-}
-
-/// Disconnects the user profile and closes the scene window.
-pub async fn destruct_user_session() {
-    disconnect_user_profile().await;
-    close_all_windows();
-    update_system_tray(false);
-}
-
-/// Initializes the user profile and establishes a WebSocket connection.
-async fn connect_user_profile() {
-    init_app_data_scoped(AppDataRefreshScope::All).await;
-    establish_websocket_connection().await;
-    start_background_token_refresh().await;
-    start_health_monitor().await;
-}
-
-/// Clears the user profile and WebSocket connection.
-async fn disconnect_user_profile() {
-    stop_health_monitor();
-    stop_background_token_refresh();
-    clear_app_data();
-    clear_ws_client().await;
-}
-
-/// Destructs the user session and show health manager window
-/// with error message, offering troubleshooting options.
-pub async fn handle_disastrous_failure(error_message: Option<String>) {
-    destruct_user_session().await;
-    open_health_manager_window(error_message);
-}
+use crate::{models::health::HealthError, remotes::health::HealthRemote};
 
 /// Pings the server's health endpoint a maximum of
 /// three times with a backoff of 500ms between

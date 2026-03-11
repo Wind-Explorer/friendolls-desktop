@@ -5,7 +5,7 @@ use tauri_specta::Event;
 use tracing::{error, warn};
 
 use crate::{
-    get_app_handle, init::lifecycle::handle_disastrous_failure, lock_r, lock_w, state::FDOLL,
+    get_app_handle, lock_r, lock_w, services::session::handle_disastrous_failure, state::FDOLL,
 };
 
 /// Acquire WebSocket client and initialization state from app state

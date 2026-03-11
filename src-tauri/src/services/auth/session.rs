@@ -1,9 +1,7 @@
 use tracing::info;
 
 use crate::get_app_handle;
-use crate::init::lifecycle::construct_user_session;
-use crate::services::scene::close_splash_window;
-use crate::services::welcome::close_welcome_window;
+use crate::services::{scene::close_splash_window, session::construct_user_session, welcome::close_welcome_window};
 use crate::state::auth::get_auth_pass_with_refresh;
 use crate::{lock_w, state::FDOLL};
 

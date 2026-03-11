@@ -1,6 +1,7 @@
 use crate::{
-    init::lifecycle::{handle_disastrous_failure, validate_server_health},
+    init::lifecycle::validate_server_health,
     lock_w,
+    services::session::handle_disastrous_failure,
     services::ws::client::establish_websocket_connection,
     state::FDOLL,
 };

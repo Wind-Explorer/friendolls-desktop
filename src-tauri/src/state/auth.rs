@@ -1,6 +1,5 @@
-use crate::init::lifecycle::destruct_user_session;
 use crate::services::auth::{clear_auth_pass, load_auth_pass, refresh_token, AuthPass};
-use crate::services::welcome::open_welcome_window;
+use crate::services::{session::destruct_user_session, welcome::open_welcome_window};
 use crate::{lock_r, lock_w, state::FDOLL};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;

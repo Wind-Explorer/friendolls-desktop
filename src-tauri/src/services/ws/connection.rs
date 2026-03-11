@@ -2,7 +2,9 @@ use rust_socketio::{Payload, RawClient};
 use tracing::info;
 
 use crate::{
-    init::lifecycle::construct_user_session, lock_w, services::health_manager::close_health_manager_window, state::FDOLL
+    lock_w,
+    services::{health_manager::close_health_manager_window, session::construct_user_session},
+    state::FDOLL,
 };
 
 use super::{types::WS_EVENT, utils};

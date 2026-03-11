@@ -1,6 +1,7 @@
 use crate::get_app_handle;
-use crate::init::lifecycle::{construct_user_session, validate_server_health};
+use crate::init::lifecycle::validate_server_health;
 use crate::services::auth::get_session_token;
+use crate::services::session::construct_user_session;
 use tracing::info;
 
 #[tauri::command]
