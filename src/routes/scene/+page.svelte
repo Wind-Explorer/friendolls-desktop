@@ -22,11 +22,13 @@
       await commands.setSceneInteractive(false, true);
     }}>&nbsp;</button
   >
-  <Neko
-    targetX={$cursorPositionOnScreen.raw.x}
-    targetY={$cursorPositionOnScreen.raw.y}
-    spriteUrl={$activeDollSpriteUrl}
-  />
+  {#if $appData?.user?.activeDollId}
+    <Neko
+      targetX={$cursorPositionOnScreen.raw.x}
+      targetY={$cursorPositionOnScreen.raw.y}
+      spriteUrl={$activeDollSpriteUrl}
+    />
+  {/if}
   {#each Object.entries($friendsCursorPositions) as [friendId, position] (friendId)}
     {#if $friendActiveDollSpriteUrls[friendId]}
       <Neko
