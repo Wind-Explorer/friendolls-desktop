@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import type { Snippet } from "svelte";
   import { setSprite } from "./sprites";
   import { calculateDirection, moveTowards, clampPosition } from "./physics";
   import { updateIdle } from "./idle";
@@ -10,10 +11,17 @@
     spriteUrl: string;
     initialX?: number;
     initialY?: number;
+    children?: Snippet;
   }
 
-  let { targetX, targetY, spriteUrl, initialX = 32, initialY = 32 }: Props =
-    $props();
+  let {
+    targetX,
+    targetY,
+    spriteUrl,
+    initialX = 32,
+    initialY = 32,
+    children,
+  }: Props = $props();
 
   let nekoEl: HTMLDivElement;
   let animationFrameId: number;
@@ -103,4 +111,8 @@
   bind:this={nekoEl}
   class="pointer-events-none fixed z-999 size-8 select-none"
   style="width: 32px; height: 32px; position: fixed; image-rendering: pixelated;"
-></div>
+>
+  <div class="relative size-full">
+    {@render children?.()}
+  </div>
+</div>

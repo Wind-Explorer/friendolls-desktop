@@ -12,6 +12,48 @@
   import { commands } from "$lib/bindings";
   import DebugBar from "./components/debug-bar.svelte";
   import Neko from "./components/neko/neko.svelte";
+  import PetMenu from "./components/pet-menu.svelte";
+
+  function createPetActions(name: string) {
+    // TODO: replace `name` with full user object, onClicks with proper actions
+    return [
+      {
+        icon: "👋",
+        label: `Wave at ${name}`,
+        onClick: () => {
+          console.log(`Wave at ${name}`);
+        },
+      },
+      {
+        icon: "💬",
+        label: `Message ${name}`,
+        onClick: () => {
+          console.log(`Message ${name}`);
+        },
+      },
+      {
+        icon: "🔔",
+        label: `Ping ${name}`,
+        onClick: () => {
+          console.log(`Ping ${name}`);
+        },
+      },
+      {
+        icon: "🔎",
+        label: `Inspect ${name}`,
+        onClick: () => {
+          console.log(`Inspect ${name}`);
+        },
+      },
+    ];
+  }
+
+  function getFriendName(friendId: string) {
+    return (
+      ($appData?.friends ?? []).find((friend) => friend.friend?.id === friendId)
+        ?.friend?.name || friendId
+    );
+  }
 </script>
 
 <div class="w-svw h-svh p-4 relative overflow-hidden">
@@ -27,17 +69,32 @@
       targetX={$cursorPositionOnScreen.raw.x}
       targetY={$cursorPositionOnScreen.raw.y}
       spriteUrl={$activeDollSpriteUrl}
-    />
+    >
+      {#if $sceneInteractive}
+        <PetMenu
+          actions={createPetActions("your doll")}
+          ariaLabel="Open your doll actions"
+        />
+      {/if}
+    </Neko>
   {/if}
   {#each Object.entries($friendsCursorPositions) as [friendId, position] (friendId)}
     {#if $friendActiveDollSpriteUrls[friendId]}
+      {@const friendName = getFriendName(friendId)}
       <Neko
         targetX={position.raw.x}
         targetY={position.raw.y}
         spriteUrl={$friendActiveDollSpriteUrls[friendId]}
         initialX={position.raw.x}
         initialY={position.raw.y}
-      />
+      >
+        {#if $sceneInteractive}
+          <PetMenu
+            actions={createPetActions(friendName)}
+            ariaLabel={`Open ${friendName} actions`}
+          />
+        {/if}
+      </Neko>
     {/if}
   {/each}
   <div id="debug-bar">
