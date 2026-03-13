@@ -1,8 +1,13 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { getButtonPosition } from "./position";
-  import { createDocumentPointerHandler, createKeyDownHandler } from "./events";
+  import {
+    createDocumentPointerHandler,
+    createKeyDownHandler,
+    createPetActions,
+  } from "./events";
   import { sceneInteractive } from "../../../../events/scene-interactive";
+  import type { UserBasicDto } from "$lib/bindings";
 
   export interface PetMenuAction {
     icon: string;
@@ -11,11 +16,13 @@
   }
 
   interface Props {
-    actions?: PetMenuAction[];
+    user?: UserBasicDto;
     ariaLabel?: string;
   }
 
-  let { actions = [], ariaLabel = "Toggle pet actions" }: Props = $props();
+  let { user, ariaLabel = "Toggle pet actions" }: Props = $props();
+
+  const actions = $derived(user ? createPetActions(user) : []);
 
   let rootEl = $state<HTMLDivElement | null>(null);
   let isOpen = $state(false);

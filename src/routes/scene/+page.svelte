@@ -49,10 +49,7 @@
         initialX={position.raw.x}
         initialY={position.raw.y}
       >
-        <PetMenu
-          actions={createPetActions(friend!)}
-          ariaLabel={`Open ${friend?.name} actions`}
-        />
+        <PetMenu user={friend!} ariaLabel={`Open ${friend?.name} actions`} />
       </Neko>
     {/if}
   {/each}
