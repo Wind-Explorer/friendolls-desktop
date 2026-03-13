@@ -81,12 +81,10 @@
         initialX={position.raw.x}
         initialY={position.raw.y}
       >
-        {#if $sceneInteractive}
-          <PetMenu
-            actions={createPetActions(friendName)}
-            ariaLabel={`Open ${friendName} actions`}
-          />
-        {/if}
+        <PetMenu
+          actions={createPetActions(friendName)}
+          ariaLabel={`Open ${friendName} actions`}
+        />
       </Neko>
     {/if}
   {/each}
