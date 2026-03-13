@@ -12,7 +12,7 @@
   import { commands } from "$lib/bindings";
   import DebugBar from "./components/debug-bar.svelte";
   import Neko from "./components/neko/neko.svelte";
-  import PetMenu from "./components/pet-menu.svelte";
+  import PetMenu from "./components/pet-menu/pet-menu.svelte";
   import { createPetActions } from "./components/pet-menu/events";
   import type { UserBasicDto } from "$lib/bindings";
 
