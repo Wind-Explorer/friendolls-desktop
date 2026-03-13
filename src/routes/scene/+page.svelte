@@ -69,14 +69,7 @@
       targetX={$cursorPositionOnScreen.raw.x}
       targetY={$cursorPositionOnScreen.raw.y}
       spriteUrl={$activeDollSpriteUrl}
-    >
-      {#if $sceneInteractive}
-        <PetMenu
-          actions={createPetActions("your doll")}
-          ariaLabel="Open your doll actions"
-        />
-      {/if}
-    </Neko>
+    />
   {/if}
   {#each Object.entries($friendsCursorPositions) as [friendId, position] (friendId)}
     {#if $friendActiveDollSpriteUrls[friendId]}
