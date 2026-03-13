@@ -13,45 +13,13 @@
   import DebugBar from "./components/debug-bar.svelte";
   import Neko from "./components/neko/neko.svelte";
   import PetMenu from "./components/pet-menu.svelte";
+  import { createPetActions } from "./components/pet-menu/events";
+  import type { UserBasicDto } from "$lib/bindings";
 
-  function createPetActions(name: string) {
-    // TODO: replace `name` with full user object, onClicks with proper actions
-    return [
-      {
-        icon: "👋",
-        label: `Wave at ${name}`,
-        onClick: () => {
-          console.log(`Wave at ${name}`);
-        },
-      },
-      {
-        icon: "💬",
-        label: `Message ${name}`,
-        onClick: () => {
-          console.log(`Message ${name}`);
-        },
-      },
-      {
-        icon: "🔔",
-        label: `Ping ${name}`,
-        onClick: () => {
-          console.log(`Ping ${name}`);
-        },
-      },
-      {
-        icon: "🔎",
-        label: `Inspect ${name}`,
-        onClick: () => {
-          console.log(`Inspect ${name}`);
-        },
-      },
-    ];
-  }
-
-  function getFriendName(friendId: string) {
+  function getFriend(friendId: string): UserBasicDto | undefined {
     return (
       ($appData?.friends ?? []).find((friend) => friend.friend?.id === friendId)
-        ?.friend?.name || friendId
+        ?.friend ?? undefined
     );
   }
 </script>
@@ -73,7 +41,7 @@
   {/if}
   {#each Object.entries($friendsCursorPositions) as [friendId, position] (friendId)}
     {#if $friendActiveDollSpriteUrls[friendId]}
-      {@const friendName = getFriendName(friendId)}
+      {@const friend = getFriend(friendId)}
       <Neko
         targetX={position.raw.x}
         targetY={position.raw.y}
@@ -82,8 +50,8 @@
         initialY={position.raw.y}
       >
         <PetMenu
-          actions={createPetActions(friendName)}
-          ariaLabel={`Open ${friendName} actions`}
+          actions={createPetActions(friend!)}
+          ariaLabel={`Open ${friend?.name} actions`}
         />
       </Neko>
     {/if}
