@@ -7,7 +7,7 @@
     createPetActions,
   } from "./events";
   import { sceneInteractive } from "../../../../events/scene-interactive";
-  import type { UserBasicDto } from "$lib/bindings";
+  import { commands, type UserBasicDto } from "$lib/bindings";
 
   export interface PetMenuAction {
     icon: string;
@@ -28,16 +28,21 @@
   let isOpen = $state(false);
 
   function closeMenu() {
+    if (!user) return;
     isOpen = false;
+    commands.setPetMenuState(user.id, false);
   }
 
   function toggleMenu() {
+    if (!user) return;
     if (!$sceneInteractive || actions.length === 0) {
+      commands.setPetMenuState(user.id, false);
       closeMenu();
       return;
     }
 
     isOpen = !isOpen;
+    commands.setPetMenuState(user.id, isOpen);
   }
 
   function handleActionClick(action: PetMenuAction) {
