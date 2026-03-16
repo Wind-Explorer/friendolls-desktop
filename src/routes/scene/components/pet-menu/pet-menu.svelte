@@ -8,6 +8,7 @@
   } from "./events";
   import { sceneInteractive } from "../../../../events/scene-interactive";
   import { commands, type UserBasicDto } from "$lib/bindings";
+  import PetName from "./pet-name.svelte";
 
   export interface PetMenuAction {
     icon: string;
@@ -123,15 +124,7 @@
   {/each}
 
   {#if dollName}
-    <div
-      class={`absolute left-1/2 top-full z-10 mt-3 w-max max-w-32 -translate-x-1/2 rounded-md border border-base-300/80 bg-base-100/90 px-2 py-1 text-center text-[10px] font-medium leading-tight text-base-content/80 shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
-        $sceneInteractive
-          ? "translate-y-0 opacity-100"
-          : "pointer-events-none -translate-y-1 opacity-0"
-      }`}
-    >
-      <span class="block truncate">{dollName}</span>
-    </div>
+    <PetName name={dollName} visible={$sceneInteractive} />
   {/if}
 
   <button
