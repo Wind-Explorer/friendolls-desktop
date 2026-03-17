@@ -1,8 +1,6 @@
 use crate::{
     lock_w,
-    services::client_config::{
-        load_app_config, open_config_window, save_app_config, AppConfig,
-    },
+    services::client_config::{load_app_config, open_config_window, save_app_config, AppConfig},
     state::FDOLL,
 };
 

@@ -63,7 +63,10 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
                 }
             }
 
-            if matches!(scope, AppDataRefreshScope::All | AppDataRefreshScope::Friends) {
+            if matches!(
+                scope,
+                AppDataRefreshScope::All | AppDataRefreshScope::Friends
+            ) {
                 match friend_remote.get_friends().await {
                     Ok(friends_list) => {
                         let mut guard = lock_w!(FDOLL);

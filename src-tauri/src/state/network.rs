@@ -12,7 +12,6 @@ pub struct NetworkState {
     pub health_monitor_token: Option<tokio_util::sync::CancellationToken>,
 }
 
-
 pub fn init_network_state() -> NetworkState {
     let http_client = reqwest::ClientBuilder::new()
         .timeout(std::time::Duration::from_secs(30))

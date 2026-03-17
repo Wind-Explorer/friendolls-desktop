@@ -1,10 +1,7 @@
 use crate::{
     commands::{is_active_doll, refresh_app_data, refresh_app_data_conditionally},
     models::dolls::{CreateDollDto, DollDto, UpdateDollDto},
-    remotes::{
-        dolls::DollsRemote,
-        user::UserRemote,
-    },
+    remotes::{dolls::DollsRemote, user::UserRemote},
     services::app_data::AppDataRefreshScope,
 };
 
@@ -53,7 +50,8 @@ pub async fn update_doll(id: String, dto: UpdateDollDto) -> Result<DollDto, Stri
     refresh_app_data_conditionally(
         &[AppDataRefreshScope::Dolls],
         is_active.then_some(&[AppDataRefreshScope::User, AppDataRefreshScope::Friends]),
-    ).await;
+    )
+    .await;
 
     Ok(result)
 }
@@ -72,7 +70,8 @@ pub async fn delete_doll(id: String) -> Result<(), String> {
     refresh_app_data_conditionally(
         &[AppDataRefreshScope::Dolls],
         is_active.then_some(&[AppDataRefreshScope::User, AppDataRefreshScope::Friends]),
-    ).await;
+    )
+    .await;
 
     Ok(())
 }

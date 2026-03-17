@@ -1,6 +1,6 @@
 use reqwest::Client;
 
-use crate::{lock_r, state::FDOLL, models::health::*};
+use crate::{lock_r, models::health::*, state::FDOLL};
 
 pub struct HealthRemote {
     pub base_url: String,
@@ -18,7 +18,8 @@ impl HealthRemote {
             .ok_or(HealthError::ConfigMissing("api_base_url"))?;
 
         let client = guard
-            .network.clients
+            .network
+            .clients
             .as_ref()
             .map(|c| c.http_client.clone())
             .ok_or(HealthError::ConfigMissing("http_client"))?;

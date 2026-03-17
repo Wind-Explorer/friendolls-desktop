@@ -1,7 +1,7 @@
 use reqwest::Client;
 
-use crate::{lock_r, services::auth::with_auth, state::FDOLL, models::dolls::*};
 use crate::models::remote_error::RemoteError;
+use crate::{lock_r, models::dolls::*, services::auth::with_auth, state::FDOLL};
 
 pub struct DollsRemote {
     pub base_url: String,
@@ -19,7 +19,8 @@ impl DollsRemote {
                 .expect("App configuration error")
                 .clone(),
             client: guard
-                .network.clients
+                .network
+                .clients
                 .as_ref()
                 .expect("App configuration error")
                 .http_client

@@ -2,7 +2,10 @@
 use crate::{
     lock_w,
     models::app_data::UserData,
-    services::{app_data::update_display_dimensions_for_scene_state, presence_modules::models::ModuleMetadata},
+    services::{
+        app_data::update_display_dimensions_for_scene_state,
+        presence_modules::models::ModuleMetadata,
+    },
 };
 use std::sync::{Arc, LazyLock, RwLock};
 use tauri::tray::TrayIcon;

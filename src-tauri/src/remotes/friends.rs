@@ -1,7 +1,7 @@
 use reqwest::Client;
 
-use crate::{lock_r, services::auth::with_auth, state::FDOLL, models::friends::*};
 use crate::models::remote_error::RemoteError;
+use crate::{lock_r, models::friends::*, services::auth::with_auth, state::FDOLL};
 
 pub struct FriendRemote {
     pub base_url: String,
@@ -19,7 +19,8 @@ impl FriendRemote {
                 .expect("App configuration error")
                 .clone(),
             client: guard
-                .network.clients
+                .network
+                .clients
                 .as_ref()
                 .expect("App configuration error")
                 .http_client

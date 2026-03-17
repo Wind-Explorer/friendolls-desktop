@@ -96,7 +96,11 @@ pub async fn start_sso(provider: &str, redirect_uri: &str) -> Result<StartSsoRes
         .send()
         .await?;
 
-    ensure_success(response).await?.json().await.map_err(AuthError::from)
+    ensure_success(response)
+        .await?
+        .json()
+        .await
+        .map_err(AuthError::from)
 }
 
 pub async fn exchange_sso_code(code: &str) -> Result<AuthPass, AuthError> {

@@ -27,12 +27,11 @@ use tauri::async_runtime;
 use tauri_specta::{collect_commands, collect_events, Builder as SpectaBuilder, ErrorHandlingMode};
 
 use crate::services::app_events::{
-    ActiveDollSpriteChanged, AppDataRefreshed, AuthFlowUpdated, CreateDoll, CursorMoved,
-    EditDoll, FriendActiveDollChanged, FriendActiveDollSpritesUpdated,
-    FriendCursorPositionsUpdated, FriendDisconnected,
-    FriendRequestAccepted, FriendRequestDenied, FriendRequestReceived, FriendUserStatusChanged,
-    InteractionDeliveryFailed, InteractionReceived, SceneInteractiveChanged, SetInteractionOverlay,
-    Unfriended, UserStatusChanged,
+    ActiveDollSpriteChanged, AppDataRefreshed, AuthFlowUpdated, CreateDoll, CursorMoved, EditDoll,
+    FriendActiveDollChanged, FriendActiveDollSpritesUpdated, FriendCursorPositionsUpdated,
+    FriendDisconnected, FriendRequestAccepted, FriendRequestDenied, FriendRequestReceived,
+    FriendUserStatusChanged, InteractionDeliveryFailed, InteractionReceived,
+    SceneInteractiveChanged, SetInteractionOverlay, Unfriended, UserStatusChanged,
 };
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();

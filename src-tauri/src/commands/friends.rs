@@ -1,8 +1,8 @@
-use crate::remotes::friends::FriendRemote;
+use crate::commands::refresh_app_data;
 use crate::models::friends::{
     FriendRequestResponseDto, FriendshipResponseDto, SendFriendRequestDto, UserBasicDto,
 };
-use crate::commands::refresh_app_data;
+use crate::remotes::friends::FriendRemote;
 use crate::services::app_data::AppDataRefreshScope;
 
 #[tauri::command]

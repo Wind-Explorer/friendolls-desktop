@@ -1,5 +1,5 @@
-use tauri_specta::Event as _;
 use tauri_plugin_opener::OpenerExt;
+use tauri_specta::Event as _;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::sync::CancellationToken;
@@ -90,7 +90,9 @@ pub async fn start_browser_auth_flow(provider: &str) -> Result<(), AuthError> {
 
                 if callback.params.state != expected_state {
                     error!("SSO state mismatch");
-                    if let Err(err) = write_html_response(&mut callback.stream, AUTH_FAILED_HTML).await {
+                    if let Err(err) =
+                        write_html_response(&mut callback.stream, AUTH_FAILED_HTML).await
+                    {
                         warn!("Failed to write auth failure response: {}", err);
                     }
                     emit_auth_flow_event(
@@ -109,7 +111,8 @@ pub async fn start_browser_auth_flow(provider: &str) -> Result<(), AuthError> {
                             Err(err) => {
                                 error!("Failed to exchange SSO code: {}", err);
                                 if let Err(write_err) =
-                                    write_html_response(&mut callback.stream, AUTH_FAILED_HTML).await
+                                    write_html_response(&mut callback.stream, AUTH_FAILED_HTML)
+                                        .await
                                 {
                                     warn!("Failed to write auth failure response: {}", write_err);
                                 }
@@ -127,7 +130,8 @@ pub async fn start_browser_auth_flow(provider: &str) -> Result<(), AuthError> {
                         };
 
                         if !is_auth_flow_active(flow_id) {
-                            let _ = write_html_response(&mut callback.stream, AUTH_CANCELLED_HTML).await;
+                            let _ = write_html_response(&mut callback.stream, AUTH_CANCELLED_HTML)
+                                .await;
                             return;
                         }
 
@@ -182,7 +186,9 @@ pub async fn start_browser_auth_flow(provider: &str) -> Result<(), AuthError> {
                         } else {
                             AUTH_FAILED_HTML
                         };
-                        if let Err(err) = write_html_response(&mut callback.stream, response_html).await {
+                        if let Err(err) =
+                            write_html_response(&mut callback.stream, response_html).await
+                        {
                             warn!("Failed to write auth callback response: {}", err);
                         }
                         emit_auth_flow_event(
@@ -294,7 +300,8 @@ async fn parse_callback(stream: &mut TcpStream) -> Result<Option<OAuthCallbackPa
         (Some("GET"), Some(path)) if path.starts_with("/callback") => {
             let parsed = url::Url::parse(&format!("http://localhost{}", path))
                 .map_err(|e| AuthError::RequestFailed(e.to_string()))?;
-            let params: std::collections::HashMap<_, _> = parsed.query_pairs().into_owned().collect();
+            let params: std::collections::HashMap<_, _> =
+                parsed.query_pairs().into_owned().collect();
 
             let state = params
                 .get("state")
@@ -372,7 +379,10 @@ fn oauth_error_message(error_code: &str, description: Option<&String>) -> String
 }
 
 fn is_oauth_cancellation(error_code: &str) -> bool {
-    matches!(error_code, "access_denied" | "user_cancelled" | "authorization_cancelled")
+    matches!(
+        error_code,
+        "access_denied" | "user_cancelled" | "authorization_cancelled"
+    )
 }
 
 async fn write_html_response(stream: &mut TcpStream, html: &str) -> Result<(), AuthError> {

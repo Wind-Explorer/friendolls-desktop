@@ -1,8 +1,5 @@
 use crate::{
-    init::{
-        lifecycle::validate_server_health,
-        tracing::init_logging,
-    },
+    init::{lifecycle::validate_server_health, tracing::init_logging},
     services::{
         auth::get_session_token,
         cursor::init_cursor_tracking,

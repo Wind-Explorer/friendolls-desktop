@@ -1,9 +1,6 @@
 use crate::{
-    init::lifecycle::validate_server_health,
-    lock_w,
-    services::session::handle_disastrous_failure,
-    services::ws::client::establish_websocket_connection,
-    state::FDOLL,
+    init::lifecycle::validate_server_health, lock_w, services::session::handle_disastrous_failure,
+    services::ws::client::establish_websocket_connection, state::FDOLL,
 };
 use tokio::time::{self, Duration};
 use tokio_util::sync::CancellationToken;
@@ -13,7 +10,7 @@ use tracing::{info, warn};
 /// and attempts to recover WebSocket connection if health checks fail.
 pub async fn start_health_monitor() {
     stop_health_monitor();
-    
+
     let cancel_token = CancellationToken::new();
     {
         let mut guard = lock_w!(FDOLL);

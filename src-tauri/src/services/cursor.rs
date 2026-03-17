@@ -7,12 +7,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-use crate::{
-    get_app_handle,
-    lock_r,
-    services::app_events::CursorMoved,
-    state::FDOLL,
-};
+use crate::{get_app_handle, lock_r, services::app_events::CursorMoved, state::FDOLL};
 use tauri_specta::Event as _;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

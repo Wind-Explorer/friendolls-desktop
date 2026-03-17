@@ -3,7 +3,9 @@ use crate::{
     models::app_data::UserData,
     services::{
         app_data::{init_app_data_scoped, AppDataRefreshScope},
-        friends, presence_modules::models::ModuleMetadata, sprite,
+        friends,
+        presence_modules::models::ModuleMetadata,
+        sprite,
     },
     state::FDOLL,
 };
@@ -38,8 +40,8 @@ pub fn get_active_doll_sprite_base64() -> Result<Option<String>, String> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_friend_active_doll_sprites_base64(
-) -> Result<friends::FriendActiveDollSpritesDto, String> {
+pub fn get_friend_active_doll_sprites_base64() -> Result<friends::FriendActiveDollSpritesDto, String>
+{
     friends::sync_active_doll_sprites_from_app_data();
     Ok(friends::get_active_doll_sprites_snapshot())
 }
