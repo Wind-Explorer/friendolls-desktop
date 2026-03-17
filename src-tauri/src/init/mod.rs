@@ -1,6 +1,7 @@
 use crate::{
     init::{lifecycle::validate_server_health, tracing::init_logging},
     services::{
+        app_update::update_app,
         auth::get_session_token,
         cursor::init_cursor_tracking,
         presence_modules::init_modules,
@@ -20,6 +21,7 @@ pub mod tracing;
 pub async fn launch_app() {
     init_logging();
     open_splash_window();
+    update_app().await;
     init_app_state();
     init_system_tray();
     init_cursor_tracking().await;
