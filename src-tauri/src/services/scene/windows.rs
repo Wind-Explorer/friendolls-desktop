@@ -36,10 +36,10 @@ pub fn open_splash_window() {
     let webview_window = match tauri::WebviewWindowBuilder::new(
         app_handle,
         SPLASH_WINDOW_LABEL,
-        tauri::WebviewUrl::App("/splash".into()),
+        tauri::WebviewUrl::App("/splash.html".into()),
     )
     .title("Friendolls Splash")
-    .inner_size(600.0, 300.0)
+    .inner_size(800.0, 400.0)
     .resizable(false)
     .decorations(false)
     .transparent(true)
