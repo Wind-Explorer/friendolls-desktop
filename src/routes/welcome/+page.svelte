@@ -4,6 +4,8 @@
   import DollPreview from "../app-menu/components/doll-preview.svelte";
   import ExternalLink from "../../assets/icons/external-link.svelte";
   import type { UnlistenFn } from "@tauri-apps/api/event";
+  import Google from "../../assets/icons/trademarks/google.svelte";
+  import Discord from "../../assets/icons/trademarks/discord.svelte";
 
   let activeProvider: "google" | "discord" | null = null;
   let errorMessage = "";
@@ -45,7 +47,11 @@
   const providerLabel = (provider: "google" | "discord") =>
     provider === "google" ? "Google" : "Discord";
 
-  const handleAuthFlowUpdated = ({ payload }: { payload: AuthFlowUpdatedPayload }) => {
+  const handleAuthFlowUpdated = ({
+    payload,
+  }: {
+    payload: AuthFlowUpdatedPayload;
+  }) => {
     const provider = payload.provider as "google" | "discord";
     if (activeProvider !== provider) {
       return;
@@ -62,11 +68,14 @@
       return;
     }
 
-    errorMessage = payload.message ?? `Unable to sign in with ${providerLabel(provider)}.`;
+    errorMessage =
+      payload.message ?? `Unable to sign in with ${providerLabel(provider)}.`;
   };
 
   onMount(async () => {
-    unlistenAuthFlow = await events.authFlowUpdated.listen(handleAuthFlowUpdated);
+    unlistenAuthFlow = await events.authFlowUpdated.listen(
+      handleAuthFlowUpdated,
+    );
   });
 
   onDestroy(() => {
@@ -97,44 +106,66 @@
               a cute passive socialization layer!
             </p>
           </div>
-          <div class="flex flex-col gap-3 max-w-80">
-            <button
-              class="btn btn-primary btn-xl justify-between"
-              onclick={() => startAuth("google")}
-            >
-              <span>{activeProvider === "google" ? "Restart Google sign-in" : "Continue with Google"}</span>
-              <div class="scale-70">
-                <ExternalLink />
-              </div>
-            </button>
-            <button
-              class="btn btn-outline btn-xl justify-between"
-              onclick={() => startAuth("discord")}
-            >
-              <span>{activeProvider === "discord" ? "Restart Discord sign-in" : "Continue with Discord"}</span>
-              <div class="scale-70">
-                <ExternalLink />
-              </div>
-            </button>
-            <button
-              class="btn btn-link p-0 btn-sm text-base-content w-max"
-              onclick={openClientConfig}
-            >
-              Advanced options
-            </button>
+          <div class="flex flex-col gap-3">
+            <span>Sign in with</span>
+            <div class="w-full flex flex-row gap-3">
+              <button
+                class="card relative hover:cursor-pointer items-center"
+                onclick={() => startAuth("google")}
+              >
+                <div class="size-full btn btn-primary absolute z-0"></div>
+                <div
+                  class="flex flex-row justify-start items-center z-1 h-full p-1 pr-0"
+                >
+                  <div
+                    class="bg-linear-to-t from-base-100/50 to-base-100 rounded-sm"
+                  >
+                    <div class="scale-70">
+                      <Google />
+                    </div>
+                  </div>
+                  <span class="text-xl font-semibold px-3 text-primary-content"
+                    >Google</span
+                  >
+                </div>
+              </button>
+              <button
+                class="card relative hover:cursor-pointer items-center"
+                onclick={() => startAuth("discord")}
+              >
+                <div class="size-full btn btn-primary absolute z-0"></div>
+                <div
+                  class="flex flex-row justify-start items-center z-1 h-full p-1 pr-0"
+                >
+                  <div
+                    class="bg-linear-to-t from-base-100/50 to-base-100 rounded-sm"
+                  >
+                    <div class="scale-70">
+                      <Discord />
+                    </div>
+                  </div>
+                  <span class="text-xl font-semibold px-3 text-primary-content"
+                    >Discord</span
+                  >
+                </div>
+              </button>
+            </div>
           </div>
 
           {#if errorMessage}
-            <p class="text-xs text-error max-w-72">{errorMessage}</p>
+            <p class="text-xs text-error max-w-48">{errorMessage}</p>
           {:else}
-            <p class="text-xs opacity-50 max-w-72">
-              {#if activeProvider}
-                Friendolls is waiting for the browser callback. Click either button again to restart sign-in at any time.
-              {:else}
-                Sign in through your browser, then return here once Friendolls finishes the handshake.
-              {/if}
+            <p class="text-xs opacity-70 max-w-48">
+              An account is needed to connect you with friends.
             </p>
           {/if}
+
+          <button
+            class="btn btn-link p-0 btn-sm btn-primary w-max opacity-0 hover:opacity-100 transition-opacity"
+            onclick={openClientConfig}
+          >
+            Client Configuration (Advanced)
+          </button>
         </div>
       </div>
       <div>
@@ -146,7 +177,7 @@
     class="absolute pointer-events-none bottom-6 right-6 flex flex-col gap-1 justify-between"
   >
     <div></div>
-    <div class="flex flex-col scale-200 origin-bottom-right">
+    <div class="flex flex-col scale-150 origin-bottom-right">
       <DollPreview dollColorScheme={{ body: "b7f2ff", outline: "496065" }} />
     </div>
   </div>
