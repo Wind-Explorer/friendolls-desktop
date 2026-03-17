@@ -1,4 +1,5 @@
 use tracing::info;
+use tokio::time::{timeout, Duration};
 
 use crate::get_app_handle;
 use crate::services::{scene::close_splash_window, session::construct_user_session, welcome::close_welcome_window};
@@ -15,25 +16,41 @@ pub async fn get_access_token() -> Option<String> {
     get_session_token().await.map(|pass| pass.access_token)
 }
 
-pub fn logout() -> Result<(), AuthError> {
+pub async fn logout() -> Result<(), AuthError> {
     info!("Logging out user");
-    lock_w!(FDOLL).auth.auth_pass = None;
+    let refresh_token = lock_w!(FDOLL)
+        .auth
+        .auth_pass
+        .take()
+        .and_then(|pass| pass.refresh_token);
     clear_auth_pass()?;
+
+    if let Some(refresh_token) = refresh_token {
+        match timeout(Duration::from_secs(5), super::api::logout_remote(&refresh_token)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(err)) => info!("Failed to revoke refresh token on server: {}", err),
+            Err(_) => info!("Timed out while revoking refresh token on server"),
+        }
+    }
+
     Ok(())
 }
 
 pub async fn logout_and_restart() -> Result<(), AuthError> {
-    logout()?;
+    logout().await?;
     let app_handle = get_app_handle();
     app_handle.restart();
 }
 
-pub async fn login_and_init_session(email: &str, password: &str) -> Result<(), AuthError> {
-    super::api::login(email, password).await?;
+pub async fn finish_login_session() -> Result<(), AuthError> {
     close_welcome_window();
     tauri::async_runtime::spawn(async {
         construct_user_session().await;
         close_splash_window();
     });
     Ok(())
+}
+
+pub async fn start_browser_login(provider: &str) -> Result<(), AuthError> {
+    super::flow::start_browser_auth_flow(provider).await
 }

@@ -104,17 +104,11 @@ async setSceneInteractive(interactive: boolean, shouldClick: boolean) : Promise<
 async setPetMenuState(id: string, open: boolean) : Promise<void> {
     await TAURI_INVOKE("set_pet_menu_state", { id, open });
 },
-async login(email: string, password: string) : Promise<null> {
-    return await TAURI_INVOKE("login", { email, password });
+async startGoogleAuth() : Promise<null> {
+    return await TAURI_INVOKE("start_google_auth");
 },
-async register(email: string, password: string, name: string | null, username: string | null) : Promise<string> {
-    return await TAURI_INVOKE("register", { email, password, name, username });
-},
-async changePassword(currentPassword: string, newPassword: string) : Promise<null> {
-    return await TAURI_INVOKE("change_password", { currentPassword, newPassword });
-},
-async resetPassword(oldPassword: string, newPassword: string) : Promise<null> {
-    return await TAURI_INVOKE("reset_password", { oldPassword, newPassword });
+async startDiscordAuth() : Promise<null> {
+    return await TAURI_INVOKE("start_discord_auth");
 },
 async logoutAndRestart() : Promise<null> {
     return await TAURI_INVOKE("logout_and_restart");
@@ -133,6 +127,7 @@ async getModules() : Promise<ModuleMetadata[]> {
 export const events = __makeEvents__<{
 activeDollSpriteChanged: ActiveDollSpriteChanged,
 appDataRefreshed: AppDataRefreshed,
+authFlowUpdated: AuthFlowUpdated,
 createDoll: CreateDoll,
 cursorMoved: CursorMoved,
 editDoll: EditDoll,
@@ -153,6 +148,7 @@ userStatusChanged: UserStatusChanged
 }>({
 activeDollSpriteChanged: "active-doll-sprite-changed",
 appDataRefreshed: "app-data-refreshed",
+authFlowUpdated: "auth-flow-updated",
 createDoll: "create-doll",
 cursorMoved: "cursor-moved",
 editDoll: "edit-doll",
@@ -181,6 +177,9 @@ userStatusChanged: "user-status-changed"
 export type ActiveDollSpriteChanged = string | null
 export type AppConfig = { api_base_url: string | null }
 export type AppDataRefreshed = UserData
+export type AuthFlowStatus = "started" | "succeeded" | "failed" | "cancelled"
+export type AuthFlowUpdated = AuthFlowUpdatedPayload
+export type AuthFlowUpdatedPayload = { provider: string; status: AuthFlowStatus; message: string | null }
 export type CreateDoll = null
 export type CreateDollDto = { name: string; configuration: DollConfigurationDto | null }
 export type CursorMoved = CursorPositions

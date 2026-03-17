@@ -18,6 +18,23 @@ use crate::{
     },
 };
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthFlowStatus {
+    Started,
+    Succeeded,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthFlowUpdatedPayload {
+    pub provider: String,
+    pub status: AuthFlowStatus,
+    pub message: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "cursor-position")]
 pub struct CursorMoved(pub CursorPositions);
@@ -93,3 +110,7 @@ pub struct FriendRequestDenied(pub FriendRequestDeniedPayload);
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "unfriended")]
 pub struct Unfriended(pub UnfriendedPayload);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "auth-flow-updated")]
+pub struct AuthFlowUpdated(pub AuthFlowUpdatedPayload);

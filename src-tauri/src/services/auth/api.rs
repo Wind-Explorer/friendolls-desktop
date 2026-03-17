@@ -6,48 +6,46 @@ use crate::{lock_r, lock_w, state::FDOLL};
 use super::storage::{build_auth_pass, save_auth_pass, AuthError, AuthPass};
 
 #[derive(Debug, Deserialize)]
-struct LoginResponse {
+pub struct StartSsoResponse {
+    pub state: String,
+    #[serde(rename = "authorizeUrl")]
+    pub authorize_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct TokenResponse {
     #[serde(rename = "accessToken")]
     access_token: String,
     #[serde(rename = "expiresIn")]
     expires_in: u64,
-}
-
-#[derive(Debug, Deserialize)]
-struct RegisterResponse {
-    id: String,
-}
-
-#[derive(Debug, Serialize)]
-struct LoginRequest<'a> {
-    email: &'a str,
-    password: &'a str,
+    #[serde(rename = "refreshToken")]
+    refresh_token: String,
+    #[serde(rename = "refreshExpiresIn")]
+    refresh_expires_in: u64,
 }
 
 #[derive(Debug, Serialize)]
-struct RegisterRequest<'a> {
-    email: &'a str,
-    password: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<&'a str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    username: Option<&'a str>,
+struct StartSsoRequest<'a> {
+    provider: &'a str,
+    #[serde(rename = "redirectUri")]
+    redirect_uri: &'a str,
 }
 
 #[derive(Debug, Serialize)]
-struct ChangePasswordRequest<'a> {
-    #[serde(rename = "currentPassword")]
-    current_password: &'a str,
-    #[serde(rename = "newPassword")]
-    new_password: &'a str,
+struct ExchangeSsoCodeRequest<'a> {
+    code: &'a str,
 }
 
 #[derive(Debug, Serialize)]
-struct ResetPasswordRequest<'a> {
-    #[serde(rename = "oldPassword")]
-    old_password: &'a str,
-    #[serde(rename = "newPassword")]
-    new_password: &'a str,
+struct RefreshTokenRequest<'a> {
+    #[serde(rename = "refreshToken")]
+    refresh_token: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct LogoutRequest<'a> {
+    #[serde(rename = "refreshToken")]
+    refresh_token: &'a str,
 }
 
 fn auth_http_context() -> Result<(String, reqwest::Client), AuthError> {
@@ -87,96 +85,72 @@ pub async fn with_auth(request: reqwest::RequestBuilder) -> reqwest::RequestBuil
     }
 }
 
-pub async fn login(email: &str, password: &str) -> Result<AuthPass, AuthError> {
+pub async fn start_sso(provider: &str, redirect_uri: &str) -> Result<StartSsoResponse, AuthError> {
     let (base_url, http_client) = auth_http_context()?;
     let response = http_client
-        .post(format!("{}/auth/login", base_url))
-        .json(&LoginRequest { email, password })
-        .send()
-        .await?;
-
-    let login_response: LoginResponse = ensure_success(response).await?.json().await?;
-    let auth_pass = build_auth_pass(login_response.access_token, login_response.expires_in)?;
-    lock_w!(FDOLL).auth.auth_pass = Some(auth_pass.clone());
-    save_auth_pass(&auth_pass)?;
-    Ok(auth_pass)
-}
-
-pub async fn register(
-    email: &str,
-    password: &str,
-    name: Option<&str>,
-    username: Option<&str>,
-) -> Result<String, AuthError> {
-    let (base_url, http_client) = auth_http_context()?;
-    let response = http_client
-        .post(format!("{}/auth/register", base_url))
-        .json(&RegisterRequest {
-            email,
-            password,
-            name,
-            username,
+        .post(format!("{}/auth/sso/start", base_url))
+        .json(&StartSsoRequest {
+            provider,
+            redirect_uri,
         })
         .send()
         .await?;
 
-    let register_response: RegisterResponse = ensure_success(response).await?.json().await?;
-    Ok(register_response.id)
+    ensure_success(response).await?.json().await.map_err(AuthError::from)
 }
 
-pub async fn change_password(
-    current_password: &str,
-    new_password: &str,
-) -> Result<(), AuthError> {
-    let (base_url, http_client) = auth_http_context()?;
-    let response = with_auth(http_client.post(format!("{}/auth/change-password", base_url)).json(
-        &ChangePasswordRequest {
-            current_password,
-            new_password,
-        },
-    ))
-    .await
-    .send()
-    .await?;
-
-    ensure_success(response).await?;
-    Ok(())
-}
-
-pub async fn reset_password(old_password: &str, new_password: &str) -> Result<(), AuthError> {
-    let (base_url, http_client) = auth_http_context()?;
-    let response = with_auth(http_client.post(format!("{}/auth/reset-password", base_url)).json(
-        &ResetPasswordRequest {
-            old_password,
-            new_password,
-        },
-    ))
-    .await
-    .send()
-    .await?;
-
-    ensure_success(response).await?;
-    Ok(())
-}
-
-pub async fn refresh_token(access_token: &str) -> Result<AuthPass, AuthError> {
+pub async fn exchange_sso_code(code: &str) -> Result<AuthPass, AuthError> {
     let (base_url, http_client) = auth_http_context()?;
     let response = http_client
-        .post(format!("{}/auth/refresh", base_url))
-        .header("Authorization", format!("Bearer {}", access_token))
+        .post(format!("{}/auth/sso/exchange", base_url))
+        .json(&ExchangeSsoCodeRequest { code })
         .send()
         .await?;
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let error_text = response.text().await.unwrap_or_default();
-        error!("Token refresh failed with status {}: {}", status, error_text);
-        return Err(AuthError::RefreshFailed);
-    }
+    let token_response: TokenResponse = ensure_success(response).await?.json().await?;
+    build_auth_pass(
+        token_response.access_token,
+        token_response.expires_in,
+        token_response.refresh_token,
+        token_response.refresh_expires_in,
+    )
+}
 
-    let refresh_response: LoginResponse = response.json().await?;
-    let auth_pass = build_auth_pass(refresh_response.access_token, refresh_response.expires_in)?;
+pub async fn refresh_token(refresh_token: &str) -> Result<AuthPass, AuthError> {
+    let (base_url, http_client) = auth_http_context()?;
+    let response = http_client
+        .post(format!("{}/auth/refresh", base_url))
+        .json(&RefreshTokenRequest { refresh_token })
+        .send()
+        .await?;
+
+    let token_response: TokenResponse = ensure_success(response).await?.json().await?;
+    let auth_pass = build_auth_pass(
+        token_response.access_token,
+        token_response.expires_in,
+        token_response.refresh_token,
+        token_response.refresh_expires_in,
+    )?;
+
     lock_w!(FDOLL).auth.auth_pass = Some(auth_pass.clone());
     save_auth_pass(&auth_pass)?;
     Ok(auth_pass)
+}
+
+pub async fn logout_remote(refresh_token: &str) -> Result<(), AuthError> {
+    let (base_url, http_client) = auth_http_context()?;
+    let response = http_client
+        .post(format!("{}/auth/logout", base_url))
+        .json(&LogoutRequest { refresh_token })
+        .send()
+        .await?;
+
+    ensure_success(response).await?;
+    Ok(())
+}
+
+pub fn persist_auth_pass(auth_pass: &AuthPass) -> Result<(), AuthError> {
+    lock_w!(FDOLL).auth.auth_pass = Some(auth_pass.clone());
+    save_auth_pass(auth_pass)?;
+    Ok(())
 }

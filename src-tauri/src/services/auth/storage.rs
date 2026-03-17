@@ -29,6 +29,21 @@ pub enum AuthError {
     #[error("Request failed: {0}")]
     RequestFailed(String),
 
+    #[error("Missing callback parameter: {0}")]
+    MissingParameter(String),
+
+    #[error("Authentication flow cancelled")]
+    Cancelled,
+
+    #[error("Callback timeout - no response received")]
+    CallbackTimeout,
+
+    #[error("Server binding failed: {0}")]
+    ServerBindError(String),
+
+    #[error("Failed to open auth portal: {0}")]
+    OpenPortalFailed(#[from] tauri_plugin_opener::Error),
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 }
@@ -37,12 +52,18 @@ pub enum AuthError {
 pub struct AuthPass {
     pub access_token: String,
     pub expires_in: u64,
+    #[serde(default)]
+    pub refresh_token: Option<String>,
+    #[serde(default)]
+    pub refresh_expires_in: Option<u64>,
     pub issued_at: Option<u64>,
 }
 
 pub(crate) fn build_auth_pass(
     access_token: String,
     expires_in: u64,
+    refresh_token: String,
+    refresh_expires_in: u64,
 ) -> Result<AuthPass, AuthError> {
     let issued_at = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -51,6 +72,8 @@ pub(crate) fn build_auth_pass(
     Ok(AuthPass {
         access_token,
         expires_in,
+        refresh_token: Some(refresh_token),
+        refresh_expires_in: Some(refresh_expires_in),
         issued_at: Some(issued_at),
     })
 }
@@ -167,6 +190,10 @@ pub fn load_auth_pass() -> Result<Option<AuthPass>, AuthError> {
             return Ok(None);
         }
     };
+
+    if auth_pass.refresh_token.is_none() || auth_pass.refresh_expires_in.is_none() {
+        info!("Loaded legacy auth pass without refresh token support");
+    }
 
     Ok(Some(auth_pass))
 }

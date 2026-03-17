@@ -1,61 +1,77 @@
 <script lang="ts">
-  import { commands } from "$lib/bindings";
-  import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+  import { commands, events } from "$lib/bindings";
+  import { onDestroy, onMount } from "svelte";
   import DollPreview from "../app-menu/components/doll-preview.svelte";
   import ExternalLink from "../../assets/icons/external-link.svelte";
+  import type { UnlistenFn } from "@tauri-apps/api/event";
 
-  let isContinuing = false;
-  let useRegister = false;
+  let activeProvider: "google" | "discord" | null = null;
   let errorMessage = "";
-  let form = {
-    email: "",
-    password: "",
-    name: "",
-    username: "",
+  let unlistenAuthFlow: UnlistenFn | null = null;
+
+  type AuthFlowUpdatedPayload = {
+    provider: string;
+    status: "started" | "succeeded" | "failed" | "cancelled";
+    message: string | null;
   };
 
   const normalizeError = (value: unknown) => {
     if (value instanceof Error) {
       return value.message;
     }
+
     return typeof value === "string" ? value : "Something went wrong";
   };
 
-  const handleContinue = async () => {
-    if (isContinuing) return;
-    if (!form.email.trim() || !form.password) {
-      errorMessage = "Email and password are required";
+  const startAuth = async (provider: "google" | "discord") => {
+    activeProvider = provider;
+    errorMessage = "";
+
+    try {
+      if (provider === "google") {
+        await commands.startGoogleAuth();
+      } else {
+        await commands.startDiscordAuth();
+      }
+    } catch (error) {
+      console.error(`Failed to start ${provider} auth`, error);
+      errorMessage = normalizeError(error);
+      if (activeProvider === provider) {
+        activeProvider = null;
+      }
+    }
+  };
+
+  const providerLabel = (provider: "google" | "discord") =>
+    provider === "google" ? "Google" : "Discord";
+
+  const handleAuthFlowUpdated = ({ payload }: { payload: AuthFlowUpdatedPayload }) => {
+    const provider = payload.provider as "google" | "discord";
+    if (activeProvider !== provider) {
       return;
     }
-    isContinuing = true;
-    errorMessage = "";
-    try {
-      if (useRegister) {
-        await commands.register(
-          form.email.trim(),
-          form.password,
-          form.name.trim() || null,
-          form.username.trim() || null,
-        );
-        useRegister = false;
-        resetRegisterFields();
-        form.password = "";
-        return;
-      }
 
-      await commands.login(form.email.trim(), form.password);
-      await getCurrentWebviewWindow().close();
-    } catch (error) {
-      console.error("Failed to authenticate", error);
-      errorMessage = normalizeError(error);
+    if (payload.status === "started") {
+      return;
     }
-    isContinuing = false;
+
+    activeProvider = null;
+
+    if (payload.status === "succeeded") {
+      errorMessage = "";
+      return;
+    }
+
+    errorMessage = payload.message ?? `Unable to sign in with ${providerLabel(provider)}.`;
   };
 
-  const resetRegisterFields = () => {
-    form.name = "";
-    form.username = "";
-  };
+  onMount(async () => {
+    unlistenAuthFlow = await events.authFlowUpdated.listen(handleAuthFlowUpdated);
+  });
+
+  onDestroy(() => {
+    unlistenAuthFlow?.();
+  });
 
   const openClientConfig = async () => {
     try {
@@ -81,76 +97,24 @@
               a cute passive socialization layer!
             </p>
           </div>
-          <div class="flex flex-col gap-4">
-            <div class="flex flex-col gap-2">
-              <label class="flex flex-col gap-1">
-                <span class="text-xs opacity-60">Email</span>
-                <input
-                  class="input input-bordered input-sm"
-                  type="email"
-                  autocomplete="email"
-                  bind:value={form.email}
-                  placeholder="you@example.com"
-                />
-              </label>
-              <label class="flex flex-col gap-1">
-                <span class="text-xs opacity-60">Password</span>
-                <input
-                  class="input input-bordered input-sm"
-                  type="password"
-                  autocomplete={useRegister
-                    ? "new-password"
-                    : "current-password"}
-                  bind:value={form.password}
-                  placeholder="••••••••"
-                />
-              </label>
-              {#if useRegister}
-                <label class="flex flex-col gap-1">
-                  <span class="text-xs opacity-60">Name (optional)</span>
-                  <input
-                    class="input input-bordered input-sm"
-                    autocomplete="name"
-                    bind:value={form.name}
-                  />
-                </label>
-                <label class="flex flex-col gap-1">
-                  <span class="text-xs opacity-60">Username (optional)</span>
-                  <input
-                    class="input input-bordered input-sm"
-                    autocomplete="username"
-                    bind:value={form.username}
-                  />
-                </label>
-              {/if}
-            </div>
+          <div class="flex flex-col gap-3 max-w-80">
             <button
-              class="btn btn-primary btn-xl"
-              onclick={handleContinue}
-              disabled={isContinuing}
+              class="btn btn-primary btn-xl justify-between"
+              onclick={() => startAuth("google")}
             >
-              {#if isContinuing}
-                Loading...
-              {:else}
-                <div class="scale-70">
-                  <ExternalLink />
-                </div>
-                {useRegister ? "Create account" : "Sign in"}
-              {/if}
+              <span>{activeProvider === "google" ? "Restart Google sign-in" : "Continue with Google"}</span>
+              <div class="scale-70">
+                <ExternalLink />
+              </div>
             </button>
             <button
-              class="btn btn-ghost btn-sm px-0 justify-start"
-              onclick={() => {
-                useRegister = !useRegister;
-                errorMessage = "";
-                if (!useRegister) {
-                  resetRegisterFields();
-                }
-              }}
+              class="btn btn-outline btn-xl justify-between"
+              onclick={() => startAuth("discord")}
             >
-              {useRegister
-                ? "Already have an account? Sign in"
-                : "New here? Create an account"}
+              <span>{activeProvider === "discord" ? "Restart Discord sign-in" : "Continue with Discord"}</span>
+              <div class="scale-70">
+                <ExternalLink />
+              </div>
             </button>
             <button
               class="btn btn-link p-0 btn-sm text-base-content w-max"
@@ -163,8 +127,12 @@
           {#if errorMessage}
             <p class="text-xs text-error max-w-72">{errorMessage}</p>
           {:else}
-            <p class="text-xs opacity-50 max-w-60">
-              An account is needed to identify you for connecting with friends.
+            <p class="text-xs opacity-50 max-w-72">
+              {#if activeProvider}
+                Friendolls is waiting for the browser callback. Click either button again to restart sign-in at any time.
+              {:else}
+                Sign in through your browser, then return here once Friendolls finishes the handshake.
+              {/if}
             </p>
           {/if}
         </div>
