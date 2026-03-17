@@ -30,7 +30,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIyMEVBOEQxQUIzQzA4RkEKUldUNkNEeXIwYWdPSXBQbGs5bmhTalZjelF1bThDUWVhcDBIWFg3U1Jxb1E1WS9DcVVMVmR5VC8K",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBRjMzQjM0Q0QxNDYyRjQKUldUMFloVE5ORHZ6R2h0U0Q0M01GcEtXZ2c1L0FMVDQwMW84UzZ3My94V2RKSlp2c0FrcUQvN2EK",
       "endpoints": [
         "https://github.com/wind-explorer/friendolls-desktop/releases/latest/download/latest.json"
       ]
