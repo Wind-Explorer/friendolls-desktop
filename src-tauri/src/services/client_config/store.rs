@@ -9,7 +9,7 @@ use crate::get_app_handle;
 use super::{AppConfig, ClientConfigError};
 
 const CONFIG_FILENAME: &str = "client_config.json";
-const DEFAULT_API_BASE_URL: &str = "https://api.fdolls.adamcv.com";
+const DEFAULT_API_BASE_URL: &str = "https://api.friendolls.adamcv.com";
 
 fn config_file_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, ClientConfigError> {
     let dir = app_handle

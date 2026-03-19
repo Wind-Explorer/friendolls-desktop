@@ -88,7 +88,7 @@
         <input
           class="input input-bordered"
           bind:value={form.api_base_url}
-          placeholder="https://api.fdolls.adamcv.com"
+          placeholder="https://api.friendolls.adamcv.com"
         />
       </label>
     </div>
