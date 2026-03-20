@@ -2,6 +2,9 @@ use tauri::Manager;
 use tauri_plugin_positioner::WindowExt;
 use tracing::{error, info};
 
+#[cfg(target_os = "macos")]
+use objc2_app_kit::{NSFloatingWindowLevel, NSWindow, NSWindowCollectionBehavior};
+
 use crate::get_app_handle;
 use crate::services::window_manager::{
     ensure_window, EnsureWindowError, EnsureWindowResult, WindowConfig,
@@ -14,6 +17,7 @@ pub static SPLASH_WINDOW_LABEL: &str = "splash";
 
 pub fn overlay_fullscreen(window: &tauri::Window) -> Result<(), tauri::Error> {
     let monitor = get_app_handle().primary_monitor()?.unwrap();
+    let monitor_position = monitor.position();
     let monitor_size = monitor.size();
 
     window.set_size(tauri::PhysicalSize {
@@ -21,9 +25,45 @@ pub fn overlay_fullscreen(window: &tauri::Window) -> Result<(), tauri::Error> {
         height: monitor_size.height,
     })?;
 
-    window.set_position(tauri::PhysicalPosition { x: 0, y: 0 })?;
+    window.set_position(*monitor_position)?;
 
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn apply_scene_window_macos_policy(window: &tauri::Window) -> Result<(), tauri::Error> {
+    let ns_window = unsafe { &*window.ns_window()?.cast::<NSWindow>() };
+    let behavior = NSWindowCollectionBehavior::CanJoinAllSpaces
+        | NSWindowCollectionBehavior::Stationary
+        | NSWindowCollectionBehavior::IgnoresCycle;
+
+    ns_window.setLevel(NSFloatingWindowLevel);
+    ns_window.setCollectionBehavior(behavior);
+
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn harden_scene_window_on_macos(window: &tauri::Window) {
+    let app_handle = get_app_handle().clone();
+    let app_handle_for_closure = app_handle.clone();
+    let window_label = window.label().to_string();
+
+    if let Err(e) = app_handle.run_on_main_thread(move || {
+        let Some(window) = app_handle_for_closure.get_window(&window_label) else {
+            error!(
+                "Failed to apply macOS scene hardening: window '{}' not found",
+                window_label
+            );
+            return;
+        };
+
+        if let Err(e) = apply_scene_window_macos_policy(&window) {
+            error!("Failed to apply macOS scene hardening policy: {}", e);
+        }
+    }) {
+        error!("Failed to schedule macOS scene hardening policy: {}", e);
+    }
 }
 
 pub fn open_splash_window() {
@@ -118,6 +158,9 @@ pub fn open_scene_window() {
         error!("Failed to set overlay fullscreen: {}", e);
         return;
     }
+
+    #[cfg(target_os = "macos")]
+    harden_scene_window_on_macos(&window);
 
     if let Err(e) = window.set_ignore_cursor_events(true) {
         error!("Failed to set ignore cursor events: {}", e);
