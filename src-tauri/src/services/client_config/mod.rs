@@ -28,6 +28,8 @@ pub enum ClientConfigError {
     Window(tauri::Error),
     #[error("failed to show client config window: {0}")]
     ShowWindow(tauri::Error),
+    #[error("missing required parent window: {0}")]
+    MissingParent(String),
 }
 
 pub static CLIENT_CONFIG_WINDOW_LABEL: &str = "client_config";

@@ -11,7 +11,6 @@ use crate::{
     },
     state::init_app_state,
     system_tray::init_system_tray,
-    utilities::toggle_macos_accessory_mode,
 };
 
 pub mod lifecycle;
@@ -21,7 +20,6 @@ pub mod tracing;
 /// init and startup of everything.
 pub async fn launch_app() {
     init_logging();
-    toggle_macos_accessory_mode(false); // TODO: toggle true once figure out consolidated window management solution
     open_splash_window();
     update_app().await;
     init_app_state();

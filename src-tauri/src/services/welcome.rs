@@ -4,14 +4,28 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogBuilder, MessageDialogKind};
 use tauri_plugin_positioner::WindowExt;
 use tracing::{error, info};
 
+use super::window_manager::{ensure_window, EnsureWindowError, EnsureWindowResult, WindowConfig};
+
 pub static WELCOME_WINDOW_LABEL: &str = "welcome";
 
 pub fn open_welcome_window() {
     let app_handle = get_app_handle();
-    let existing_webview_window = app_handle.get_window(WELCOME_WINDOW_LABEL);
 
-    if let Some(window) = existing_webview_window {
-        if let Err(e) = window.show() {
+    let mut config =
+        WindowConfig::regular_ui(WELCOME_WINDOW_LABEL, "/welcome", "Welcome to Friendolls");
+    config.visible = false;
+
+    let webview_window = match ensure_window(&config, true, false) {
+        Ok(EnsureWindowResult::Created(window)) => window,
+        Ok(EnsureWindowResult::Existing(_)) => return,
+        Err(EnsureWindowError::MissingParent(parent_label)) => {
+            error!(
+                "Failed to build {} window due to missing parent '{}': impossible state",
+                WELCOME_WINDOW_LABEL, parent_label
+            );
+            return;
+        }
+        Err(EnsureWindowError::ShowExisting(e)) => {
             error!("Failed to show existing welcome window: {}", e);
             MessageDialogBuilder::new(
                 app_handle.dialog().clone(),
@@ -20,33 +34,9 @@ pub fn open_welcome_window() {
             )
             .kind(MessageDialogKind::Error)
             .show(|_| {});
+            return;
         }
-        return;
-    }
-
-    let webview_window = match tauri::WebviewWindowBuilder::new(
-        app_handle,
-        WELCOME_WINDOW_LABEL,
-        tauri::WebviewUrl::App("/welcome".into()),
-    )
-    .title("Welcome to Friendolls")
-    .inner_size(420.0, 420.0)
-    .resizable(false)
-    .maximizable(false)
-    .decorations(true)
-    .transparent(false)
-    .shadow(true)
-    .visible(false)
-    .skip_taskbar(false)
-    .always_on_top(false)
-    .visible_on_all_workspaces(false)
-    .build()
-    {
-        Ok(window) => {
-            info!("{} window builder succeeded", WELCOME_WINDOW_LABEL);
-            window
-        }
-        Err(e) => {
+        Err(EnsureWindowError::SetParent(e)) | Err(EnsureWindowError::Build(e)) => {
             error!("Failed to build {} window: {}", WELCOME_WINDOW_LABEL, e);
             return;
         }

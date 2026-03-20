@@ -18,4 +18,5 @@ pub mod session_windows;
 pub mod sprite;
 pub mod sprite_recolor;
 pub mod welcome;
+pub mod window_manager;
 pub mod ws;

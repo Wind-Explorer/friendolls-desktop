@@ -3,6 +3,9 @@ use tauri_plugin_positioner::WindowExt;
 use tracing::{error, info};
 
 use crate::get_app_handle;
+use crate::services::window_manager::{
+    ensure_window, EnsureWindowError, EnsureWindowResult, WindowConfig,
+};
 
 use super::interactivity::start_scene_modifier_listener;
 
@@ -24,36 +27,27 @@ pub fn overlay_fullscreen(window: &tauri::Window) -> Result<(), tauri::Error> {
 }
 
 pub fn open_splash_window() {
-    let app_handle = get_app_handle();
-    let existing_webview_window = app_handle.get_window(SPLASH_WINDOW_LABEL);
-
-    if let Some(window) = existing_webview_window {
-        window.show().unwrap();
-        return;
-    }
-
     info!("Starting splash window creation...");
-    let webview_window = match tauri::WebviewWindowBuilder::new(
-        app_handle,
-        SPLASH_WINDOW_LABEL,
-        tauri::WebviewUrl::App("/splash.html".into()),
-    )
-    .title("Friendolls Splash")
-    .inner_size(800.0, 400.0)
-    .resizable(false)
-    .decorations(false)
-    .transparent(true)
-    .shadow(false)
-    .visible(false)
-    .skip_taskbar(true)
-    .always_on_top(true)
-    .build()
-    {
-        Ok(window) => {
-            info!("Splash window builder succeeded");
-            window
+
+    let mut config =
+        WindowConfig::accessory(SPLASH_WINDOW_LABEL, "/splash.html", "Friendolls Splash");
+    config.width = 800.0;
+    config.height = 400.0;
+    config.visible = false;
+
+    let webview_window = match ensure_window(&config, true, false) {
+        Ok(EnsureWindowResult::Created(window)) => window,
+        Ok(EnsureWindowResult::Existing(_)) => return,
+        Err(EnsureWindowError::MissingParent(parent_label)) => {
+            error!(
+                "Failed to build splash window due to missing parent '{}': impossible state",
+                parent_label
+            );
+            return;
         }
-        Err(e) => {
+        Err(EnsureWindowError::ShowExisting(e))
+        | Err(EnsureWindowError::SetParent(e))
+        | Err(EnsureWindowError::Build(e)) => {
             error!("Failed to build splash window: {}", e);
             return;
         }
@@ -82,37 +76,26 @@ pub fn close_splash_window() {
 }
 
 pub fn open_scene_window() {
-    let app_handle = get_app_handle();
-    let existing_webview_window = app_handle.get_window(SCENE_WINDOW_LABEL);
-
-    if let Some(window) = existing_webview_window {
-        window.show().unwrap();
-        return;
-    }
-
     info!("Starting scene creation...");
-    let webview_window = match tauri::WebviewWindowBuilder::new(
-        app_handle,
-        SCENE_WINDOW_LABEL,
-        tauri::WebviewUrl::App("/scene".into()),
-    )
-    .title("Friendolls Scene")
-    .inner_size(600.0, 500.0)
-    .resizable(false)
-    .decorations(false)
-    .transparent(true)
-    .shadow(false)
-    .visible(true)
-    .skip_taskbar(true)
-    .always_on_top(true)
-    .visible_on_all_workspaces(true)
-    .build()
-    {
-        Ok(window) => {
-            info!("Scene window builder succeeded");
-            window
+
+    let mut config = WindowConfig::accessory(SCENE_WINDOW_LABEL, "/scene", "Friendolls Scene");
+    config.width = 600.0;
+    config.height = 500.0;
+    config.visible_on_all_workspaces = true;
+
+    let webview_window = match ensure_window(&config, true, false) {
+        Ok(EnsureWindowResult::Created(window)) => window,
+        Ok(EnsureWindowResult::Existing(_)) => return,
+        Err(EnsureWindowError::MissingParent(parent_label)) => {
+            error!(
+                "Failed to build scene window due to missing parent '{}': impossible state",
+                parent_label
+            );
+            return;
         }
-        Err(e) => {
+        Err(EnsureWindowError::ShowExisting(e))
+        | Err(EnsureWindowError::SetParent(e))
+        | Err(EnsureWindowError::Build(e)) => {
             error!("Failed to build scene window: {}", e);
             return;
         }
