@@ -11,6 +11,7 @@ pub use window::open_config_window;
 #[derive(Default, Serialize, Deserialize, Clone, Debug, Type)]
 pub struct AppConfig {
     pub api_base_url: Option<String>,
+    pub debug_mode: bool,
 }
 
 #[derive(Debug, Error)]

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { cursorPositionOnScreen } from "../../events/cursor";
   import { friendsCursorPositions } from "../../events/friend-cursor";
   import { appData } from "../../events/app-data";
@@ -16,6 +17,13 @@
   import PetMessagePop from "./components/pet-message-pop.svelte";
   import PetMessageSend from "./components/pet-message-send.svelte";
   import type { UserBasicDto } from "$lib/bindings";
+
+  let debugMode = false;
+
+  onMount(async () => {
+    const config = await commands.getClientConfig();
+    debugMode = config.debug_mode;
+  });
 
   function getFriend(friendId: string): UserBasicDto | undefined {
     return (
@@ -56,14 +64,16 @@
       </Neko>
     {/if}
   {/each}
-  <div id="debug-bar">
-    <DebugBar
+  {#if debugMode}
+    <div id="debug-bar">
+      <DebugBar
       isInteractive={$sceneInteractive}
       cursorPosition={$cursorPositionOnScreen}
       presenceStatus={$currentPresenceState?.presenceStatus ?? null}
       friendsCursorPositions={$friendsCursorPositions}
       friends={$appData?.friends ?? []}
       friendsPresenceStates={$friendsPresenceStates}
-    />
-  </div>
+      />
+    </div>
+  {/if}
 </div>

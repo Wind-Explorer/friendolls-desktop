@@ -175,7 +175,7 @@ userStatusChanged: "user-status-changed"
 /** user-defined types **/
 
 export type ActiveDollSpriteChanged = string | null
-export type AppConfig = { api_base_url: string | null }
+export type AppConfig = { api_base_url: string | null; debug_mode: boolean }
 export type AppDataRefreshed = UserData
 export type AuthFlowStatus = "started" | "succeeded" | "failed" | "cancelled"
 export type AuthFlowUpdated = AuthFlowUpdatedPayload

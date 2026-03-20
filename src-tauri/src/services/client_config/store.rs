@@ -54,6 +54,7 @@ fn sanitize(mut config: AppConfig) -> AppConfig {
 pub fn default_app_config() -> AppConfig {
     AppConfig {
         api_base_url: Some(DEFAULT_API_BASE_URL.to_string()),
+        debug_mode: false,
     }
 }
 

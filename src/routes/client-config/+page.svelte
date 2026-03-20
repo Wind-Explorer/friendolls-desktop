@@ -4,6 +4,7 @@
 
   let form: AppConfig = {
     api_base_url: "",
+    debug_mode: false,
   };
 
   let saving = false;
@@ -16,6 +17,7 @@
       const config = await commands.getClientConfig();
       form = {
         api_base_url: config.api_base_url ?? "",
+        debug_mode: config.debug_mode ?? false,
       };
     } catch (err) {
       errorMessage = `Failed to load config: ${err}`;
@@ -53,6 +55,7 @@
     try {
       await commands.saveClientConfig({
         api_base_url: form.api_base_url?.trim() || null,
+        debug_mode: form.debug_mode,
       });
 
       successMessage = "Success. Restart to apply changes.";
@@ -89,6 +92,15 @@
           class="input input-bordered"
           bind:value={form.api_base_url}
           placeholder="https://api.friendolls.adamcv.com"
+        />
+      </label>
+
+      <label class="flex flex-row items-center gap-3 cursor-pointer">
+        <span class="text-sm">Debug Mode</span>
+        <input
+          type="checkbox"
+          class="checkbox checkbox-primary"
+          bind:checked={form.debug_mode}
         />
       </label>
     </div>
