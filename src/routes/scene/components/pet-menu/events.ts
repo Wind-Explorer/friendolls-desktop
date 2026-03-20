@@ -1,4 +1,5 @@
 import type { UserBasicDto } from "$lib/bindings";
+import { openPetMessageSend } from "../../../../events/pet-message";
 
 export type CloseHandler = () => void;
 
@@ -15,7 +16,7 @@ export function createPetActions(user: UserBasicDto) {
       icon: "💬",
       label: `Message ${user.name}`,
       onClick: () => {
-        console.log(`Message ${user.name}`);
+        openPetMessageSend(user.id);
       },
     },
     {

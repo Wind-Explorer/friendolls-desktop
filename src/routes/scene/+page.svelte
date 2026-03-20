@@ -13,7 +13,8 @@
   import DebugBar from "./components/debug-bar.svelte";
   import Neko from "./components/neko/neko.svelte";
   import PetMenu from "./components/pet-menu/pet-menu.svelte";
-  import { createPetActions } from "./components/pet-menu/events";
+  import PetMessagePop from "./components/pet-message-pop.svelte";
+  import PetMessageSend from "./components/pet-message-send.svelte";
   import type { UserBasicDto } from "$lib/bindings";
 
   function getFriend(friendId: string): UserBasicDto | undefined {
@@ -50,6 +51,8 @@
         initialY={position.raw.y}
       >
         <PetMenu user={friend!} ariaLabel={`Open ${friend?.name} actions`} />
+        <PetMessagePop userId={friendId} />
+        <PetMessageSend userId={friendId} userName={friend?.name ?? "Friend"} />
       </Neko>
     {/if}
   {/each}
