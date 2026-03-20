@@ -98,7 +98,7 @@
 
 <div
   bind:this={rootEl}
-  class={`absolute card bottom-9 flex flex-col left-4 z-40 w-56 border border-base-300 bg-base-100 p-2 text-base-content transition-all duration-200 ease-out ${
+  class={`absolute card bottom-9 flex flex-col left-4 z-40 w-56 border border-base-300 bg-base-100 p-2 shadow-lg text-base-content transition-all duration-200 ease-out ${
     isOpen && $sceneInteractive
       ? "pointer-events-auto opacity-100"
       : "pointer-events-none opacity-0"
