@@ -5,6 +5,10 @@
   import YourDolls from "./tabs/your-dolls/index.svelte";
   import { events } from "$lib/bindings";
   import { onMount } from "svelte";
+  import PawPrint from "../../assets/icons/paw-print.svelte";
+  import Users from "../../assets/icons/users.svelte";
+  import Settings from "../../assets/icons/settings.svelte";
+  import Blocks from "../../assets/icons/blocks.svelte";
 
   let showInteractionOverlay = false;
 
@@ -38,45 +42,49 @@
   <div class="flex flex-col gap-2 h-full max-h-full">
     <div class="size-full flex flex-col max-h-full gap-2 h-full">
       <div class="tabs tabs-lift h-full flex-1">
-        <input
-          type="radio"
-          name="app_menu_tabs"
-          class="tab"
-          aria-label="Your Nekos"
-          checked
-        />
+        <label class="tab">
+          <input
+            type="radio"
+            name="app_menu_tabs"
+            aria-label="Your Nekos"
+            checked
+          />
+          <div class="*:size-4">
+            <PawPrint />
+          </div>
+        </label>
         <div class="tab-content bg-base-100 border-base-300 p-4">
           <YourDolls />
         </div>
 
-        <input
-          type="radio"
-          name="app_menu_tabs"
-          class="tab"
-          aria-label="Friends"
-        />
+        <label class="tab">
+          <input type="radio" name="app_menu_tabs" aria-label="Friends" />
+          <div class="*:size-4">
+            <Users />
+          </div>
+        </label>
         <div class="tab-content bg-base-100 border-base-300 p-4">
           <Friends />
         </div>
 
-        <input
-          type="radio"
-          name="app_menu_tabs"
-          class="tab"
-          aria-label="Preferences"
-        />
-        <div class="tab-content bg-base-100 border-base-300 p-4">
-          <Preferences />
-        </div>
-
-        <input
-          type="radio"
-          name="app_menu_tabs"
-          class="tab"
-          aria-label="Modules"
-        />
+        <label class="tab">
+          <input type="radio" name="app_menu_tabs" aria-label="Modules" />
+          <div class="*:size-4">
+            <Blocks />
+          </div>
+        </label>
         <div class="tab-content bg-base-100 border-base-300 p-4">
           <Modules />
+        </div>
+
+        <label class="tab">
+          <input type="radio" name="app_menu_tabs" aria-label="Preferences" />
+          <div class="*:size-4">
+            <Settings />
+          </div>
+        </label>
+        <div class="tab-content bg-base-100 border-base-300 p-4">
+          <Preferences />
         </div>
       </div>
     </div>
