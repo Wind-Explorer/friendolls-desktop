@@ -1,10 +1,36 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { commands, type AppConfig } from "$lib/bindings";
+  import {
+    commands,
+    type AppConfig,
+    type SceneInteractivityHotkey,
+  } from "$lib/bindings";
+
+  const DEFAULT_HOTKEY: SceneInteractivityHotkey = {
+    modifiers: ["alt"],
+    key: null,
+  };
+
+  const normalizeHotkey = (
+    hotkey: SceneInteractivityHotkey | null | undefined,
+  ): SceneInteractivityHotkey => {
+    if (!hotkey) return { ...DEFAULT_HOTKEY };
+
+    const uniqueModifiers = [...new Set(hotkey.modifiers ?? [])].sort();
+    if (uniqueModifiers.length === 0) {
+      return { ...DEFAULT_HOTKEY };
+    }
+
+    return {
+      modifiers: uniqueModifiers,
+      key: hotkey.key ?? null,
+    };
+  };
 
   let form: AppConfig = {
     api_base_url: "",
     debug_mode: false,
+    scene_interactivity_hotkey: { ...DEFAULT_HOTKEY },
   };
 
   let saving = false;
@@ -18,6 +44,9 @@
       form = {
         api_base_url: config.api_base_url ?? "",
         debug_mode: config.debug_mode ?? false,
+        scene_interactivity_hotkey: normalizeHotkey(
+          config.scene_interactivity_hotkey,
+        ),
       };
     } catch (err) {
       errorMessage = `Failed to load config: ${err}`;
@@ -56,6 +85,9 @@
       await commands.saveClientConfig({
         api_base_url: form.api_base_url?.trim() || null,
         debug_mode: form.debug_mode,
+        scene_interactivity_hotkey: normalizeHotkey(
+          form.scene_interactivity_hotkey,
+        ),
       });
 
       successMessage = "Success. Restart to apply changes.";
@@ -103,6 +135,7 @@
           bind:checked={form.debug_mode}
         />
       </label>
+
     </div>
 
     {#if errorMessage}

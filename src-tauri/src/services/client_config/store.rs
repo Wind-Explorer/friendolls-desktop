@@ -6,7 +6,7 @@ use url::Url;
 
 use crate::get_app_handle;
 
-use super::{AppConfig, ClientConfigError};
+use super::{AppConfig, ClientConfigError, SceneInteractivityHotkey};
 
 const CONFIG_FILENAME: &str = "client_config.json";
 const DEFAULT_API_BASE_URL: &str = "https://api.friendolls.adamcv.com";
@@ -48,6 +48,8 @@ fn sanitize(mut config: AppConfig) -> AppConfig {
         .or_else(|| Some(DEFAULT_API_BASE_URL.to_string()))
         .map(|v| strip_trailing_slash(&v));
 
+    config.scene_interactivity_hotkey = config.scene_interactivity_hotkey.normalized();
+
     config
 }
 
@@ -55,6 +57,7 @@ pub fn default_app_config() -> AppConfig {
     AppConfig {
         api_base_url: Some(DEFAULT_API_BASE_URL.to_string()),
         debug_mode: false,
+        scene_interactivity_hotkey: SceneInteractivityHotkey::default(),
     }
 }
 

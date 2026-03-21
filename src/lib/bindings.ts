@@ -175,7 +175,7 @@ userStatusChanged: "user-status-changed"
 /** user-defined types **/
 
 export type ActiveDollSpriteChanged = string | null
-export type AppConfig = { api_base_url: string | null; debug_mode: boolean }
+export type AppConfig = { api_base_url: string | null; debug_mode: boolean; scene_interactivity_hotkey?: SceneInteractivityHotkey }
 export type AppDataRefreshed = UserData
 export type AuthFlowStatus = "started" | "succeeded" | "failed" | "cancelled"
 export type AuthFlowUpdated = AuthFlowUpdatedPayload
@@ -216,6 +216,9 @@ export type ModuleMetadata = { id: string; name: string; version: string; descri
 export type PresenceStatus = { title: string | null; subtitle: string | null; graphicsB64: string | null }
 export type SceneData = { display: DisplayData; grid_size: number }
 export type SceneInteractiveChanged = boolean
+export type SceneInteractivityHotkey = { modifiers?: SceneInteractivityModifier[]; key?: SceneInteractivityKey | null }
+export type SceneInteractivityKey = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "num_0" | "num_1" | "num_2" | "num_3" | "num_4" | "num_5" | "num_6" | "num_7" | "num_8" | "num_9" | "f1" | "f2" | "f3" | "f4" | "f5" | "f6" | "f7" | "f8" | "f9" | "f10" | "f11" | "f12" | "enter" | "space" | "escape" | "tab" | "backspace" | "delete" | "insert" | "home" | "end" | "page_up" | "page_down" | "arrow_up" | "arrow_down" | "arrow_left" | "arrow_right" | "minus" | "equal" | "left_bracket" | "right_bracket" | "back_slash" | "semicolon" | "apostrophe" | "comma" | "dot" | "slash" | "grave"
+export type SceneInteractivityModifier = "cmd" | "alt" | "ctrl" | "shift"
 export type SendFriendRequestDto = { receiverId: string }
 export type SendInteractionDto = { recipientUserId: string; content: string; type: string }
 export type SetInteractionOverlay = boolean
