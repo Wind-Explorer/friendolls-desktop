@@ -51,6 +51,10 @@
       stopUserStatus();
       stopAppState();
     });
+
+    document.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
   }
 </script>
 
