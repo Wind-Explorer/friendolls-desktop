@@ -6,6 +6,8 @@
   import type { DollColorSchemeDto } from "$lib/bindings";
 
   export let dollColorScheme: DollColorSchemeDto;
+  export let spriteScale = 2;
+  export let spriteOpacity = 1;
 
   let previewBase64: string | null = null;
   let error: string | null = null;
@@ -80,7 +82,10 @@
   });
 </script>
 
-<div class="scale-200 p-4">
+<div
+  style="transform: scale({spriteScale}); padding: {spriteScale *
+    10}px; opacity: {spriteOpacity};"
+>
   <div class="size-8">
     {#if error}
       <div

@@ -1,4 +1,5 @@
 pub mod app_data;
+pub mod app_state;
 pub mod dolls;
 pub mod event_payloads;
 pub mod friends;

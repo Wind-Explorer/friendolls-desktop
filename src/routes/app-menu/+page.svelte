@@ -9,6 +9,8 @@
   import Users from "../../assets/icons/users.svelte";
   import Settings from "../../assets/icons/settings.svelte";
   import Blocks from "../../assets/icons/blocks.svelte";
+  import Image from "../../assets/icons/image.svelte";
+  import Scene from "./tabs/scene/scene.svelte";
 
   let showInteractionOverlay = false;
 
@@ -46,9 +48,19 @@
           <input
             type="radio"
             name="app_menu_tabs"
-            aria-label="Your Nekos"
+            aria-label="Scene Configuration"
             checked
           />
+          <div class="*:size-4">
+            <Image />
+          </div>
+        </label>
+        <div class="tab-content bg-base-100 border-base-300 p-4">
+          <Scene />
+        </div>
+
+        <label class="tab">
+          <input type="radio" name="app_menu_tabs" aria-label="Your Nekos" />
           <div class="*:size-4">
             <PawPrint />
           </div>

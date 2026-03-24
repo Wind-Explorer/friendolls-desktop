@@ -8,6 +8,9 @@ export const commands = {
 async getAppData() : Promise<UserData> {
     return await TAURI_INVOKE("get_app_data");
 },
+async getAppState() : Promise<AppState> {
+    return await TAURI_INVOKE("get_app_state");
+},
 async getActiveDollSpriteBase64() : Promise<string | null> {
     return await TAURI_INVOKE("get_active_doll_sprite_base64");
 },
@@ -118,6 +121,15 @@ async sendInteractionCmd(dto: SendInteractionDto) : Promise<null> {
 },
 async getModules() : Promise<ModuleMetadata[]> {
     return await TAURI_INVOKE("get_modules");
+},
+async setSceneSetupNekosPosition(nekosPosition: NekoPosition | null) : Promise<void> {
+    await TAURI_INVOKE("set_scene_setup_nekos_position", { nekosPosition });
+},
+async setSceneSetupNekosOpacity(nekosOpacity: number) : Promise<void> {
+    await TAURI_INVOKE("set_scene_setup_nekos_opacity", { nekosOpacity });
+},
+async setSceneSetupNekosScale(nekosScale: number) : Promise<void> {
+    await TAURI_INVOKE("set_scene_setup_nekos_scale", { nekosScale });
 }
 }
 
@@ -127,6 +139,7 @@ async getModules() : Promise<ModuleMetadata[]> {
 export const events = __makeEvents__<{
 activeDollSpriteChanged: ActiveDollSpriteChanged,
 appDataRefreshed: AppDataRefreshed,
+appStateChanged: AppStateChanged,
 authFlowUpdated: AuthFlowUpdated,
 createDoll: CreateDoll,
 cursorMoved: CursorMoved,
@@ -148,6 +161,7 @@ userStatusChanged: UserStatusChanged
 }>({
 activeDollSpriteChanged: "active-doll-sprite-changed",
 appDataRefreshed: "app-data-refreshed",
+appStateChanged: "app-state-changed",
 authFlowUpdated: "auth-flow-updated",
 createDoll: "create-doll",
 cursorMoved: "cursor-moved",
@@ -180,6 +194,8 @@ export type AcceleratorModifier = "cmd" | "alt" | "ctrl" | "shift"
 export type ActiveDollSpriteChanged = string | null
 export type AppConfig = { api_base_url: string | null; debug_mode: boolean; accelerators?: Partial<{ [key in AcceleratorAction]: KeyboardAccelerator }> }
 export type AppDataRefreshed = UserData
+export type AppState = { sceneSetup: SceneSetup }
+export type AppStateChanged = AppState
 export type AuthFlowStatus = "started" | "succeeded" | "failed" | "cancelled"
 export type AuthFlowUpdated = AuthFlowUpdatedPayload
 export type AuthFlowUpdatedPayload = { provider: string; status: AuthFlowStatus; message: string | null }
@@ -217,9 +233,11 @@ export type InteractionPayloadDto = { senderUserId: string; senderName: string; 
 export type InteractionReceived = InteractionPayloadDto
 export type KeyboardAccelerator = { modifiers?: AcceleratorModifier[]; key?: AcceleratorKey | null }
 export type ModuleMetadata = { id: string; name: string; version: string; description: string | null }
+export type NekoPosition = "top-left" | "top" | "top-right" | "left" | "right" | "bottom-left" | "bottom" | "bottom-right"
 export type PresenceStatus = { title: string | null; subtitle: string | null; graphicsB64: string | null }
 export type SceneData = { display: DisplayData; grid_size: number }
 export type SceneInteractiveChanged = boolean
+export type SceneSetup = { nekosPosition: NekoPosition | null; nekosOpacity: number; nekosScale: number }
 export type SendFriendRequestDto = { receiverId: string }
 export type SendInteractionDto = { recipientUserId: string; content: string; type: string }
 export type SetInteractionOverlay = boolean

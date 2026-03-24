@@ -1,5 +1,6 @@
 pub mod app_data;
 pub mod app_events;
+pub mod app_state;
 pub mod app_menu;
 pub mod app_update;
 pub mod accelerators;

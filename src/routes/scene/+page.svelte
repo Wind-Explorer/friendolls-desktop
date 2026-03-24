@@ -17,6 +17,7 @@
   import PetMessagePop from "./components/pet-message-pop.svelte";
   import PetMessageSend from "./components/pet-message-send.svelte";
   import type { UserBasicDto } from "$lib/bindings";
+  import { appState } from "../../events/app-state";
 
   let debugMode = false;
 
@@ -46,6 +47,8 @@
       targetX={$cursorPositionOnScreen.raw.x}
       targetY={$cursorPositionOnScreen.raw.y}
       spriteUrl={$activeDollSpriteUrl}
+      scale={$appState.sceneSetup.nekosScale}
+      opacity={$appState.sceneSetup.nekosOpacity}
     />
   {/if}
   {#each Object.entries($friendsCursorPositions) as [friendId, position] (friendId)}
@@ -57,6 +60,8 @@
         spriteUrl={$friendActiveDollSpriteUrls[friendId]}
         initialX={position.raw.x}
         initialY={position.raw.y}
+        scale={$appState.sceneSetup.nekosScale}
+        opacity={$appState.sceneSetup.nekosOpacity}
       >
         <PetMenu user={friend!} ariaLabel={`Open ${friend?.name} actions`} />
         <PetMessagePop userId={friendId} />
@@ -67,12 +72,12 @@
   {#if debugMode}
     <div id="debug-bar">
       <DebugBar
-      isInteractive={$sceneInteractive}
-      cursorPosition={$cursorPositionOnScreen}
-      presenceStatus={$currentPresenceState?.presenceStatus ?? null}
-      friendsCursorPositions={$friendsCursorPositions}
-      friends={$appData?.friends ?? []}
-      friendsPresenceStates={$friendsPresenceStates}
+        isInteractive={$sceneInteractive}
+        cursorPosition={$cursorPositionOnScreen}
+        presenceStatus={$currentPresenceState?.presenceStatus ?? null}
+        friendsCursorPositions={$friendsCursorPositions}
+        friends={$appData?.friends ?? []}
+        friendsPresenceStates={$friendsPresenceStates}
       />
     </div>
   {/if}

@@ -1,14 +1,12 @@
-use crate::{
-    commands::app_state::get_modules,
-    services::{
-        doll_editor::open_doll_editor_window,
-        scene::{get_scene_interactive, set_pet_menu_state, set_scene_interactive},
-    },
+use crate::services::{
+    doll_editor::open_doll_editor_window,
+    scene::{get_scene_interactive, set_pet_menu_state, set_scene_interactive},
 };
 use commands::app::{quit_app, restart_app, retry_connection};
 use commands::app_state::{
-    get_active_doll_sprite_base64, get_app_data, get_friend_active_doll_sprites_base64,
-    refresh_app_data,
+    get_active_doll_sprite_base64, get_app_data, get_app_state,
+    get_friend_active_doll_sprites_base64, get_modules, refresh_app_data,
+    set_scene_setup_nekos_opacity, set_scene_setup_nekos_position, set_scene_setup_nekos_scale,
 };
 use commands::auth::{logout_and_restart, start_discord_auth, start_google_auth};
 use commands::config::{get_client_config, open_client_config, save_client_config};
@@ -27,11 +25,12 @@ use tauri::async_runtime;
 use tauri_specta::{collect_commands, collect_events, Builder as SpectaBuilder, ErrorHandlingMode};
 
 use crate::services::app_events::{
-    ActiveDollSpriteChanged, AppDataRefreshed, AuthFlowUpdated, CreateDoll, CursorMoved, EditDoll,
-    FriendActiveDollChanged, FriendActiveDollSpritesUpdated, FriendCursorPositionsUpdated,
-    FriendDisconnected, FriendRequestAccepted, FriendRequestDenied, FriendRequestReceived,
-    FriendUserStatusChanged, InteractionDeliveryFailed, InteractionReceived,
-    SceneInteractiveChanged, SetInteractionOverlay, Unfriended, UserStatusChanged,
+    ActiveDollSpriteChanged, AppDataRefreshed, AppStateChanged, AuthFlowUpdated, CreateDoll,
+    CursorMoved, EditDoll, FriendActiveDollChanged, FriendActiveDollSpritesUpdated,
+    FriendCursorPositionsUpdated, FriendDisconnected, FriendRequestAccepted,
+    FriendRequestDenied, FriendRequestReceived, FriendUserStatusChanged,
+    InteractionDeliveryFailed, InteractionReceived, SceneInteractiveChanged,
+    SetInteractionOverlay, Unfriended, UserStatusChanged,
 };
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
@@ -68,6 +67,7 @@ pub fn run() {
         .error_handling(ErrorHandlingMode::Throw)
         .commands(collect_commands![
             get_app_data,
+            get_app_state,
             get_active_doll_sprite_base64,
             get_friend_active_doll_sprites_base64,
             refresh_app_data,
@@ -102,12 +102,16 @@ pub fn run() {
             start_discord_auth,
             logout_and_restart,
             send_interaction_cmd,
-            get_modules
+            get_modules,
+            set_scene_setup_nekos_position,
+            set_scene_setup_nekos_opacity,
+            set_scene_setup_nekos_scale
         ])
         .events(collect_events![
             CursorMoved,
             SceneInteractiveChanged,
             AppDataRefreshed,
+            AppStateChanged,
             ActiveDollSpriteChanged,
             SetInteractionOverlay,
             EditDoll,

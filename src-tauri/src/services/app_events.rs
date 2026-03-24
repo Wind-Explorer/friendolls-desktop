@@ -5,6 +5,7 @@ use tauri_specta::Event;
 use crate::{
     models::{
         app_data::UserData,
+        app_state::AppState,
         event_payloads::{
             FriendActiveDollChangedPayload, FriendDisconnectedPayload,
             FriendRequestAcceptedPayload, FriendRequestDeniedPayload, FriendRequestReceivedPayload,
@@ -46,6 +47,10 @@ pub struct SceneInteractiveChanged(pub bool);
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "app-data-refreshed")]
 pub struct AppDataRefreshed(pub UserData);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "app-state-changed")]
+pub struct AppStateChanged(pub AppState);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "active-doll-sprite-changed")]

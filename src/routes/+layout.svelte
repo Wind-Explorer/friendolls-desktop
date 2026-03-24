@@ -15,6 +15,7 @@
     stopFriendActiveDollSprite,
   } from "../events/friend-active-doll-sprite";
   import { startAppData } from "../events/app-data";
+  import { startAppState, stopAppState } from "../events/app-state";
   import { startInteraction, stopInteraction } from "../events/interaction";
   import {
     startSceneInteractive,
@@ -27,6 +28,7 @@
     onMount(async () => {
       try {
         await startAppData();
+        await startAppState();
         await startActiveDollSprite();
         await startFriendActiveDollSprite();
         await startCursorTracking();
@@ -47,6 +49,7 @@
       stopSceneInteractive();
       stopInteraction();
       stopUserStatus();
+      stopAppState();
     });
   }
 </script>

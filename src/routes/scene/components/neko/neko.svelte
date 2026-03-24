@@ -4,6 +4,7 @@
   import { setSprite } from "./sprites";
   import { calculateDirection, moveTowards, clampPosition } from "./physics";
   import { updateIdle } from "./idle";
+  import { appState } from "../../../../events/app-state";
 
   interface Props {
     targetX: number;
@@ -11,6 +12,8 @@
     spriteUrl: string;
     initialX?: number;
     initialY?: number;
+    scale?: number;
+    opacity?: number;
     children?: Snippet;
   }
 
@@ -20,10 +23,13 @@
     spriteUrl,
     initialX = 32,
     initialY = 32,
+    scale = 1.0,
+    opacity = 1.0,
     children,
   }: Props = $props();
 
   let nekoEl: HTMLDivElement;
+  let wrapperEl: HTMLDivElement;
   let animationFrameId: number;
 
   let nekoPos = $state({ x: initialX, y: initialY });
@@ -86,11 +92,15 @@
     const newPos = moveTowards(nekoPos.x, nekoPos.y, targetPos.x, targetPos.y);
     nekoPos = newPos;
 
-    nekoEl.style.transform = `translate(${nekoPos.x - 16}px, ${nekoPos.y - 16}px)`;
+    nekoEl.style.transform = `scale(${scale ?? 1.0})`;
+    nekoEl.style.opacity = `${opacity ?? 1.0}`;
+    wrapperEl.style.transform = `translate(${nekoPos.x - 16}px, ${nekoPos.y - 16}px)`;
   }
 
   onMount(() => {
     nekoEl.style.backgroundImage = `url(${spriteUrl})`;
+    nekoEl.style.opacity = `${opacity ?? 1.0}`;
+    wrapperEl.style.transform = `translate(${nekoPos.x - 16}px, ${nekoPos.y - 16}px)`;
     animationFrameId = requestAnimationFrame(frame);
   });
 
@@ -101,18 +111,27 @@
   });
 
   $effect(() => {
-    if (nekoEl && spriteUrl) {
+    if (nekoEl && spriteUrl && $appState) {
+      nekoEl.style.transform = `scale(${scale ?? 1.0})`;
       nekoEl.style.backgroundImage = `url(${spriteUrl})`;
+      nekoEl.style.opacity = `${opacity ?? 1.0}`;
     }
   });
 </script>
 
 <div
-  bind:this={nekoEl}
+  bind:this={wrapperEl}
   class="pointer-events-none fixed z-999 size-8 select-none"
-  style="width: 32px; height: 32px; position: fixed; image-rendering: pixelated;"
+  style="position: fixed; width: 32px; height: 32px;"
 >
-  <div class="relative size-full">
-    {@render children?.()}
+  <div class="relative">
+    <div
+      bind:this={nekoEl}
+      class="size-8"
+      style="position: absolute; image-rendering: pixelated;"
+    ></div>
+    <div class="absolute size-8">
+      {@render children?.()}
+    </div>
   </div>
 </div>

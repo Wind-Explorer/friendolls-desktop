@@ -1,9 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    commands,
-    type AppConfig,
-  } from "$lib/bindings";
+  import { commands, type AppConfig } from "$lib/bindings";
 
   let form: AppConfig = {
     api_base_url: "",
@@ -109,7 +106,6 @@
           bind:checked={form.debug_mode}
         />
       </label>
-
     </div>
 
     {#if errorMessage}
