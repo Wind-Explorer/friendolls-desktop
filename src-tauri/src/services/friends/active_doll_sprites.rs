@@ -8,7 +8,7 @@ use specta::Type;
 use tauri_specta::Event as _;
 
 use crate::{
-    get_app_handle, lock_r,
+    get_app_handle, lock_r, lock_w,
     models::{dolls::DollDto, friends::FriendshipResponseDto},
     services::{app_events::FriendActiveDollSpritesUpdated, sprite},
     state::FDOLL,
@@ -29,27 +29,21 @@ pub fn sync_from_app_data() {
 
     let next = build_sprites(&friends);
 
-    let mut projection = FRIEND_ACTIVE_DOLL_SPRITES
-        .write()
-        .expect("friend active doll sprite projection lock poisoned");
+    let mut projection = lock_w!(FRIEND_ACTIVE_DOLL_SPRITES);
     *projection = next;
 
     emit_snapshot(&projection);
 }
 
 pub fn clear() {
-    let mut projection = FRIEND_ACTIVE_DOLL_SPRITES
-        .write()
-        .expect("friend active doll sprite projection lock poisoned");
+    let mut projection = lock_w!(FRIEND_ACTIVE_DOLL_SPRITES);
     projection.clear();
 
     emit_snapshot(&projection);
 }
 
 pub fn remove_friend(user_id: &str) {
-    let mut projection = FRIEND_ACTIVE_DOLL_SPRITES
-        .write()
-        .expect("friend active doll sprite projection lock poisoned");
+    let mut projection = lock_w!(FRIEND_ACTIVE_DOLL_SPRITES);
 
     if projection.remove(user_id).is_some() {
         emit_snapshot(&projection);
@@ -57,9 +51,7 @@ pub fn remove_friend(user_id: &str) {
 }
 
 pub fn set_active_doll(user_id: &str, doll: Option<&DollDto>) {
-    let mut projection = FRIEND_ACTIVE_DOLL_SPRITES
-        .write()
-        .expect("friend active doll sprite projection lock poisoned");
+    let mut projection = lock_w!(FRIEND_ACTIVE_DOLL_SPRITES);
 
     match doll {
         Some(doll) => match sprite::encode_doll_sprite_base64(doll) {
@@ -88,9 +80,7 @@ pub fn set_active_doll(user_id: &str, doll: Option<&DollDto>) {
 }
 
 pub fn get_snapshot() -> FriendActiveDollSpritesDto {
-    let projection = FRIEND_ACTIVE_DOLL_SPRITES
-        .read()
-        .expect("friend active doll sprite projection lock poisoned");
+    let projection = lock_r!(FRIEND_ACTIVE_DOLL_SPRITES);
 
     FriendActiveDollSpritesDto(projection.clone())
 }

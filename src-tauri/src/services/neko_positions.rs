@@ -8,7 +8,7 @@ use specta::Type;
 use tauri_specta::Event as _;
 
 use crate::{
-    get_app_handle, lock_r,
+    get_app_handle, lock_r, lock_w,
     models::app_state::NekoPosition,
     services::{
         app_events::NekoPositionsUpdated,
@@ -48,9 +48,7 @@ pub fn sync_from_app_data() {
         guard.user_data.friends.clone().unwrap_or_default()
     };
 
-    let mut projection = NEKO_POSITIONS
-        .write()
-        .expect("neko positions projection lock poisoned");
+    let mut projection = lock_w!(NEKO_POSITIONS);
 
     projection.friend_active_dolls = friends
         .into_iter()
@@ -71,9 +69,7 @@ pub fn sync_from_app_data() {
 }
 
 pub fn clear() {
-    let mut projection = NEKO_POSITIONS
-        .write()
-        .expect("neko positions projection lock poisoned");
+    let mut projection = lock_w!(NEKO_POSITIONS);
 
     projection.self_cursor = None;
     projection.friend_cursors.clear();
@@ -83,18 +79,14 @@ pub fn clear() {
 }
 
 pub fn update_self_cursor(position: CursorPositions) {
-    let mut projection = NEKO_POSITIONS
-        .write()
-        .expect("neko positions projection lock poisoned");
+    let mut projection = lock_w!(NEKO_POSITIONS);
 
     projection.self_cursor = Some(position);
     emit_snapshot(&projection);
 }
 
 pub fn update_friend_cursor(user_id: String, position: CursorPositions) {
-    let mut projection = NEKO_POSITIONS
-        .write()
-        .expect("neko positions projection lock poisoned");
+    let mut projection = lock_w!(NEKO_POSITIONS);
 
     if !has_friend_active_doll(&mut projection, &user_id) {
         if projection.friend_cursors.remove(&user_id).is_some() {
@@ -108,9 +100,7 @@ pub fn update_friend_cursor(user_id: String, position: CursorPositions) {
 }
 
 pub fn remove_friend(user_id: &str) {
-    let mut projection = NEKO_POSITIONS
-        .write()
-        .expect("neko positions projection lock poisoned");
+    let mut projection = lock_w!(NEKO_POSITIONS);
 
     let removed_active_doll = projection.friend_active_dolls.remove(user_id).is_some();
     let removed_position = projection.friend_cursors.remove(user_id).is_some();
@@ -121,9 +111,7 @@ pub fn remove_friend(user_id: &str) {
 }
 
 pub fn set_friend_active_doll(user_id: &str, has_active_doll: bool) {
-    let mut projection = NEKO_POSITIONS
-        .write()
-        .expect("neko positions projection lock poisoned");
+    let mut projection = lock_w!(NEKO_POSITIONS);
 
     projection
         .friend_active_dolls
@@ -135,16 +123,12 @@ pub fn set_friend_active_doll(user_id: &str, has_active_doll: bool) {
 }
 
 pub fn refresh_from_scene_setup() {
-    let projection = NEKO_POSITIONS
-        .read()
-        .expect("neko positions projection lock poisoned");
+    let projection = lock_r!(NEKO_POSITIONS);
     emit_snapshot(&projection);
 }
 
 pub fn get_snapshot() -> NekoPositionsDto {
-    let projection = NEKO_POSITIONS
-        .read()
-        .expect("neko positions projection lock poisoned");
+    let projection = lock_r!(NEKO_POSITIONS);
     build_snapshot(&projection)
 }
 
