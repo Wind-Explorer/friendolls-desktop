@@ -11,7 +11,7 @@ use crate::{
     remotes::{dolls::DollsRemote, friends::FriendRemote, user::UserRemote},
     services::{
         app_events::{ActiveDollSpriteChanged, AppDataRefreshed},
-        friends, sprite,
+        friends, neko_positions, sprite,
     },
     state::FDOLL,
 };
@@ -51,6 +51,8 @@ pub async fn init_app_data_scoped(scope: AppDataRefreshScope) {
                     Ok(user) => {
                         let mut guard = lock_w!(FDOLL);
                         guard.user_data.user = Some(user);
+                        drop(guard);
+                        neko_positions::sync_from_app_data();
                     }
                     Err(error) => {
                         warn!("Failed to fetch user profile: {}", error);

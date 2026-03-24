@@ -12,6 +12,7 @@ pub mod friends;
 pub mod health_manager;
 pub mod health_monitor;
 pub mod interaction;
+pub mod neko_positions;
 pub mod petpet;
 pub mod presence_modules;
 pub mod scene;

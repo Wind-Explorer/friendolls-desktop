@@ -4,7 +4,7 @@ use crate::services::{
 };
 use commands::app::{quit_app, restart_app, retry_connection};
 use commands::app_state::{
-    get_active_doll_sprite_base64, get_app_data, get_app_state,
+    get_active_doll_sprite_base64, get_app_data, get_app_state, get_neko_positions,
     get_friend_active_doll_sprites_base64, get_modules, refresh_app_data,
     set_scene_setup_nekos_opacity, set_scene_setup_nekos_position, set_scene_setup_nekos_scale,
 };
@@ -26,11 +26,10 @@ use tauri_specta::{collect_commands, collect_events, Builder as SpectaBuilder, E
 
 use crate::services::app_events::{
     ActiveDollSpriteChanged, AppDataRefreshed, AppStateChanged, AuthFlowUpdated, CreateDoll,
-    CursorMoved, EditDoll, FriendActiveDollChanged, FriendActiveDollSpritesUpdated,
-    FriendCursorPositionsUpdated, FriendDisconnected, FriendRequestAccepted,
-    FriendRequestDenied, FriendRequestReceived, FriendUserStatusChanged,
-    InteractionDeliveryFailed, InteractionReceived, SceneInteractiveChanged,
-    SetInteractionOverlay, Unfriended, UserStatusChanged,
+    EditDoll, FriendActiveDollChanged, FriendActiveDollSpritesUpdated, FriendDisconnected,
+    FriendRequestAccepted, FriendRequestDenied, FriendRequestReceived, FriendUserStatusChanged,
+    InteractionDeliveryFailed, InteractionReceived, NekoPositionsUpdated,
+    SceneInteractiveChanged, SetInteractionOverlay, Unfriended, UserStatusChanged,
 };
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle<tauri::Wry>> = std::sync::OnceLock::new();
@@ -68,6 +67,7 @@ pub fn run() {
         .commands(collect_commands![
             get_app_data,
             get_app_state,
+            get_neko_positions,
             get_active_doll_sprite_base64,
             get_friend_active_doll_sprites_base64,
             refresh_app_data,
@@ -108,16 +108,15 @@ pub fn run() {
             set_scene_setup_nekos_scale
         ])
         .events(collect_events![
-            CursorMoved,
             SceneInteractiveChanged,
             AppDataRefreshed,
             AppStateChanged,
+            NekoPositionsUpdated,
             ActiveDollSpriteChanged,
             SetInteractionOverlay,
             EditDoll,
             CreateDoll,
             UserStatusChanged,
-            FriendCursorPositionsUpdated,
             FriendDisconnected,
             FriendActiveDollChanged,
             FriendActiveDollSpritesUpdated,

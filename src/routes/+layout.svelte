@@ -1,11 +1,10 @@
 <script>
   import { browser } from "$app/environment";
   import { onMount, onDestroy } from "svelte";
-  import { startCursorTracking, stopCursorTracking } from "../events/cursor";
   import {
-    startFriendCursorTracking,
-    stopFriendCursorTracking,
-  } from "../events/friend-cursor";
+    startNekoPositions,
+    stopNekoPositions,
+  } from "../events/neko-positions";
   import {
     startActiveDollSprite,
     stopActiveDollSprite,
@@ -31,8 +30,7 @@
         await startAppState();
         await startActiveDollSprite();
         await startFriendActiveDollSprite();
-        await startCursorTracking();
-        await startFriendCursorTracking();
+        await startNekoPositions();
         await startSceneInteractive();
         await startInteraction();
         await startUserStatus();
@@ -42,8 +40,7 @@
     });
 
     onDestroy(() => {
-      stopCursorTracking();
-      stopFriendCursorTracking();
+      stopNekoPositions();
       stopActiveDollSprite();
       stopFriendActiveDollSprite();
       stopSceneInteractive();

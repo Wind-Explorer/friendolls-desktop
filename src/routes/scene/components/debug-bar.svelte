@@ -1,5 +1,10 @@
 <script lang="ts">
-  import type { PresenceStatus, UserStatusPayload } from "$lib/bindings";
+  import type {
+    NekoPositionDto,
+    NekoPositionsDto,
+    PresenceStatus,
+    UserStatusPayload,
+  } from "$lib/bindings";
 
   interface Friend {
     friend?: {
@@ -10,21 +15,31 @@
 
   interface Props {
     isInteractive: boolean;
-    cursorPosition: { mapped: { x: number; y: number } };
+    nekoPositions: NekoPositionsDto;
     presenceStatus: PresenceStatus | null;
-    friendsCursorPositions: Record<string, { mapped: { x: number; y: number } }>;
     friends: Friend[];
     friendsPresenceStates: Record<string, UserStatusPayload>;
   }
 
   let {
     isInteractive,
-    cursorPosition,
+    nekoPositions,
     presenceStatus,
-    friendsCursorPositions,
     friends,
     friendsPresenceStates,
   }: Props = $props();
+
+  let selfCursor = $derived(
+    Object.values(nekoPositions).find((position) => position?.isSelf)?.cursor,
+  );
+
+  let friendEntries = $derived.by(() => {
+    return Object.entries(nekoPositions).filter(
+      (entry): entry is [string, NekoPositionDto] => {
+        return entry[1] !== undefined && !entry[1].isSelf;
+      },
+    );
+  });
 
   function getFriendById(userId: string) {
     const friend = friends.find((f) => f.friend?.id === userId);
@@ -49,9 +64,11 @@
       </span>
     </div>
 
-    <span class="font-mono text-xs badge py-3">
-      {cursorPosition.mapped.x.toFixed(3)}, {cursorPosition.mapped.y.toFixed(3)}
-    </span>
+    {#if selfCursor}
+      <span class="font-mono text-xs badge py-3">
+        {selfCursor.mapped.x.toFixed(3)}, {selfCursor.mapped.y.toFixed(3)}
+      </span>
+    {/if}
 
     {#if presenceStatus}
       <span class="font-mono text-xs badge py-3 flex items-center gap-2">
@@ -66,16 +83,17 @@
       </span>
     {/if}
 
-    {#if Object.keys(friendsCursorPositions).length > 0}
+    {#if friendEntries.length > 0}
       <div class="flex flex-col gap-2">
         <div>
-          {#each Object.entries(friendsCursorPositions) as [userId, position]}
+          {#each friendEntries as [userId, position]}
             {@const status = getFriendStatus(userId)}
             <div class="badge py-3 text-xs text-left flex flex-row gap-2">
               <span class="font-bold">{getFriendById(userId)?.name}</span>
               <div class="flex flex-row font-mono gap-2">
                 <span>
-                  {position.mapped.x.toFixed(3)}, {position.mapped.y.toFixed(3)}
+                  {position.cursor.mapped.x.toFixed(3)},
+                  {position.cursor.mapped.y.toFixed(3)}
                 </span>
                 {#if status}
                   <span class="flex items-center gap-1">

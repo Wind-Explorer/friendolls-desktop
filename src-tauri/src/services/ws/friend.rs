@@ -13,7 +13,7 @@ use crate::services::app_events::{
 };
 use crate::services::{
     cursor::{normalized_to_absolute, CursorPositions},
-    friends,
+    friends, neko_positions,
 };
 
 use super::{emitter, refresh, types::IncomingFriendCursorPayload, utils};
@@ -62,13 +62,12 @@ pub fn on_friend_cursor_position(payload: Payload, _socket: RawClient) {
         let mapped_pos = &friend_data.position;
         let raw_pos = normalized_to_absolute(mapped_pos);
 
-        friends::update_cursor_position(
-            friend_data.user_id,
-            CursorPositions {
-                raw: raw_pos,
-                mapped: mapped_pos.clone(),
-            },
-        );
+        let position = CursorPositions {
+            raw: raw_pos,
+            mapped: mapped_pos.clone(),
+        };
+
+        neko_positions::update_friend_cursor(friend_data.user_id, position);
     }
 }
 

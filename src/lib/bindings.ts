@@ -11,6 +11,9 @@ async getAppData() : Promise<UserData> {
 async getAppState() : Promise<AppState> {
     return await TAURI_INVOKE("get_app_state");
 },
+async getNekoPositions() : Promise<NekoPositionsDto> {
+    return await TAURI_INVOKE("get_neko_positions");
+},
 async getActiveDollSpriteBase64() : Promise<string | null> {
     return await TAURI_INVOKE("get_active_doll_sprite_base64");
 },
@@ -142,11 +145,9 @@ appDataRefreshed: AppDataRefreshed,
 appStateChanged: AppStateChanged,
 authFlowUpdated: AuthFlowUpdated,
 createDoll: CreateDoll,
-cursorMoved: CursorMoved,
 editDoll: EditDoll,
 friendActiveDollChanged: FriendActiveDollChanged,
 friendActiveDollSpritesUpdated: FriendActiveDollSpritesUpdated,
-friendCursorPositionsUpdated: FriendCursorPositionsUpdated,
 friendDisconnected: FriendDisconnected,
 friendRequestAccepted: FriendRequestAccepted,
 friendRequestDenied: FriendRequestDenied,
@@ -154,6 +155,7 @@ friendRequestReceived: FriendRequestReceived,
 friendUserStatusChanged: FriendUserStatusChanged,
 interactionDeliveryFailed: InteractionDeliveryFailed,
 interactionReceived: InteractionReceived,
+nekoPositionsUpdated: NekoPositionsUpdated,
 sceneInteractiveChanged: SceneInteractiveChanged,
 setInteractionOverlay: SetInteractionOverlay,
 unfriended: Unfriended,
@@ -164,11 +166,9 @@ appDataRefreshed: "app-data-refreshed",
 appStateChanged: "app-state-changed",
 authFlowUpdated: "auth-flow-updated",
 createDoll: "create-doll",
-cursorMoved: "cursor-moved",
 editDoll: "edit-doll",
 friendActiveDollChanged: "friend-active-doll-changed",
 friendActiveDollSpritesUpdated: "friend-active-doll-sprites-updated",
-friendCursorPositionsUpdated: "friend-cursor-positions-updated",
 friendDisconnected: "friend-disconnected",
 friendRequestAccepted: "friend-request-accepted",
 friendRequestDenied: "friend-request-denied",
@@ -176,6 +176,7 @@ friendRequestReceived: "friend-request-received",
 friendUserStatusChanged: "friend-user-status-changed",
 interactionDeliveryFailed: "interaction-delivery-failed",
 interactionReceived: "interaction-received",
+nekoPositionsUpdated: "neko-positions-updated",
 sceneInteractiveChanged: "scene-interactive-changed",
 setInteractionOverlay: "set-interaction-overlay",
 unfriended: "unfriended",
@@ -201,7 +202,6 @@ export type AuthFlowUpdated = AuthFlowUpdatedPayload
 export type AuthFlowUpdatedPayload = { provider: string; status: AuthFlowStatus; message: string | null }
 export type CreateDoll = null
 export type CreateDollDto = { name: string; configuration: DollConfigurationDto | null }
-export type CursorMoved = CursorPositions
 export type CursorPosition = { x: number; y: number }
 export type CursorPositions = { raw: CursorPosition; mapped: CursorPosition }
 export type DisplayData = { screen_width: number; screen_height: number; monitor_scale_factor: number }
@@ -213,8 +213,6 @@ export type FriendActiveDollChanged = FriendActiveDollChangedPayload
 export type FriendActiveDollChangedPayload = { friendId: string; doll: DollDto | null }
 export type FriendActiveDollSpritesDto = Partial<{ [key in string]: string }>
 export type FriendActiveDollSpritesUpdated = FriendActiveDollSpritesDto
-export type FriendCursorPositionsDto = Partial<{ [key in string]: CursorPositions }>
-export type FriendCursorPositionsUpdated = FriendCursorPositionsDto
 export type FriendDisconnected = FriendDisconnectedPayload
 export type FriendDisconnectedPayload = { userId: string }
 export type FriendRequestAccepted = FriendRequestAcceptedPayload
@@ -234,6 +232,9 @@ export type InteractionReceived = InteractionPayloadDto
 export type KeyboardAccelerator = { modifiers?: AcceleratorModifier[]; key?: AcceleratorKey | null }
 export type ModuleMetadata = { id: string; name: string; version: string; description: string | null }
 export type NekoPosition = "top-left" | "top" | "top-right" | "left" | "right" | "bottom-left" | "bottom" | "bottom-right"
+export type NekoPositionDto = { userId: string; isSelf: boolean; cursor: CursorPositions; target: CursorPosition; overrideApplied: boolean }
+export type NekoPositionsDto = Partial<{ [key in string]: NekoPositionDto }>
+export type NekoPositionsUpdated = NekoPositionsDto
 export type PresenceStatus = { title: string | null; subtitle: string | null; graphicsB64: string | null }
 export type SceneData = { display: DisplayData; grid_size: number }
 export type SceneInteractiveChanged = boolean

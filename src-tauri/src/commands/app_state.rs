@@ -5,6 +5,7 @@ use crate::{
         app_data::{init_app_data_scoped, AppDataRefreshScope},
         app_state,
         friends,
+        neko_positions,
         presence_modules::models::ModuleMetadata,
         sprite,
     },
@@ -51,6 +52,12 @@ pub fn get_friend_active_doll_sprites_base64() -> Result<friends::FriendActiveDo
 #[specta::specta]
 pub fn get_app_state() -> Result<AppState, String> {
     Ok(app_state::get_snapshot())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_neko_positions() -> Result<neko_positions::NekoPositionsDto, String> {
+    Ok(neko_positions::get_snapshot())
 }
 
 #[tauri::command]

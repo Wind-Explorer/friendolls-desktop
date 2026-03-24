@@ -6,7 +6,7 @@ use tracing::warn;
 use crate::{
     get_app_handle,
     models::app_state::{AppState, NekoPosition},
-    services::app_events::AppStateChanged,
+    services::{app_events::AppStateChanged, neko_positions},
 };
 
 static APP_STATE: LazyLock<Arc<RwLock<AppState>>> =
@@ -21,6 +21,8 @@ pub fn set_scene_setup_nekos_position(nekos_position: Option<NekoPosition>) {
     let mut guard = APP_STATE.write().expect("app state lock poisoned");
     guard.scene_setup.nekos_position = nekos_position;
     emit_snapshot(&guard);
+    drop(guard);
+    neko_positions::refresh_from_scene_setup();
 }
 
 pub fn set_scene_setup_nekos_opacity(nekos_opacity: f32) {

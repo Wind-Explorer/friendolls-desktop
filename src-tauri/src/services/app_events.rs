@@ -13,10 +13,7 @@ use crate::{
         },
         interaction::{InteractionDeliveryFailedDto, InteractionPayloadDto},
     },
-    services::{
-        cursor::CursorPositions,
-        friends::{FriendActiveDollSpritesDto, FriendCursorPositionsDto},
-    },
+    services::{friends::FriendActiveDollSpritesDto, neko_positions::NekoPositionsDto},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -35,10 +32,6 @@ pub struct AuthFlowUpdatedPayload {
     pub status: AuthFlowStatus,
     pub message: Option<String>,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
-#[tauri_specta(event_name = "cursor-position")]
-pub struct CursorMoved(pub CursorPositions);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "scene-interactive")]
@@ -73,8 +66,8 @@ pub struct CreateDoll;
 pub struct UserStatusChanged(pub UserStatusPayload);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
-#[tauri_specta(event_name = "friend-cursor-positions")]
-pub struct FriendCursorPositionsUpdated(pub FriendCursorPositionsDto);
+#[tauri_specta(event_name = "neko-positions")]
+pub struct NekoPositionsUpdated(pub NekoPositionsDto);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "friend-disconnected")]

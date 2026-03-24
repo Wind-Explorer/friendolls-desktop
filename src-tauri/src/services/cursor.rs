@@ -7,8 +7,11 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-use crate::{get_app_handle, lock_r, services::app_events::CursorMoved, state::FDOLL};
-use tauri_specta::Event as _;
+use crate::{
+    lock_r,
+    services::{neko_positions, ws::report_cursor_data},
+    state::FDOLL,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -59,8 +62,7 @@ pub fn normalized_to_absolute(normalized: &CursorPosition) -> CursorPosition {
     }
 }
 
-/// Initialize cursor tracking. Broadcasts cursor
-/// position changes via `cursor-position` event.
+/// Initialize cursor tracking.
 pub async fn init_cursor_tracking() {
     info!("start_cursor_tracking called");
 
@@ -88,22 +90,19 @@ async fn init_cursor_tracking_i() -> Result<(), String> {
     let (tx, mut rx) = mpsc::channel::<CursorPositions>(100);
 
     // Spawn the consumer task
-    // This task handles WebSocket reporting and local broadcasting.
+    // This task handles WebSocket reporting and local position projection updates.
     // It runs independently of the device event loop.
     tauri::async_runtime::spawn(async move {
         info!("Cursor event consumer started");
-        let app_handle = get_app_handle();
 
         while let Some(positions) = rx.recv().await {
             let mapped_for_ws = positions.mapped.clone();
 
             // 1. WebSocket reporting
-            crate::services::ws::report_cursor_data(mapped_for_ws).await;
+            report_cursor_data(mapped_for_ws).await;
 
-            // 2. Broadcast to local windows
-            if let Err(e) = CursorMoved(positions).emit(app_handle) {
-                error!("Failed to emit cursor position event: {:?}", e);
-            }
+            // 2. Update unified neko positions projection
+            neko_positions::update_self_cursor(positions);
         }
         warn!("Cursor event consumer stopped (channel closed)");
     });
