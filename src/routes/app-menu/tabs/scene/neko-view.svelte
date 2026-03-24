@@ -18,10 +18,13 @@
   <div class="collapse-content">
     <div class="pt-4 border-t border-base-300">
       <div class="flex flex-row gap-4">
-        <div class="border border-primary bg-base-200/50 w-40 card relative">
+        <div
+          class="border border-primary relative shadow-[inset_0_0_8px] bg-primary/5 shadow-primary w-40 card"
+        >
+          <div class="size-full absolute bg-gridded opacity-25"></div>
           <div class="size-full absolute">
             <div
-              class="flex flex-row size-full items-end justify-between text-[8px] opacity-50 p-1 font-mono"
+              class="flex flex-row size-full items-end justify-between text-[8px] text-primary p-1 font-mono"
             >
               <div class="text-start flex flex-col">
                 <p>Scale</p>
@@ -83,3 +86,34 @@
     </div>
   </div>
 </div>
+
+<style>
+  .bg-gridded {
+    background-image:
+      linear-gradient(
+        0deg,
+        transparent 24%,
+        var(--color-primary) 25%,
+        var(--color-primary) 26%,
+        transparent 27%,
+        transparent 74%,
+        var(--color-primary) 75%,
+        var(--color-primary) 76%,
+        transparent 77%,
+        transparent
+      ),
+      linear-gradient(
+        90deg,
+        transparent 24%,
+        var(--color-primary) 25%,
+        var(--color-primary) 26%,
+        transparent 27%,
+        transparent 74%,
+        var(--color-primary) 75%,
+        var(--color-primary) 76%,
+        transparent 77%,
+        transparent
+      );
+    background-size: 32px 32px;
+  }
+</style>
