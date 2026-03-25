@@ -119,7 +119,7 @@
         handleActionClick(action);
       }}
     >
-      <span class="text-[11px] font-semibold leading-none">{action.icon}</span>
+      <span class="text-[11px] leading-none">{action.icon}</span>
     </button>
   {/each}
 
@@ -129,7 +129,7 @@
 
   <button
     type="button"
-    class={`absolute inset-0 z-30 rounded-full transition-all duration-200 ease-out focus:outline-none ${
+    class={`absolute inset-0 z-30 transition-all duration-200 ease-out focus:outline-none ${
       $sceneInteractive
         ? "cursor-pointer"
         : "pointer-events-none cursor-default"

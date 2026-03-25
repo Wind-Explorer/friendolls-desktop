@@ -84,7 +84,7 @@
 <div class="p-6 flex flex-col gap-4 w-full h-full justify-between">
   <div class="flex flex-col gap-4 w-full">
     <div class="flex flex-col gap-1">
-      <p class="text-xl font-semibold">Client Configuration</p>
+      <p class="text-xl">Client Configuration</p>
       <p class="opacity-70 text-sm">Set a custom API endpoint.</p>
     </div>
 

@@ -48,7 +48,7 @@
 
 <div class="dolls-page flex flex-col gap-4 max-h-full h-full">
   <div class="flex justify-between items-center">
-    <h2 class="text-lg font-bold">Your Nekos</h2>
+    <h2 class="text-lg">Your Nekos</h2>
     <button class="btn btn-primary btn-sm" on:click={openCreateModal}>
       Add a Neko
     </button>

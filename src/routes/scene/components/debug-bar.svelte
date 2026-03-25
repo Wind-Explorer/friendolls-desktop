@@ -52,7 +52,7 @@
 </script>
 
 <div
-  class="size-max mx-auto bg-base-100 border-base-200 border p-1 rounded-lg shadow-md"
+  class="size-max mx-auto bg-base-100 border-base-200 border p-1 rounded-box shadow-md"
 >
   <div class="flex flex-row gap-1 items-center text-center">
     <div>

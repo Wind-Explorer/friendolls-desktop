@@ -100,11 +100,9 @@
         <div class="flex flex-col gap-6">
           <div class="flex flex-col gap-2">
             <div class="flex flex-row gap-2">
-              <p class="text-xl font-light">meow? nyaaa!!</p>
+              <p class="text-xl opacity-70">meow? nyaaa!!</p>
             </div>
-            <p class="opacity-70 text-3xl font-bold">
-              a cute passive socialization layer!
-            </p>
+            <p class="text-2xl">a cute passive socialization layer!</p>
           </div>
           <div class="flex flex-col gap-3">
             <span>Sign in with</span>
@@ -118,15 +116,13 @@
                   class="flex flex-row justify-start items-center z-1 h-full p-1 pr-0"
                 >
                   <div
-                    class="bg-linear-to-t from-base-100/50 to-base-100 rounded-sm"
+                    class="bg-linear-to-t from-base-100/50 to-base-100 rounded-selector"
                   >
                     <div class="scale-70">
                       <Google />
                     </div>
                   </div>
-                  <span class="text-xl font-semibold px-3 text-primary-content"
-                    >Google</span
-                  >
+                  <span class="text-xl px-3 text-primary-content">Google</span>
                 </div>
               </button>
               <button
@@ -138,15 +134,13 @@
                   class="flex flex-row justify-start items-center z-1 h-full p-1 pr-0"
                 >
                   <div
-                    class="bg-linear-to-t from-base-100/50 to-base-100 rounded-sm"
+                    class="bg-linear-to-t from-base-100/50 to-base-100 rounded-selector"
                   >
                     <div class="scale-70">
                       <Discord />
                     </div>
                   </div>
-                  <span class="text-xl font-semibold px-3 text-primary-content"
-                    >Discord</span
-                  >
+                  <span class="text-xl px-3 text-primary-content">Discord</span>
                 </div>
               </button>
             </div>

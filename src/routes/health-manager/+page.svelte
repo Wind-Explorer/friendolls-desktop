@@ -27,8 +27,8 @@
   <div class="flex flex-col gap-4 size-full justify-between">
     <div class="flex flex-col gap-4">
       <div class="flex flex-col gap-2">
-        <p class="text-md font-light">Something is not right...</p>
-        <p class="opacity-70 text-3xl font-bold">
+        <p class="text-md">Something is not right...</p>
+        <p class="opacity-70 text-3xl">
           Seems like the server is inaccessible. Check your network?
         </p>
       </div>

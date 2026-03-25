@@ -4,7 +4,7 @@
 </script>
 
 <div class="flex flex-col gap-4 w-full h-full">
-  <p class="text-lg font-bold">Scene Configuration</p>
+  <p class="text-lg">Scene Configuration</p>
   <NekoView />
   <NekoReposition />
 </div>
