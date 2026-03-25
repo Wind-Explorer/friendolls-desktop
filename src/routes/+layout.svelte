@@ -55,6 +55,6 @@
   }
 </script>
 
-<div class="w-screen h-screen bg-transparent">
+<div class="w-screen h-screen bg-transparent font-custom">
   {@render children?.()}
 </div>

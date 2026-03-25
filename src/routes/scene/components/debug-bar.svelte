@@ -90,7 +90,7 @@
             {@const status = getFriendStatus(userId)}
             <div class="badge py-3 text-xs text-left flex flex-row gap-2">
               <span class="font-bold">{getFriendById(userId)?.name}</span>
-              <div class="flex flex-row font-mono gap-2">
+              <div class="flex flex-row gap-2">
                 <span>
                   {position.cursor.mapped.x.toFixed(3)},
                   {position.cursor.mapped.y.toFixed(3)}

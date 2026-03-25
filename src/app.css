@@ -73,6 +73,17 @@
   --noise: 1;
 }
 
+@font-face {
+  font-family: "DepartureFontMono";
+  src: url("/DepartureMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@theme {
+  --font-custom: "DepartureFontMono", sans-serif;
+}
+
 :root {
   background-color: transparent;
 }

@@ -33,7 +33,7 @@
         </p>
       </div>
       {#if errorMessage}
-        <p class="text-xs opacity-70 wrap-break-word font-mono">
+        <p class="text-xs opacity-70 wrap-break-word">
           {errorMessage}
         </p>
       {/if}

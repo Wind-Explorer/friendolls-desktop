@@ -24,7 +24,7 @@
           <div class="size-full absolute bg-gridded opacity-25"></div>
           <div class="size-full absolute">
             <div
-              class="flex flex-row size-full items-end justify-between text-[8px] text-primary p-1 font-mono"
+              class="flex flex-row size-full items-end justify-between text-[8px] text-primary p-1"
             >
               <div class="text-start flex flex-col">
                 <p>Scale</p>

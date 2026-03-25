@@ -50,7 +50,7 @@
   <div class="flex flex-col gap-2 h-full max-h-full">
     <div class="size-full flex flex-col max-h-full gap-2 h-full relative">
       <div class="absolute top-2 right-2">
-        <p class="text-xs font-mono opacity-50">v{appVersion}</p>
+        <p class="text-xs opacity-50">v{appVersion}</p>
       </div>
       <div class="tabs tabs-lift h-full flex-1">
         <label class="tab">
