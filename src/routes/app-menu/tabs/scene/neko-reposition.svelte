@@ -38,17 +38,11 @@
           </p>
         </div>
         <div>
-          <input
-            type="checkbox"
-            checked={$appState.sceneSetup.nekosPosition !== null}
-            onclick={() =>
-              selectPosition(
-                $appState.sceneSetup.nekosPosition ? null : "bottom-left",
-              )}
-            class="toggle toggle-xl {$appState.sceneSetup.nekosPosition
-              ? 'bg-primary/10 toggle-primary'
-              : 'bg-base-200'}"
-          />
+          <p class="text-sm">
+            {$appState.sceneSetup.nekosPosition
+              ? selectedLabel
+              : "Click a corner to enable"}
+          </p>
         </div>
       </div>
       <div class="card bg-base-200/50 p-1 w-max border border-base-300">
