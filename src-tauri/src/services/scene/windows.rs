@@ -69,8 +69,12 @@ fn harden_scene_window_on_macos(window: &tauri::Window) {
 pub fn open_splash_window() {
     info!("Starting splash window creation...");
 
-    let mut config =
-        WindowConfig::accessory(SPLASH_WINDOW_LABEL, "/splash.html", "Friendolls Splash");
+    let url = if cfg!(debug_assertions) {
+        "/splash.html?debug=Y"
+    } else {
+        "/splash.html"
+    };
+    let mut config = WindowConfig::accessory(SPLASH_WINDOW_LABEL, url, "Friendolls Splash");
     config.width = 800.0;
     config.height = 400.0;
     config.visible = false;
