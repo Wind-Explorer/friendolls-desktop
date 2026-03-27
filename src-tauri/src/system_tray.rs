@@ -2,10 +2,14 @@ use crate::{
     get_app_handle, lock_r, lock_w, services::app_menu::open_app_menu_window, state::FDOLL,
 };
 use tauri::{
+    image::Image,
+    include_image,
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
 };
 use tracing::error;
+
+const TRAY_ICON: Image<'_> = include_image!("./icons/icon.tray.png");
 
 /// Constructs app system tray.
 /// Uses Tauri.
@@ -34,7 +38,7 @@ pub fn init_system_tray() {
                 error!("menu item {:?} not handled", event.id);
             }
         })
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(TRAY_ICON)
         .build(app)
         .unwrap_or_else(|err| panic!("Failed to build tray: {}", err));
     {
