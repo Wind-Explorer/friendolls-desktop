@@ -16,7 +16,7 @@ pub fn init_network_state() -> NetworkState {
     let http_client = reqwest::ClientBuilder::new()
         .timeout(std::time::Duration::from_secs(30))
         .connect_timeout(std::time::Duration::from_secs(10))
-        .user_agent("friendolls-desktop/0.1.0")
+        .user_agent("friendolls-desktop/0.1.4")
         .build()
         .expect("Client should build");
 
